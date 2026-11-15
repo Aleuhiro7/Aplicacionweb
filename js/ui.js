@@ -162,6 +162,7 @@
   }
 
   /* ---------- Gráfico de líneas (SVG) ---------- */
+  let chartSeq = 0;
   function lineChart(points, { unit = '', height = 220 } = {}) {
     const pts = points.filter((p) => p.y !== '' && p.y !== null && !isNaN(p.y));
     if (pts.length < 2) {
@@ -204,7 +205,10 @@
       }
     });
 
-    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución en ${esc(unit)}">${grid}<path class="line" d="${path}"/>${dots}</svg>`;
+    const gid = `chart-fill-${++chartSeq}`;
+    const area = `${path} L${sx(xs[xs.length - 1]).toFixed(1)},${H - padB} L${sx(xs[0]).toFixed(1)},${H - padB} Z`;
+    const defs = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop class="grad-stop" offset="0" stop-opacity=".28"/><stop class="grad-stop" offset="1" stop-opacity="0"/></linearGradient></defs>`;
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución en ${esc(unit)}">${defs}${grid}<path d="${area}" fill="url(#${gid})"/><path class="line" d="${path}"/>${dots}</svg>`;
   }
 
   function anchor(i, n) { return i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'; }
