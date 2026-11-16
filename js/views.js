@@ -1253,6 +1253,7 @@
 
   function libraryForm(id) {
     const existing = id ? Store.get('library', id) : null;
+    if (existing && existing.builtIn) return; // los ejercicios de la biblioteca de serie no se editan
     UI.form({
       title: existing ? 'Editar ejercicio' : 'Nuevo ejercicio',
       fields: [
@@ -1305,12 +1306,14 @@
       </div>`,
       footer: (() => {
         const pick = pickContext();
-        return `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>` + (pick
+        const editBtn = ex.builtIn ? '<span style="margin-right:auto"></span>' : `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>`;
+        return editBtn + (pick
           ? `<button type="button" class="btn" data-close>Volver</button><button type="button" class="btn primary" id="lib-pick">${U.icon('plus')}Añadir a ${esc(pick.day.name)}</button>`
           : `<button type="button" class="btn primary" data-close>Cerrar</button>`);
       })(),
       onOpen: () => {
-        document.getElementById('lib-edit').onclick = () => libraryForm(id);
+        const edit = document.getElementById('lib-edit');
+        if (edit) edit.onclick = () => libraryForm(id);
         const add = document.getElementById('lib-pick');
         if (add) add.onclick = () => { UI.closeModal(); addFromLibrary(id); };
       },

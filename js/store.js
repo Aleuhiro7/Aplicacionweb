@@ -75,6 +75,9 @@
   function seedLibrary(d) {
     const defaults = window.LIBRARY_DEFAULT || [];
     if (!defaults.length) return;
+    const byId = new Map(defaults.map((x) => [x.id, x]));
+    // Los ejercicios de serie no se editan: siempre se muestran tal como vienen en los PDF.
+    d.library = d.library.map((x) => (byId.has(x.id) ? Object.assign({}, byId.get(x.id), { builtIn: true }) : x));
     const have = new Set(d.library.map((x) => x.id));
     const removed = new Set(d.settings.libraryRemoved || []);
     for (const ex of defaults) {
