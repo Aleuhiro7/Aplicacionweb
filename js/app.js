@@ -90,6 +90,11 @@
   });
 
   main.addEventListener('submit', (e) => {
+    if (e.target.classList.contains('pay-form')) {
+      e.preventDefault();
+      Views.submitPayForm(e.target);
+      return;
+    }
     if (e.target.id === 'settings-form') {
       e.preventDefault();
       Views.saveSettings(e.target);
@@ -122,4 +127,5 @@
   Store.load();
   applyTheme();
   render();
+  Views.notifyDue();
 })();

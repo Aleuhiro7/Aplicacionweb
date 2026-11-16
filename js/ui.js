@@ -7,12 +7,25 @@
 
   /* ---------- Toast ---------- */
   let toastTimer;
-  function toast(message) {
+  /** Aviso breve. Con `action` muestra un botón (p. ej. «Deshacer») durante unos segundos más. */
+  function toast(message, action) {
     const el = document.getElementById('toast');
-    el.textContent = message;
+    el.textContent = '';
+    const text = document.createElement('span');
+    text.textContent = message;
+    el.appendChild(text);
+    if (action) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toast-action';
+      btn.textContent = action.label;
+      btn.onclick = () => { el.classList.remove('show'); action.onClick(); };
+      el.appendChild(btn);
+    }
+    el.classList.toggle('has-action', !!action);
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    toastTimer = setTimeout(() => el.classList.remove('show'), action ? 6000 : 2600);
   }
 
   /* ---------- Modal base ---------- */
