@@ -1207,6 +1207,7 @@
       <p class="muted" style="margin:0 0 12px">Se envía la dieta completa por WhatsApp: las comidas con sus cantidades y opciones, y tus indicaciones.</p>
       <div class="actions">
         <a class="btn wa-btn" href="${dietWaLink(c, d)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
+        <button class="btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
         <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
       </div>
       ${U.waLink(c.phone) ? '' : `<p class="muted" style="font-size:.85rem;margin:10px 0 0">${esc(c.name.split(' ')[0])} no tiene teléfono en su ficha: WhatsApp te dejará elegir el chat.</p>`}
@@ -1237,6 +1238,55 @@
     if ((d.text || '').trim()) lines.push('', '*Indicaciones*', d.text.trim());
     if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
     return lines.join('\n');
+  }
+
+  /** Hoja de la dieta para imprimir o guardar como PDF (diseño en claro, tamaño A4). */
+  function dietSheet(c, d) {
+    const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
+    const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
+    const coach = (Store.settings.trainerName || 'David Orihuela').trim();
+    return `<article class="ds">
+      <header class="ds-head">
+        <div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Coach</small></span></div>
+        <div class="ds-date">${esc(fmtDate(today()))}</div>
+      </header>
+      <section class="ds-hero">
+        <span class="ds-kicker">Plan de alimentación</span>
+        <h1>${esc(c.name)}</h1>
+        <p>${plural(meals.length, 'comida', 'comidas')} al día${anyOptions ? ' · elige una opción en cada grupo' : ''}</p>
+      </section>
+      <div class="ds-meals">${meals.map((m, i) => `
+        <section class="ds-meal">
+          <header><span class="ds-num">${i + 1}</span><h2>${esc(m.name)}</h2></header>
+          ${mealGroups(m).map((g) => {
+            const many = g.key !== 'extra' && g.rows.length > 1;
+            return `<div class="ds-group ds-${g.key}">
+              <div class="ds-glabel"><i></i>${ROLE_LABEL[g.key]}${many ? '<span>elige una</span>' : ''}</div>
+              <ul>${g.rows.map((r, j) => `${many && j ? '<li class="ds-or">o bien</li>' : ''}<li><b>${fmtNum(Number(r.it.grams) || 0, 0)} ${unitOf(r.f)}</b><span>${esc(r.f.name)}</span></li>`).join('')}</ul>
+            </div>`;
+          }).join('')}
+          ${m.vegFree ? '<div class="ds-veg">🥗 Puedes añadir hasta <b>150 g de verdura</b> (la que quieras)</div>' : ''}
+        </section>`).join('')}
+      </div>
+      ${(d.text || '').trim() ? `<section class="ds-notes"><h2>Indicaciones</h2><p>${esc(d.text.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}
+      <footer class="ds-foot">${anyOptions ? 'Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes. · ' : ''}${esc(coach)} · Asesoría online</footer>
+    </article>`;
+  }
+
+  /** Abre el diálogo de impresión con la hoja de la dieta (desde ahí se guarda como PDF). */
+  function printDiet(clientId) {
+    const c = Store.get('clients', clientId);
+    const d = Store.dietFor(clientId);
+    if (!c || !d) return;
+    let root = document.getElementById('print-root');
+    if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
+    root.innerHTML = dietSheet(c, d);
+    const prevTitle = document.title;
+    document.title = `Dieta ${c.name}`; // nombre propuesto para el PDF
+    document.body.classList.add('printing');
+    const done = () => { document.body.classList.remove('printing'); document.title = prevTitle; root.innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    setTimeout(() => window.print(), 50);
   }
 
   function dietWaLink(c, d) {
@@ -2776,6 +2826,7 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
+    'diet-pdf': (d) => printDiet(d.client),
     'diet-copy': (d) => { const c = Store.get('clients', d.client); const dt = Store.dietFor(d.client); if (c && dt) copyText(dietText(c, dt), 'Dieta copiada: pégala donde quieras'); },
     'equiv-by': (d) => setEquivBy(d.value),
     'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },
