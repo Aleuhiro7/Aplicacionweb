@@ -16,7 +16,6 @@
     pendiente: { label: 'Pendiente', badge: 'info' },
     vencido: { label: 'Vencido', badge: 'danger' },
   };
-  const GOALS = ['Pérdida de grasa', 'Ganancia muscular', 'Recomposición corporal', 'Fuerza', 'Resistencia', 'Salud general', 'Rendimiento deportivo'];
   const PAY_METHODS = ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'];
   const CURRENCIES = [
     { value: 'EUR', label: 'Euro (€)' },
@@ -86,7 +85,6 @@
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Cuota mensual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate },
       { name: 'billingDay', label: 'Día de cobro', type: 'number', min: 1, max: 31, step: 1, default: Number(today().slice(8)), hint: 'Día del mes en que vence la cuota.' },
-      { name: 'goal', label: 'Objetivo principal', type: 'select', options: GOALS, placeholder: 'Selecciona…' },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -344,7 +342,7 @@
     return Store.clients().filter((c) => {
       if (state.clientFilter !== 'todos' && clientStatus(c) !== state.clientFilter) return false;
       if (!q) return true;
-      return [c.name, c.email, c.phone, c.goal].some((f) => (f || '').toLowerCase().includes(q));
+      return [c.name, c.email, c.phone].some((f) => (f || '').toLowerCase().includes(q));
     });
   }
 
@@ -357,13 +355,13 @@
     }
     const monthLabel = monthName(today()).replace(/^./, (m) => m.toUpperCase());
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Objetivo</th><th class="hide-sm">Teléfono</th><th class="num">Cuota</th><th>${esc(monthLabel)}</th><th class="hide-sm">Última medición</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Cuota</th><th>${esc(monthLabel)}</th><th class="hide-sm">Última medición</th></tr></thead>
       <tbody>${list.map((c) => {
         const fs = Store.feeStatus(c);
         const last = Store.lastMeasurement(c.id);
         return `<tr class="clickable" data-href="#/clientes/${c.id}" tabindex="0">
           <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</div></div></td>
-          <td class="hide-sm">${esc(c.goal || '—')}</td>
+          <td class="hide-sm">${c.email ? esc(c.email) : '—'}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
           <td>${feeBadge(fs)}</td>
@@ -382,7 +380,7 @@
       </div>
       <div class="card">
         <div class="toolbar">
-          <input type="search" class="search" id="client-search" placeholder="Buscar por nombre, email, teléfono u objetivo…" value="${esc(state.clientSearch)}" aria-label="Buscar clientes">
+          <input type="search" class="search" id="client-search" placeholder="Buscar por nombre, email o teléfono…" value="${esc(state.clientSearch)}" aria-label="Buscar clientes">
           <div class="segmented" role="group" aria-label="Filtrar por estado">
             ${seg('activo', `Activos (${counts.activo})`)}${seg('pausa', `En pausa (${counts.pausa})`)}${seg('inactivo', `Bajas (${counts.inactivo})`)}${seg('todos', 'Todos')}
           </div>
@@ -399,7 +397,7 @@
     const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
-    const sub = [c.goal, ageVal !== null ? `${ageVal} años` : null].filter(Boolean).join(' · ');
+    const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
     let body;
     switch (state.clientTab) {
       case 'progreso': body = clientProgress(c); break;
@@ -414,7 +412,7 @@
           ${avatar(c, 'lg')}
           <div class="grow">
             <h1>${esc(c.name)} ${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</h1>
-            <p>${esc(sub || 'Sin objetivo definido')}</p>
+            ${sub ? `<p>${esc(sub)}</p>` : ''}
           </div>
           <div class="actions">
             ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
@@ -645,7 +643,7 @@
   }
 
   function exportCSV() {
-    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['goal', 'Objetivo'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
+    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [cols.map((c) => q(c[1])).join(';')].concat(
       Store.clients().map((c) => cols.map(([k]) => q(k === 'status' ? CLIENT_STATUS[clientStatus(c)].label : c[k])).join(';'))
@@ -691,7 +689,7 @@
     people.forEach((p) => {
       const start = U.toISODate(new Date(now.getFullYear(), now.getMonth() - p.months, Math.min(28, p.billingDay)));
       const c = Store.add('clients', {
-        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender, goal: p.goal,
+        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender,
         rate: p.rate, billingDay: p.billingDay, height: p.height, health: p.health || '', notes: '', startDate: start, status: p.status || 'activo',
       });
       // Cuotas cobradas de los meses anteriores (y la de este mes si procede)
