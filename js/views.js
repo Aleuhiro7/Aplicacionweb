@@ -128,7 +128,7 @@
     if (!c) return;
     const ok = await UI.confirm({
       title: 'Eliminar cliente',
-      message: `Se eliminará a <strong>${esc(c.name)}</strong> junto con todas sus mediciones y pagos. Esta acción no se puede deshacer.<br><br>Si solo ha dejado la asesoría, puedes marcarlo como <em>Baja</em> o <em>En pausa</em>.`,
+      message: `Se eliminará a <strong>${esc(c.name)}</strong> junto con todo su historial de peso y pagos. Esta acción no se puede deshacer.<br><br>Si solo ha dejado la asesoría, puedes marcarlo como <em>Baja</em> o <em>En pausa</em>.`,
     });
     if (!ok) return;
     Store.remove('clients', id);
@@ -148,14 +148,14 @@
   function openMeasurementForm(id, clientId) {
     const existing = id ? Store.get('measurements', id) : null;
     UI.form({
-      title: existing ? 'Editar medición' : 'Nueva medición',
+      title: existing ? 'Editar peso' : 'Registrar peso',
       fields: measurementFields(),
       values: existing || {},
-      onDelete: existing ? () => deleteRecord('measurements', id, 'la medición') : null,
+      onDelete: existing ? () => deleteRecord('measurements', id, 'este registro de peso') : null,
       onSubmit: (v) => {
         if (existing) Store.update('measurements', id, v);
         else Store.add('measurements', Object.assign({ clientId }, v));
-        UI.toast('Medición guardada');
+        UI.toast('Peso guardado');
         App.render();
       },
     });
@@ -307,7 +307,7 @@
       const last = Store.lastMeasurement(c.id);
       const days = last ? U.daysBetween(last.date, t) : null;
       if (days === null || days >= STALE_DAYS) {
-        progress.push({ c, kind: 'progreso', text: last ? `Sin actualizar progreso desde hace ${days} días` : 'Sin mediciones todavía' });
+        progress.push({ c, kind: 'progreso', text: last ? `Sin actualizar el peso desde hace ${days} días` : 'Sin peso registrado todavía' });
       }
     }
     pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
@@ -401,7 +401,7 @@
             <li>
               ${avatar(a.c)}
               <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-              <button class="btn sm" data-action="new-measurement" data-client="${a.c.id}">Medición</button>
+              <button class="btn sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
             </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes tienen su progreso al día.')}
         </section>
       </div>`;
@@ -428,7 +428,7 @@
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Última medición</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Último peso</th></tr></thead>
       <tbody>${list.map((c) => {
         const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
@@ -491,7 +491,7 @@
             ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
             ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${U.icon('mail')}Email</a>` : ''}
             <button class="btn" data-action="edit-client" data-id="${c.id}">${U.icon('edit')}Editar</button>
-            <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button>
+            <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
           </div>
         </div>
         ${c.health ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
@@ -550,7 +550,6 @@
     const lastPay = Store.paymentsFor(c.id).find((p) => p.status === 'pagado');
     const totalPaid = Store.paymentsFor(c.id).filter((p) => p.status === 'pagado').reduce((s, p) => s + Number(p.amount || 0), 0);
     const all = Store.measurementsFor(c.id);
-    const lastAny = all[all.length - 1];
     const ms = all.filter((m) => m.weight !== '' && m.weight !== undefined);
     const weightDelta = ms.length >= 2 ? Number(ms[ms.length - 1].weight) - Number(ms[0].weight) : null;
     const lastM = ms[ms.length - 1];
@@ -562,7 +561,7 @@
       <div class="stats">
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
-        <div class="card stat"><div class="stat-label">Última medición</div><div class="stat-value" style="font-size:1.8rem">${lastAny ? esc(U.fmtDateShort(lastAny.date)) : '—'}</div><div class="stat-sub">${lastAny ? `hace ${plural(U.daysBetween(lastAny.date, t), 'día', 'días')}` : 'Sin mediciones'}</div></div>
+        <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
         <div class="card stat"><div class="stat-label">Cliente desde</div><div class="stat-value" style="font-size:1.8rem">${c.startDate ? esc(U.fmtDateShort(c.startDate)) : '—'}</div><div class="stat-sub">${months !== null ? `${plural(months, 'mes', 'meses')} · ` : ''}${money(totalPaid)} cobrado</div></div>
       </div>
       <div class="grid-2">
@@ -585,7 +584,7 @@
             ${row('Peso actual', `${fmtNum(lastM.weight)} kg <span class="muted">(${fmtDate(lastM.date)})</span>`)}
             ${weightDelta !== null ? row('Cambio', `<span class="${weightDelta > 0 ? 'delta-up' : 'delta-down'}">${weightDelta > 0 ? '+' : ''}${fmtNum(weightDelta)} kg</span> desde ${fmtDate(ms[0].date)}`) : ''}
             ${imc ? row('IMC', fmtNum(imc)) : ''}
-          </dl>` : empty('ruler', 'Sin mediciones todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button></div>`)}
+          </dl>` : empty('ruler', 'Sin peso registrado todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button></div>`)}
           ${ms.length >= 2 ? `<div class="mt">${UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg', height: 180 })}</div>` : ''}
         </section>
       </div>`;
@@ -605,7 +604,7 @@
       <section class="card">
         <div class="card-header">
           <h2>Evolución del peso</h2>
-          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button>
+          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
         </div>
         ${ms.length ? UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg' }) : empty('ruler', 'Registra el primer peso para empezar a ver la evolución.')}
       </section>
@@ -718,7 +717,7 @@
           <div class="card-header"><h2>Tus datos</h2></div>
           ${window.Sync ? Sync.settingsHTML() : `<p class="muted" style="margin-top:0">Cargando la sincronización…</p>`}
           ${Store.storageOk ? '' : `<div class="alert">${U.icon('alert')}<div>El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div></div>`}
-          <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'medición', 'mediciones')} · ${plural(d.payments.length, 'pago', 'pagos')}</p>
+          <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'registro de peso', 'registros de peso')} · ${plural(d.payments.length, 'pago', 'pagos')}</p>
           <div class="actions">
             <button class="btn primary" data-action="export">${U.icon('download')} Exportar copia</button>
             <label class="btn" for="import-file" tabindex="0">${U.icon('upload')} Importar copia</label>
@@ -831,7 +830,7 @@
   }
 
   async function resetData() {
-    const ok = await UI.confirm({ title: 'Borrar todos los datos', message: 'Se eliminarán <strong>todos</strong> los clientes, mediciones y pagos. Te recomendamos exportar una copia antes. ¿Continuar?', confirmLabel: 'Borrar todo' });
+    const ok = await UI.confirm({ title: 'Borrar todos los datos', message: 'Se eliminarán <strong>todos</strong> los clientes, registros de peso y pagos. Te recomendamos exportar una copia antes. ¿Continuar?', confirmLabel: 'Borrar todo' });
     if (!ok) return;
     Store.reset();
     UI.toast('Datos borrados');
