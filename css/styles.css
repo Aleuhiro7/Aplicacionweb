@@ -942,3 +942,49 @@ button.diet-row:hover { color: var(--primary); }
 .macro-total { font-weight: 700; padding: 10px 12px; border-radius: 10px; }
 .macro-total.ok { background: var(--success-soft); color: var(--success); }
 .macro-total.bad { background: var(--danger-soft); color: var(--danger); }
+
+/* ---------- Comidas de la dieta ---------- */
+.meal-count { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.meal-count > span { font-weight: 700; }
+.meal-count .segmented button { min-width: 42px; }
+.meals-summary .meal-count { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.mbars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.mbar-top { display: flex; justify-content: space-between; gap: 6px; font-size: .78rem; margin-bottom: 5px; flex-wrap: wrap; }
+.mbar-top span:first-child { font-weight: 700; }
+.mbar-top .off { color: var(--warning); font-weight: 700; }
+.mbar-track { height: 7px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.mbar-track span { display: block; height: 100%; border-radius: inherit; background: var(--text); transition: width .3s; }
+.mbar.m-protein .mbar-track span { background: var(--m-protein); } .mbar.m-carbs .mbar-track span { background: var(--m-carbs); } .mbar.m-fat .mbar-track span { background: var(--m-fat); }
+.mbar.kcal .mbar-track span { background: var(--muted); }
+@media (max-width: 560px) { .mbars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.meal-card { padding: 0; }
+.meal-card + .meal-card, .meals-summary + datalist + .meal-card { margin-top: 10px; }
+.meal-card summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.meal-card summary::-webkit-details-marker { display: none; }
+.meal-card summary h3 { margin: 0 0 2px; font-size: 1.05rem; }
+.meal-card summary .muted { font-size: .85rem; }
+.meal-card[open] .block-chev .ico { transform: rotate(180deg); }
+.meal-num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-weight: 800; flex-shrink: 0; }
+.meal-body { padding: 0 18px 16px; }
+.meal-name { max-width: 320px; margin-bottom: 14px; }
+.meal-items { margin: 12px 0; }
+.meal-items li { gap: 8px; }
+.grams-input { position: relative; width: 92px; flex-shrink: 0; }
+.grams-input input { padding: 7px 26px 7px 10px; text-align: right; }
+.grams-input span { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .8rem; pointer-events: none; }
+.lock-btn .ico { width: 16px; height: 16px; }
+.lock-btn.locked { color: var(--primary); background: var(--primary-soft); }
+.mp-list { margin-top: 10px; max-height: 52vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; padding: 4px 12px 10px; }
+.mp-block { border-bottom: 1px solid var(--border); }
+.mp-block summary { cursor: pointer; padding: 9px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+.mp-block summary::-webkit-details-marker { display: none; }
+.mp-block[open] summary { color: var(--primary); }
+.pick-item { display: flex; align-items: center; gap: 10px; padding: 7px 0 7px 6px; cursor: pointer; font-size: .9rem; }
+.pick-item .muted { font-size: .75rem; white-space: nowrap; }
+.pick-item[hidden], .mp-block[hidden], .mp-fam[hidden] { display: none !important; }
+@media (max-width: 560px) {
+  .meal-items li { flex-wrap: wrap; }
+  .meal-items li .grow { flex: 1 1 100%; }
+  .pick-item { flex-wrap: wrap; } .pick-item .muted { flex-basis: 100%; padding-left: 26px; }
+}
+.meal-card summary .grow { flex: 1; min-width: 0; }

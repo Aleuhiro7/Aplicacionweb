@@ -829,19 +829,286 @@
     });
   }
 
+  /* ---------- Comidas de la dieta: alimentos con cantidades ajustadas a los objetivos ---------- */
+
+  const MEAL_NAMES = {
+    3: ['Desayuno', 'Comida', 'Cena'],
+    4: ['Desayuno', 'Comida', 'Merienda', 'Cena'],
+    5: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena'],
+    6: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Snack'],
+    7: ['Desayuno', 'Media mañana', 'Comida', 'Preentreno', 'Postentreno', 'Cena', 'Snack'],
+  };
+  const MACRO_KEYS = ['protein', 'carbs', 'fat'];
+
+  /** Guarda cambios en la dieta del cliente (la crea si no existe). */
+  function saveDiet(clientId, patch) {
+    const d = Store.dietFor(clientId);
+    if (d) Store.update('diets', d.id, patch);
+    else Store.add('diets', Object.assign({ clientId, text: '' }, patch));
+  }
+
+  /** Objetivo del día en gramos (y kcal), o null si no hay objetivos. */
+  function dayTargets(d) {
+    const t = d && d.targets;
+    if (!t || !(Number(t.kcal) > 0)) return null;
+    const out = { kcal: Number(t.kcal) };
+    for (const m of macroSplit(t)) out[m.key] = m.grams;
+    return out;
+  }
+
+  /** Objetivo de una comida: el del día repartido a partes iguales. */
+  function mealTargets(d) {
+    const day = dayTargets(d);
+    const n = (d && d.meals || []).length;
+    if (!day || !n) return null;
+    return { kcal: day.kcal / n, protein: day.protein / n, carbs: day.carbs / n, fat: day.fat / n };
+  }
+
+  const per1g = (f, k) => (num(f[k]) || 0) / 100;
+
+  /** Macro que «aporta» cada alimento: el del bloque del que se eligió o, si no, el que más kcal da. */
+  function roleOf(item, food) {
+    const b = item.blockId && Store.get('foodBlocks', item.blockId);
+    if (b && MACRO_KEYS.includes(b.macro)) return b.macro;
+    const kc = { protein: per1g(food, 'protein') * 4, carbs: per1g(food, 'carbs') * 4, fat: per1g(food, 'fat') * 9 };
+    return MACRO_KEYS.reduce((a, k) => (kc[k] > kc[a] ? k : a), 'protein');
+  }
+
+  /**
+   * Ajusta los gramos de los alimentos no fijados para acercarse al objetivo de la comida.
+   * Cada alimento cubre su macro (los del mismo macro se lo reparten a partes iguales),
+   * descontando lo que ya aportan los demás alimentos. Se repite hasta que se estabiliza.
+   */
+  function solveMeal(meal, target) {
+    if (!target) return;
+    const rows = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
+    rows.forEach((r) => { r.role = roleOf(r.it, r.f); if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; });
+    for (let iter = 0; iter < 40; iter++) {
+      for (const k of MACRO_KEYS) {
+        const group = rows.filter((r) => !r.it.locked && r.role === k && per1g(r.f, k) > 0);
+        if (!group.length) continue;
+        const others = rows.filter((r) => !group.includes(r)).reduce((n, r) => n + (Number(r.it.grams) || 0) * per1g(r.f, k), 0);
+        const share = Math.max(0, target[k] - others) / group.length;
+        for (const r of group) r.it.grams = share / per1g(r.f, k);
+      }
+    }
+    rows.forEach((r) => {
+      if (r.it.locked) return;
+      const g = Math.min(1500, Math.max(0, Number(r.it.grams) || 0));
+      r.it.grams = g >= 20 ? Math.round(g / 5) * 5 : Math.round(g);
+    });
+  }
+
+  function mealTotals(meal) {
+    const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+    for (const it of meal.items || []) {
+      const f = Store.get('foods', it.foodId);
+      if (!f) continue;
+      const g = Number(it.grams) || 0;
+      t.kcal += (num(f.kcal) || 0) * g / 100;
+      for (const k of MACRO_KEYS) t[k] += per1g(f, k) * g;
+    }
+    return t;
+  }
+
+  /** Barras de progreso de kcal y macros frente al objetivo. */
+  function macroBars(tot, target) {
+    const rows = [['kcal', 'kcal', 'Kcal', ''], ['protein', 'm-protein', 'Proteínas', 'g'], ['carbs', 'm-carbs', 'Hidratos', 'g'], ['fat', 'm-fat', 'Grasas', 'g']];
+    return `<div class="mbars">${rows.map(([k, cls, label, u]) => {
+      const goal = target ? target[k] : 0;
+      const pct = goal ? Math.min(100, (tot[k] / goal) * 100) : 0;
+      const diff = goal ? tot[k] - goal : 0;
+      const off = goal && Math.abs(diff) > Math.max(k === 'kcal' ? 40 : 4, goal * 0.1);
+      return `<div class="mbar ${cls}">
+        <div class="mbar-top"><span>${label}</span><span class="${off ? 'off' : ''}">${fmtNum(tot[k], 0)}${goal ? ` / ${fmtNum(goal, 0)}` : ''} ${u || 'kcal'}</span></div>
+        <div class="mbar-track"><span style="width:${pct}%"></span></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  function mealCard(c, d, meal, idx) {
+    const target = mealTargets(d);
+    const tot = mealTotals(meal);
+    const open = state.openMeal === meal.id;
+    const items = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
+    return `<details class="card meal-card"${open ? ' open' : ''}>
+      <summary data-action="meal-toggle" data-id="${meal.id}">
+        <span class="meal-num">${idx + 1}</span>
+        <div class="grow">
+          <h3>${esc(meal.name)}</h3>
+          <div class="muted">${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
+        </div>
+        <span class="block-chev">${U.icon('down')}</span>
+      </summary>
+      <div class="meal-body">
+        <div class="field meal-name"><label for="mn-${meal.id}">Nombre de la comida</label>
+          <input id="mn-${meal.id}" value="${esc(meal.name)}" data-action-change="meal-rename" data-client="${c.id}" data-meal="${meal.id}" list="meal-names" placeholder="Ej.: Desayuno, Preentreno…"></div>
+        ${macroBars(tot, target)}
+        ${items.length ? `<ul class="list meal-items">${items.map(({ it, f }) => {
+          const g = Number(it.grams) || 0;
+          const b = it.blockId && Store.get('foodBlocks', it.blockId);
+          return `<li>
+            <div class="grow">
+              <div class="title">${esc(f.name)}</div>
+              <div class="meta">${b ? `${esc(b.name)} · ` : ''}${fmtNum((num(f.kcal) || 0) * g / 100, 0)} kcal · P ${fmtNum(per1g(f, 'protein') * g, 1)} · H ${fmtNum(per1g(f, 'carbs') * g, 1)} · G ${fmtNum(per1g(f, 'fat') * g, 1)}</div>
+            </div>
+            <div class="grams-input"><input type="number" min="0" step="5" inputmode="numeric" value="${g}" aria-label="Cantidad de ${esc(f.name)}" data-action-change="meal-grams" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}"><span>${unitOf(f)}</span></div>
+            <button class="icon-btn lock-btn${it.locked ? ' locked' : ''}" data-action="meal-lock" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}" aria-pressed="${!!it.locked}" title="${it.locked ? 'Cantidad fijada por ti: toca para que la app la ajuste' : 'La app ajusta esta cantidad: toca para fijarla'}">${U.icon(it.locked ? 'lock' : 'unlock')}</button>
+            <button class="icon-btn" data-action="meal-remove" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}" aria-label="Quitar ${esc(f.name)}">${U.icon('close')}</button>
+          </li>`;
+        }).join('')}</ul>` : `<p class="muted" style="margin:12px 0">Añade alimentos de los bloques: la app calculará las cantidades para cuadrar ${target ? 'el objetivo de esta comida' : 'los objetivos (fíjalos arriba)'}.</p>`}
+        <div class="actions">
+          <button class="btn primary sm" data-action="meal-add" data-client="${c.id}" data-meal="${meal.id}">${U.icon('plus')}Añadir alimentos</button>
+          ${items.length && target ? `<button class="btn sm" data-action="meal-solve" data-client="${c.id}" data-meal="${meal.id}">${U.icon('activity')}Reajustar cantidades</button>` : ''}
+        </div>
+      </div>
+    </details>`;
+  }
+
+  function mealsSection(c, d) {
+    const meals = (d && d.meals) || [];
+    const chooser = (current) => `<div class="meal-count">
+        <span>Número de comidas</span>
+        <div class="segmented" role="radiogroup" aria-label="Número de comidas">${[3, 4, 5, 6, 7].map((n) => `<button type="button" role="radio" aria-checked="${state.mealCount === n}" class="${state.mealCount === n ? 'active' : ''}" data-action="meal-count-pick" data-value="${n}">${n}</button>`).join('')}</div>
+        <button class="btn primary sm" data-action="meal-count-apply" data-client="${c.id}" ${state.mealCount ? '' : 'disabled'}>${U.icon('check')}Aceptar</button>
+        ${current ? '<button class="btn sm" data-action="meal-count-cancel">Cancelar</button>' : ''}
+      </div>`;
+    if (!meals.length) {
+      return `<section class="card">
+        <div class="card-header"><h2>Comidas</h2></div>
+        <p class="muted" style="margin:0 0 12px">Elige cuántas comidas hará al día. Las calorías y los macros se repartirán a partes iguales entre ellas.</p>
+        ${chooser(false)}
+      </section>`;
+    }
+    const day = dayTargets(d);
+    const tot = meals.reduce((t, m) => { const x = mealTotals(m); for (const k in t) t[k] += x[k]; return t; }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+    return `<section class="card meals-summary">
+        <div class="card-header"><h2>Total del día</h2><button class="btn sm" data-action="meal-count-edit">${U.icon('edit')}${plural(meals.length, 'comida', 'comidas')}</button></div>
+        ${state.editMealCount ? chooser(true) : ''}
+        ${day ? '' : `<div class="alert" style="margin:0 0 12px">${U.icon('alert')}<div>Fija los objetivos de calorías y macros arriba para que la app pueda calcular las cantidades.</div></div>`}
+        ${macroBars(tot, day)}
+      </section>
+      <datalist id="meal-names">${['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'].map((n) => `<option value="${n}"></option>`).join('')}</datalist>
+      ${meals.map((m, i) => mealCard(c, d, m, i)).join('')}`;
+  }
+
+  /** Abre la biblioteca de bloques para elegir varios alimentos y añadirlos a una comida. */
+  function mealPicker(clientId, mealId) {
+    const d = Store.dietFor(clientId);
+    const meal = d && (d.meals || []).find((m) => m.id === mealId);
+    if (!meal) return;
+    const blocks = Store.data.foodBlocks;
+    const inBlocks = new Set(blocks.flatMap((b) => b.foodIds || []));
+    const others = Store.foods().filter((f) => !inBlocks.has(f.id));
+    const fams = BLOCK_FAMILIES.filter((fm) => blocks.some((b) => (b.family || 'Otros') === fm));
+    const item = (f, blockId) => `<label class="pick-item" data-name="${esc(normalizeText(f.name))}"><input type="checkbox" value="${f.id}" data-block="${blockId || ''}">
+        <span class="grow">${esc(f.name)}</span><span class="muted">${fmtNum(f.kcal, 0)} kcal · P ${fmtNum(f.protein)} · H ${fmtNum(f.carbs)} · G ${fmtNum(f.fat)}</span></label>`;
+    const body = `<p class="muted" style="margin:0 0 10px">Marca uno o varios alimentos. Al añadirlos, la app calcula los gramos para cuadrar el objetivo de «${esc(meal.name)}». Valores por 100 g.</p>
+      <input type="search" id="mp-search" placeholder="Buscar alimento…" aria-label="Buscar alimento">
+      <div class="mp-list">
+        ${fams.map((fm) => `<div class="mp-fam" data-group><div class="bf-cat-name">${esc(fm)}</div>
+          ${blocks.filter((b) => (b.family || 'Otros') === fm).map((b) => `<details class="mp-block" data-group>
+            <summary>${esc(b.name)} <span class="muted">${(b.foodIds || []).length}</span></summary>
+            ${(b.foodIds || []).map((id) => Store.get('foods', id)).filter(Boolean).map((f) => item(f, b.id)).join('')}
+          </details>`).join('')}</div>`).join('')}
+        ${others.length ? `<div class="mp-fam" data-group><div class="bf-cat-name">Otros alimentos de la biblioteca</div><details class="mp-block" data-group><summary>Sin bloque <span class="muted">${others.length}</span></summary>${others.map((f) => item(f, '')).join('')}</details></div>` : ''}
+      </div>`;
+    UI.openModal({
+      title: `Añadir a ${meal.name}`,
+      body,
+      footer: '<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary" id="mp-add" disabled>Añadir</button>',
+      onOpen: (dlg) => {
+        const search = dlg.querySelector('#mp-search');
+        const add = dlg.querySelector('#mp-add');
+        const sync = () => {
+          const ids = new Set([...dlg.querySelectorAll('.pick-item input:checked')].map((i) => i.value));
+          add.disabled = !ids.size;
+          add.textContent = ids.size ? `Añadir (${ids.size})` : 'Añadir';
+        };
+        dlg.querySelector('.mp-list').addEventListener('change', (e) => {
+          // El mismo alimento puede estar en varios bloques: se marca/desmarca en todos.
+          if (e.target.matches('.pick-item input')) dlg.querySelectorAll(`.pick-item input[value="${e.target.value}"]`).forEach((x) => { x.checked = e.target.checked; });
+          sync();
+        });
+        search.addEventListener('input', () => {
+          const q = normalizeText(search.value);
+          dlg.querySelectorAll('.pick-item').forEach((el) => { el.hidden = q && !el.dataset.name.includes(q); });
+          dlg.querySelectorAll('.mp-block').forEach((det) => {
+            const any = [...det.querySelectorAll('.pick-item')].some((el) => !el.hidden);
+            det.hidden = !any;
+            det.open = !!q && any;
+          });
+          dlg.querySelectorAll('.mp-fam').forEach((fm) => { fm.hidden = ![...fm.querySelectorAll('.mp-block')].some((x) => !x.hidden); });
+        });
+      },
+      onSubmit: () => {
+        const dlg = document.getElementById('modal');
+        const seen = new Set();
+        const picked = [...dlg.querySelectorAll('.pick-item input:checked')].filter((i) => !seen.has(i.value) && seen.add(i.value)).map((i) => ({ foodId: i.value, blockId: i.dataset.block || '' }));
+        if (!picked.length) return;
+        const meals = d.meals.map((m) => Object.assign({}, m, { items: (m.items || []).slice() }));
+        const target = meals.find((m) => m.id === mealId);
+        for (const p of picked) if (!target.items.some((x) => x.foodId === p.foodId)) target.items.push({ id: U.uid(), foodId: p.foodId, blockId: p.blockId, grams: 0, locked: false });
+        solveMeal(target, mealTargets(Object.assign({}, d, { meals })));
+        saveDiet(clientId, { meals });
+        state.openMeal = mealId;
+        UI.closeModal();
+        UI.toast(picked.length === 1 ? 'Alimento añadido' : `${picked.length} alimentos añadidos`);
+        App.render();
+      },
+    });
+  }
+
+  /** Aplica un cambio a una comida, reajusta las cantidades no fijadas y guarda. */
+  function updateMeal(clientId, mealId, fn, { solve = true } = {}) {
+    const d = Store.dietFor(clientId);
+    if (!d) return;
+    const meals = (d.meals || []).map((m) => Object.assign({}, m, { items: (m.items || []).map((x) => Object.assign({}, x)) }));
+    const meal = meals.find((m) => m.id === mealId);
+    if (!meal) return;
+    fn(meal);
+    if (solve) solveMeal(meal, mealTargets(Object.assign({}, d, { meals })));
+    saveDiet(clientId, { meals });
+    state.openMeal = mealId;
+    App.render();
+  }
+
+  function applyMealCount(clientId) {
+    const n = state.mealCount;
+    if (!n) return;
+    const d = Store.dietFor(clientId);
+    const old = (d && d.meals) || [];
+    const names = MEAL_NAMES[n];
+    const meals = names.map((name, i) => old[i] || { id: U.uid(), name, items: [] });
+    const lost = old.slice(n).filter((m) => (m.items || []).length).length;
+    const done = () => {
+      // Con otro número de comidas cambia el objetivo de cada una: se reajustan las cantidades.
+      meals.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals }))));
+      saveDiet(clientId, { meals });
+      state.editMealCount = false;
+      UI.toast(`${n} comidas`);
+      App.render();
+    };
+    if (lost) {
+      UI.confirm({ title: 'Quitar comidas', message: `Pasar a ${n} comidas quitará las últimas ${old.length - n}, y ${plural(lost, 'tiene', 'tienen')} alimentos. ¿Continuar?`, confirmLabel: 'Quitar' })
+        .then((ok) => { if (ok) done(); });
+    } else done();
+  }
+
   function clientDiet(c) {
     const d = Store.dietFor(c.id);
+    if (!state.mealCount) state.mealCount = 5;
     return `${dietTargetsCard(c, d)}
+    ${mealsSection(c, d)}
     <section class="card">
       <div class="card-header">
-        <h2>Plan de comidas</h2>
+        <h2>Indicaciones</h2>
         ${d && (d.text || '').trim() ? `<span class="muted" style="font-size:.85rem">Actualizado el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : ''}
       </div>
       <form class="diet-form" data-client="${c.id}">
-        <textarea name="text" rows="8" placeholder="Escribe aquí el plan de alimentación de ${esc(c.name.split(' ')[0])}: comidas, cantidades, indicaciones…" aria-label="Plan de comidas">${esc(d ? d.text : '')}</textarea>
+        <textarea name="text" rows="5" placeholder="Indicaciones para ${esc(c.name.split(' ')[0])}: agua, horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
-      <p class="muted" style="font-size:.82rem;margin:12px 0 0">Próximamente podrás generar aquí el menú con alimentos de la biblioteca a partir de estos objetivos.</p>
     </section>`;
   }
 
@@ -851,7 +1118,7 @@
     const d = Store.dietFor(clientId);
     if (d) Store.update('diets', d.id, { text });
     else Store.add('diets', { clientId, text });
-    UI.toast('Plan de comidas guardado');
+    UI.toast('Indicaciones guardadas');
     App.render();
   }
 
@@ -2334,6 +2601,17 @@
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
+    'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },
+    'meal-count-apply': (d) => applyMealCount(d.client),
+    'meal-count-edit': () => { state.editMealCount = !state.editMealCount; App.render(); },
+    'meal-count-cancel': () => { state.editMealCount = false; App.render(); },
+    'meal-toggle': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.openMeal = det.open ? d.id : null; },
+    'meal-rename': (d, el) => { const name = el.value.trim(); if (name) updateMeal(d.client, d.meal, (m) => { m.name = name; }, { solve: false }); },
+    'meal-add': (d) => mealPicker(d.client, d.meal),
+    'meal-solve': (d) => { updateMeal(d.client, d.meal, () => {}); UI.toast('Cantidades reajustadas'); },
+    'meal-grams': (d, el) => updateMeal(d.client, d.meal, (m) => { const it = m.items.find((x) => x.id === d.item); if (it) { it.grams = Math.max(0, Number(el.value) || 0); it.locked = true; } }),
+    'meal-lock': (d) => updateMeal(d.client, d.meal, (m) => { const it = m.items.find((x) => x.id === d.item); if (it) it.locked = !it.locked; }),
+    'meal-remove': (d) => updateMeal(d.client, d.meal, (m) => { m.items = m.items.filter((x) => x.id !== d.item); }),
     'open-answers': (d) => {
       state.clientTab = 'resumen';
       state.keepTab = true;
