@@ -383,7 +383,7 @@
     const r = routineFor(client.id);
     const d = dietFor(client.id);
     const noRoutine = !r || !(r.days || []).some((day) => (day.exercises || []).length);
-    const noDiet = !d || !(d.text || '').trim();
+    const noDiet = !d || (!(d.text || '').trim() && !(d.targets && Number(d.targets.kcal) > 0));
     return noRoutine || noDiet ? { noRoutine, noDiet, routineEmpty: !!r && noRoutine } : null;
   }
 

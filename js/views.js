@@ -665,19 +665,183 @@
    * Dieta (apartado preparado; el contenido se definirá más adelante)
    * ======================================================= */
 
+  /* ---------- Objetivos de la dieta: calorías y reparto de macronutrientes ---------- */
+
+  const MACRO_INFO = [
+    { key: 'carbs', label: 'Carbohidratos', kcalPerG: 4, cls: 'm-carbs' },
+    { key: 'protein', label: 'Proteínas', kcalPerG: 4, cls: 'm-protein' },
+    { key: 'fat', label: 'Grasas', kcalPerG: 9, cls: 'm-fat' },
+  ];
+  const DIET_PRESETS = {
+    equilibrada: { label: 'Equilibrada', carbs: 50, protein: 20, fat: 30 },
+    proteica: { label: 'Alta en proteína', carbs: 33, protein: 40, fat: 27 },
+    deportiva: { label: 'Deportiva (más hidratos)', carbs: 55, protein: 25, fat: 20 },
+    baja: { label: 'Baja en hidratos', carbs: 20, protein: 40, fat: 40 },
+    cetogenica: { label: 'Cetogénica', carbs: 5, protein: 25, fat: 70 },
+  };
+
+  /** Gramos, kcal y % de cada macro a partir de las calorías y los porcentajes. */
+  function macroSplit(t) {
+    const kcal = Number(t.kcal) || 0;
+    return MACRO_INFO.map((m) => {
+      const pct = Number(t[`${m.key}Pct`]) || 0;
+      const grams = Math.round((kcal * pct) / 100 / m.kcalPerG);
+      return Object.assign({}, m, { pct, grams, kcal: grams * m.kcalPerG });
+    });
+  }
+
+  function presetName(t) {
+    const hit = Object.entries(DIET_PRESETS).find(([, p]) => p.carbs === Math.round(t.carbsPct) && p.protein === Math.round(t.proteinPct) && p.fat === Math.round(t.fatPct));
+    return hit ? hit[1].label : 'Personalizada';
+  }
+
+  /** Gráfico circular (dónut) con el % de cada macro. */
+  function macroDonut(split) {
+    const total = split.reduce((n, m) => n + m.pct, 0) || 1;
+    const R = 52;
+    const C = 2 * Math.PI * R;
+    let offset = 0;
+    let labels = '';
+    const segs = split.map((m) => {
+      const frac = m.pct / total;
+      const len = frac * C;
+      const mid = (offset + len / 2) / C * 2 * Math.PI - Math.PI / 2;
+      if (m.pct >= 4) labels += `<text x="${80 + Math.cos(mid) * R}" y="${80 + Math.sin(mid) * R + 5}" text-anchor="middle" class="donut-label">${Math.round(m.pct)}</text>`;
+      const seg = `<circle r="${R}" cx="80" cy="80" fill="none" class="donut-seg ${m.cls}" stroke-width="34" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 80 80)"/>`;
+      offset += len;
+      return seg;
+    }).join('');
+    return `<svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Reparto de macronutrientes: ${split.map((m) => `${m.label} ${Math.round(m.pct)} %`).join(', ')}">${segs}${labels}</svg>`;
+  }
+
+  function dietTargetsCard(c, d) {
+    const t = d && d.targets;
+    if (!t || !(Number(t.kcal) > 0)) {
+      return `<section class="card diet-goals">
+        <div class="card-header"><h2>Objetivos</h2>${badge('Sin objetivos', 'warning')}</div>
+        ${empty('trend', `<strong>Fija las calorías y el reparto de macros de ${esc(c.name.split(' ')[0])}.</strong><br>Serán la base para preparar su dieta.`,
+          `<div style="margin-top:14px"><button class="btn primary" data-action="diet-targets" data-client="${c.id}">${U.icon('plus')}Fijar objetivos</button></div>`)}
+      </section>`;
+    }
+    const split = macroSplit(t);
+    const lastW = Store.lastMeasurement(c.id);
+    const kg = lastW && Number(lastW.weight) > 0 ? Number(lastW.weight) : null;
+    return `<section class="card diet-goals">
+      <button class="kcal-goal" data-action="diet-targets" data-client="${c.id}">
+        <span class="kcal-icon">${U.icon('flame')}</span>
+        <span class="grow"><span class="kcal-label">Objetivo de calorías</span><span class="kcal-value">${fmtNum(t.kcal, 0)} kcal</span></span>
+        ${U.icon('right')}
+      </button>
+      <h3 class="macro-title">Macronutrientes</h3>
+      <div class="macro-cols">${split.map((m) => `
+        <div class="macro-col ${m.cls}">
+          <span class="mc-label">${m.label}</span>
+          <span class="mc-grams">${m.grams} g</span>
+          <span class="mc-kcal">${m.kcal} kcal</span>
+          ${kg ? `<span class="mc-perkg">${fmtNum(m.grams / kg, 1)} g/kg</span>` : ''}
+        </div>`).join('')}</div>
+      ${macroDonut(split)}
+      <div class="donut-legend">${split.map((m) => `<span class="${m.cls}"><i></i>${m.label === 'Carbohidratos' ? 'Carbohidratos' : m.label}</span>`).join('')}</div>
+      <div class="diet-rows">
+        <div class="diet-row"><span>Tipo de dieta</span><strong class="accent">${esc(presetName(t))}</strong></div>
+        <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
+      </div>
+      ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
+    </section>`;
+  }
+
+  function dietTargetsForm(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    const d = Store.dietFor(clientId);
+    const t0 = (d && d.targets) || { kcal: 2000, carbsPct: 33, proteinPct: 40, fatPct: 27 };
+    const lastW = Store.lastMeasurement(clientId);
+    const kg = lastW && Number(lastW.weight) > 0 ? Number(lastW.weight) : null;
+    const body = `<div class="form-grid">
+      <div class="field full"><label for="dt-kcal">Objetivo de calorías (kcal)</label><input id="dt-kcal" type="number" min="500" max="8000" step="10" inputmode="numeric" value="${esc(t0.kcal)}"></div>
+      <div class="field full"><label for="dt-preset">Tipo de dieta</label><select id="dt-preset">
+        <option value="">Personalizada</option>
+        ${Object.entries(DIET_PRESETS).map(([k, p]) => `<option value="${k}">${p.label} (${p.carbs} / ${p.protein} / ${p.fat})</option>`).join('')}
+      </select><div class="hint">Reparto en % de carbohidratos / proteínas / grasas.</div></div>
+      ${MACRO_INFO.map((m) => `
+        <div class="field full macro-edit ${m.cls}">
+          <label>${m.label}</label>
+          <div class="me-row">
+            <div class="me-input"><input id="dt-${m.key}-pct" type="number" min="0" max="100" step="1" inputmode="numeric" aria-label="${m.label} en %"><span>%</span></div>
+            <div class="me-input"><input id="dt-${m.key}-g" type="number" min="0" step="1" inputmode="numeric" aria-label="${m.label} en gramos"><span>g</span></div>
+            <span class="me-kcal" id="dt-${m.key}-kcal"></span>
+          </div>
+        </div>`).join('')}
+      <div class="full macro-total" id="dt-total"></div>
+    </div>`;
+    UI.openModal({
+      title: `Objetivos de ${c.name.split(' ')[0]}`,
+      body,
+      footer: '<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary">Guardar objetivos</button>',
+      onOpen: (dlg) => {
+        const $ = (id) => dlg.querySelector(`#${id}`);
+        const pct = { carbs: Number(t0.carbsPct), protein: Number(t0.proteinPct), fat: Number(t0.fatPct) };
+        const kcal = () => Number($('dt-kcal').value) || 0;
+        const paint = (skip) => {
+          let sum = 0;
+          for (const m of MACRO_INFO) {
+            const g = Math.round((kcal() * pct[m.key]) / 100 / m.kcalPerG);
+            if (skip !== `${m.key}-pct`) $(`dt-${m.key}-pct`).value = Math.round(pct[m.key] * 10) / 10;
+            if (skip !== `${m.key}-g`) $(`dt-${m.key}-g`).value = g;
+            $(`dt-${m.key}-kcal`).textContent = `${g * m.kcalPerG} kcal${kg ? ` · ${fmtNum(g / kg, 1)} g/kg` : ''}`;
+            sum += pct[m.key];
+          }
+          const ok = Math.abs(sum - 100) < 0.6;
+          $('dt-total').className = `full macro-total ${ok ? 'ok' : 'bad'}`;
+          $('dt-total').textContent = ok ? 'Total: 100 %' : `Total: ${fmtNum(sum, 1)} %. El reparto debe sumar 100 %.`;
+          const hit = Object.entries(DIET_PRESETS).find(([, p]) => p.carbs === Math.round(pct.carbs) && p.protein === Math.round(pct.protein) && p.fat === Math.round(pct.fat));
+          $('dt-preset').value = hit ? hit[0] : '';
+        };
+        $('dt-kcal').addEventListener('input', () => paint());
+        $('dt-preset').addEventListener('change', () => {
+          const p = DIET_PRESETS[$('dt-preset').value];
+          if (p) { pct.carbs = p.carbs; pct.protein = p.protein; pct.fat = p.fat; paint(); }
+        });
+        for (const m of MACRO_INFO) {
+          $(`dt-${m.key}-pct`).addEventListener('input', (e) => { pct[m.key] = Number(e.target.value) || 0; paint(`${m.key}-pct`); });
+          $(`dt-${m.key}-g`).addEventListener('input', (e) => {
+            const k = kcal();
+            pct[m.key] = k ? ((Number(e.target.value) || 0) * m.kcalPerG * 100) / k : 0;
+            paint(`${m.key}-g`);
+          });
+        }
+        paint();
+        dlg._pct = pct;
+      },
+      onSubmit: () => {
+        const dlg = document.getElementById('modal');
+        const pct = dlg._pct;
+        const k = Number(dlg.querySelector('#dt-kcal').value);
+        if (!(k >= 500)) { UI.toast('Indica un objetivo de calorías válido'); return; }
+        const sum = pct.carbs + pct.protein + pct.fat;
+        if (Math.abs(sum - 100) >= 0.6) { UI.toast('El reparto de macros debe sumar 100 %'); return; }
+        const targets = { kcal: Math.round(k), carbsPct: pct.carbs, proteinPct: pct.protein, fatPct: pct.fat };
+        if (d) Store.update('diets', d.id, { targets }); else Store.add('diets', { clientId, text: '', targets });
+        UI.closeModal();
+        UI.toast('Objetivos guardados');
+        App.render();
+      },
+    });
+  }
+
   function clientDiet(c) {
     const d = Store.dietFor(c.id);
-    const saved = d && (d.text || '').trim();
-    return `<section class="card">
+    return `${dietTargetsCard(c, d)}
+    <section class="card">
       <div class="card-header">
-        <h2>Dieta</h2>
-        ${saved ? `<span class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : badge('Sin dieta', 'warning')}
+        <h2>Plan de comidas</h2>
+        ${d && (d.text || '').trim() ? `<span class="muted" style="font-size:.85rem">Actualizado el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : ''}
       </div>
       <form class="diet-form" data-client="${c.id}">
-        <textarea name="text" rows="10" placeholder="Escribe aquí el plan de alimentación de ${esc(c.name.split(' ')[0])}: comidas, cantidades, indicaciones…" aria-label="Dieta">${esc(d ? d.text : '')}</textarea>
-        <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar dieta</button></div>
+        <textarea name="text" rows="8" placeholder="Escribe aquí el plan de alimentación de ${esc(c.name.split(' ')[0])}: comidas, cantidades, indicaciones…" aria-label="Plan de comidas">${esc(d ? d.text : '')}</textarea>
+        <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
-      <p class="muted" style="font-size:.82rem;margin:12px 0 0">Más adelante este apartado tendrá su propio formato; lo que escribas aquí se conservará.</p>
+      <p class="muted" style="font-size:.82rem;margin:12px 0 0">Próximamente podrás generar aquí el menú con alimentos de la biblioteca a partir de estos objetivos.</p>
     </section>`;
   }
 
@@ -687,7 +851,7 @@
     const d = Store.dietFor(clientId);
     if (d) Store.update('diets', d.id, { text });
     else Store.add('diets', { clientId, text });
-    UI.toast(text.trim() ? 'Dieta guardada' : 'Dieta vacía guardada');
+    UI.toast('Plan de comidas guardado');
     App.render();
   }
 
@@ -2169,6 +2333,7 @@
     'enable-notifications': () => enableNotifications(),
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
+    'diet-targets': (d) => dietTargetsForm(d.client),
     'open-answers': (d) => {
       state.clientTab = 'resumen';
       state.keepTab = true;

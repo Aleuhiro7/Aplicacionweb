@@ -893,3 +893,51 @@ body.q-page { min-height: 100vh; }
 .bf-item[hidden], .bf-cat[hidden] { display: none !important; }
 @media (max-width: 560px) { .eq-table th:nth-child(4), .eq-table td:nth-child(4), .eq-table th:nth-child(5), .eq-table td:nth-child(5), .eq-table th:nth-child(6), .eq-table td:nth-child(6) { display: none; } }
 .block-card summary .grow { flex: 1; min-width: 0; }
+
+/* ---------- Objetivos de la dieta ---------- */
+:root { --m-carbs: #f0507a; --m-protein: #4f7cf7; --m-fat: #f5b52a; }
+.diet-goals { padding-bottom: 14px; }
+.kcal-goal { appearance: none; width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.kcal-goal:hover { border-color: var(--primary); }
+.kcal-icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, #f97362 18%, transparent); color: #f97362; flex-shrink: 0; }
+.kcal-icon .ico { width: 26px; height: 26px; }
+.kcal-label { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.kcal-value { display: block; font: 700 2rem/1.1 "Barlow Semi Condensed", sans-serif; }
+.macro-title { margin: 22px 0 12px; font-size: 1.3rem; }
+.macro-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.macro-col { display: flex; flex-direction: column; gap: 2px; }
+.mc-label { font-weight: 600; font-size: .95rem; }
+.mc-grams { font: 700 1.6rem/1.15 "Barlow Semi Condensed", sans-serif; }
+.mc-kcal, .mc-perkg { font-size: .85rem; }
+.mc-perkg { color: var(--muted); }
+.m-carbs .mc-label, .m-carbs .mc-grams, .m-carbs .mc-kcal { color: var(--m-carbs); }
+.m-protein .mc-label, .m-protein .mc-grams, .m-protein .mc-kcal { color: var(--m-protein); }
+.m-fat .mc-label, .m-fat .mc-grams, .m-fat .mc-kcal { color: var(--m-fat); }
+.donut { display: block; width: 190px; max-width: 60%; margin: 16px auto 6px; }
+.donut-seg { transition: stroke-dasharray .3s; }
+.donut-seg.m-carbs { stroke: var(--m-carbs); }
+.donut-seg.m-protein { stroke: var(--m-protein); }
+.donut-seg.m-fat { stroke: var(--m-fat); }
+.donut-label { fill: #fff; font: 700 13px "Plus Jakarta Sans", sans-serif; }
+.donut-legend { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-size: .88rem; margin-bottom: 8px; }
+.donut-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.donut-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.donut-legend .m-carbs { color: var(--m-carbs); } .donut-legend .m-carbs i { background: var(--m-carbs); }
+.donut-legend .m-protein { color: var(--m-protein); } .donut-legend .m-protein i { background: var(--m-protein); }
+.donut-legend .m-fat { color: var(--m-fat); } .donut-legend .m-fat i { background: var(--m-fat); }
+.diet-rows { border: 1px solid var(--border); border-radius: 14px; margin-top: 10px; overflow: hidden; }
+.diet-row { appearance: none; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface-2); border: 0; color: var(--text); font: inherit; font-size: 1rem; text-align: left; }
+.diet-row + .diet-row { border-top: 1px solid var(--border); }
+button.diet-row { cursor: pointer; }
+button.diet-row:hover { color: var(--primary); }
+.diet-row .accent { color: #f97362; font-weight: 600; }
+.macro-edit label { font-weight: 700; }
+.macro-edit.m-carbs label { color: var(--m-carbs); } .macro-edit.m-protein label { color: var(--m-protein); } .macro-edit.m-fat label { color: var(--m-fat); }
+.me-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.me-input { position: relative; width: 110px; }
+.me-input input { padding-right: 30px; }
+.me-input span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 600; pointer-events: none; }
+.me-kcal { color: var(--muted); font-size: .88rem; }
+.macro-total { font-weight: 700; padding: 10px 12px; border-radius: 10px; }
+.macro-total.ok { background: var(--success-soft); color: var(--success); }
+.macro-total.bad { background: var(--danger-soft); color: var(--danger); }
