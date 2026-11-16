@@ -1018,7 +1018,7 @@
         ${macroBars(tot, target)}
         ${multi ? `<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: ${equivBy() === 'kcal' ? 'todas aportan las mismas <strong>calorías</strong>' : 'todas aportan lo mismo de su macro'}. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>` : ''}
         ${items.length ? groups.map((g) => `<div class="meal-group m-${g.key}">
-          <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.key === 'extra' ? '<span class="muted">se suma, sin equivalencias</span>' : g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
+          <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.key === 'extra' ? '<span class="muted">resta su proteína a las demás opciones</span>' : g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
           <ul class="list meal-items">${g.rows.map(({ it, f }, i) => {
           const gr = Number(it.grams) || 0;
           let b = it.blockId && Store.get('foodBlocks', it.blockId);
