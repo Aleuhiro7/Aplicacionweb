@@ -1397,7 +1397,7 @@
    * Biblioteca de alimentos
    * ======================================================= */
 
-  const FOOD_CATEGORIES = ['Proteínas', 'Carbohidratos', 'Grasas', 'Lácteos', 'Frutas', 'Verduras y hortalizas', 'Legumbres', 'Frutos secos y semillas', 'Bebidas', 'Suplementos', 'Otros'];
+  const FOOD_CATEGORIES = ['Carnes y aves', 'Embutidos y fiambres', 'Pescados y mariscos', 'Huevos', 'Proteína vegetal', 'Lácteos', 'Cereales, pan y pasta', 'Tubérculos', 'Legumbres', 'Verduras y hortalizas', 'Frutas', 'Frutos secos y semillas', 'Grasas y aceites', 'Bebidas', 'Suplementos', 'Salsas y condimentos', 'Dulces y otros'];
 
   function foodCategories() {
     const used = new Set(Store.data.foods.map((x) => x.category).filter(Boolean));
@@ -1477,7 +1477,7 @@
       title: existing ? 'Editar alimento' : 'Nuevo alimento',
       fields: [
         { name: 'name', label: 'Nombre', required: true, full: true, placeholder: 'Ej.: Pechuga de pollo, Arroz basmati…' },
-        { name: 'category', label: 'Categoría', datalist: FOOD_CATEGORIES, placeholder: 'Ej.: Proteínas' },
+        { name: 'category', label: 'Categoría', datalist: FOOD_CATEGORIES, placeholder: 'Ej.: Carnes y aves' },
         { name: 'portion', label: 'Cantidad de referencia', default: '100 g', placeholder: 'Ej.: 100 g, 1 unidad, 1 cucharada' },
         { type: 'section', label: 'Valores para esa cantidad' },
         { name: 'kcal', label: 'Calorías (kcal)', type: 'number', step: '0.1', min: 0 },
