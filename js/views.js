@@ -1397,7 +1397,7 @@
    * Biblioteca de alimentos
    * ======================================================= */
 
-  const FOOD_CATEGORIES = ['Carnes y aves', 'Embutidos y fiambres', 'Pescados y mariscos', 'Huevos', 'Proteína vegetal', 'Lácteos', 'Cereales, pan y pasta', 'Tubérculos', 'Legumbres', 'Verduras y hortalizas', 'Frutas', 'Frutos secos y semillas', 'Grasas y aceites', 'Bebidas', 'Suplementos', 'Salsas y condimentos', 'Dulces y otros'];
+  const FOOD_CATEGORIES = ['Carnes y aves', 'Embutidos y fiambres', 'Pescados y mariscos', 'Huevos', 'Proteína vegetal', 'Lácteos', 'Cereales, pan y pasta', 'Tortitas', 'Tubérculos', 'Legumbres', 'Verduras y hortalizas', 'Frutas', 'Frutos secos y semillas', 'Grasas y aceites', 'Bebidas', 'Suplementos', 'Salsas y condimentos', 'Otros'];
 
   function foodCategories() {
     const used = new Set(Store.data.foods.map((x) => x.category).filter(Boolean));

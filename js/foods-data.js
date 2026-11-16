@@ -1,4 +1,5 @@
 /* Alimentos básicos que vienen de serie en la biblioteca de alimentos.
+ * Selección de alimentos para una dieta sana (sin alcohol ni ultraprocesados).
  * Valores medios de referencia por 100 g de parte comestible (100 ml en bebidas), en crudo
  * salvo que se indique. Fuente: tablas de composición BEDCA (España) y USDA, contrastadas
  * con el etiquetado habitual de marca blanca en supermercados españoles. Hidratos sin fibra,
@@ -24,16 +25,12 @@
     ['Pechuga de pavo', 105, 23.5, 0, 1.2],
     ['Solomillo de cerdo', 120, 21, 0, 3.5],
     ['Lomo de cerdo', 140, 21, 0, 6],
-    ['Costillas de cerdo', 280, 17, 0, 23.5],
     ['Ternera magra (filete)', 120, 21.5, 0, 3.5],
     ['Carne picada de vacuno', 210, 18, 0, 15, '', 'Picada estándar (~15 % grasa). La versión extra magra ronda 130 kcal.'],
-    ['Carne picada mixta (cerdo y vacuno)', 240, 17, 0.5, 19],
     ['Hamburguesa de vacuno', 220, 16, 3, 16],
     ['Hamburguesa de pollo', 165, 16, 4, 9.5],
     ['Conejo', 135, 21, 0, 5.5],
     ['Cordero (pierna)', 200, 18, 0, 14],
-    ['Salchichas de pavo', 180, 12, 3, 13.5],
-    ['Salchichas frescas de cerdo', 270, 14, 1.5, 23],
   ]);
 
   cat('Embutidos y fiambres', [
@@ -43,10 +40,6 @@
     ['Jamón serrano', 240, 31, 0.5, 13],
     ['Jamón ibérico', 330, 30, 0.5, 23],
     ['Lomo embuchado', 220, 38, 1, 7],
-    ['Chorizo', 450, 24, 2, 38],
-    ['Salchichón', 430, 25, 2, 36],
-    ['Bacon (beicon)', 310, 15, 0.5, 27.5],
-    ['Mortadela', 300, 13, 1.5, 27],
   ]);
 
   cat('Pescados y mariscos', [
@@ -85,7 +78,6 @@
     ['Seitán', 125, 23, 5, 1.5],
     ['Tempeh', 190, 19, 7, 11],
     ['Soja texturizada (seca)', 335, 50, 17, 1.5],
-    ['Hamburguesa vegetal (media)', 200, 15, 8, 12, '', 'Varía mucho según la marca.'],
   ]);
 
   cat('Lácteos', [
@@ -131,20 +123,24 @@
     ['Quinoa (cruda)', 368, 14, 64, 6],
     ['Pan de barra', 260, 8.5, 51, 1.5],
     ['Pan integral', 240, 9, 41, 3.3],
-    ['Pan de molde blanco', 265, 8.5, 47, 4],
     ['Pan de molde integral', 245, 10, 40, 4],
     ['Pan de centeno', 250, 8, 46, 2.5],
     ['Pan tostado / biscotes', 405, 12, 73, 6],
-    ['Tortitas de arroz', 385, 8, 81, 2.8],
-    ['Tortitas de maíz', 380, 8, 79, 3.5],
     ['Tortillas de trigo (wraps)', 300, 8.5, 50, 7],
     ['Harina de trigo', 345, 10, 72, 1.2],
     ['Harina de avena', 375, 13, 60, 7.5],
-    ['Cereales tipo corn flakes', 375, 7.5, 84, 0.9],
     ['Muesli sin azúcar añadido', 360, 9.5, 62, 6.5],
     ['Fideos de arroz (crudos)', 360, 6, 82, 0.5],
     ['Ñoquis de patata', 150, 3.5, 32, 0.5],
     ['Maíz dulce (lata, escurrido)', 80, 2.6, 14.5, 1.3],
+  ]);
+
+  cat('Tortitas', [
+    ['Tortitas de arroz', 385, 8, 81, 2.8, '', 'Una tortita pesa unos 8 g (≈ 30 kcal).'],
+    ['Tortitas de arroz integral', 380, 8.5, 78, 3],
+    ['Tortitas de maíz', 380, 8, 79, 3.5, '', 'Una tortita pesa unos 8 g (≈ 30 kcal).'],
+    ['Tortitas de lentejas', 360, 25, 53, 2],
+    ['Tortitas de garbanzo', 375, 20, 57, 5],
   ]);
 
   cat('Tubérculos', [
@@ -243,10 +239,7 @@
 
   cat('Grasas y aceites', [
     ['Aceite de oliva virgen extra', 900, 0, 0, 100, '', 'Una cucharada sopera son unos 10 g (≈ 90 kcal).'],
-    ['Aceite de girasol', 900, 0, 0, 100],
-    ['Aceite de coco', 900, 0, 0, 100],
     ['Mantequilla', 740, 0.6, 0.6, 82],
-    ['Margarina', 535, 0.2, 0.5, 59],
     ['Aguacate', 160, 1.9, 1.9, 15],
     ['Aceitunas verdes', 140, 1, 0.5, 14.5, '', 'Peso sin hueso.'],
     ['Aceitunas negras', 190, 1.5, 1, 20, '', 'Peso sin hueso.'],
@@ -256,13 +249,11 @@
     ['Agua', 0, 0, 0, 0, '100 ml'],
     ['Café solo', 2, 0.1, 0, 0, '100 ml'],
     ['Zumo de naranja natural', 45, 0.7, 10, 0.2, '100 ml'],
-    ['Refresco de cola', 42, 0, 10.6, 0, '100 ml'],
+    ['Infusión / té (sin azúcar)', 1, 0, 0.2, 0, '100 ml'],
     ['Refresco de cola zero', 0, 0, 0, 0, '100 ml'],
-    ['Bebida isotónica', 25, 0, 6, 0, '100 ml'],
-    ['Cerveza', 43, 0.5, 3.5, 0, '100 ml', 'Las calorías incluyen el alcohol.'],
-    ['Cerveza sin alcohol', 21, 0.3, 4.5, 0, '100 ml'],
-    ['Vino tinto', 85, 0.1, 2.6, 0, '100 ml', 'Las calorías incluyen el alcohol.'],
-    ['Batido de cacao', 75, 3.3, 11, 1.7, '100 ml'],
+    ['Refresco zero de sabores (naranja, limón…)', 2, 0, 0.3, 0, '100 ml'],
+    ['Tónica zero', 2, 0, 0.4, 0, '100 ml'],
+    ['Cerveza 0,0 sin alcohol', 21, 0.3, 4.5, 0, '100 ml'],
     ['Gazpacho', 50, 0.8, 4, 3.3, '100 ml'],
   ]);
 
@@ -273,9 +264,6 @@
   ]);
 
   cat('Salsas y condimentos', [
-    ['Tomate frito', 80, 1.5, 9.5, 4],
-    ['Mayonesa', 700, 1, 1.5, 76],
-    ['Ketchup', 105, 1.2, 24, 0.1],
     ['Mostaza', 90, 5, 4, 5.5],
     ['Salsa de soja', 55, 8, 5, 0.5],
     ['Hummus', 290, 7, 12, 23],
@@ -283,20 +271,10 @@
     ['Caldo de pollo', 5, 0.5, 0.3, 0.2, '100 ml'],
   ]);
 
-  cat('Dulces y otros', [
+  cat('Otros', [
     ['Miel', 304, 0.3, 82, 0],
-    ['Azúcar', 400, 0, 100, 0],
-    ['Mermelada', 250, 0.4, 60, 0.1],
     ['Cacao puro en polvo (desgrasado)', 340, 21, 13, 11, '', 'Muy rico en fibra, que también aporta calorías.'],
-    ['Cacao soluble azucarado', 375, 5, 80, 3],
-    ['Chocolate negro 70 %', 580, 9, 31, 43],
     ['Chocolate negro 85 %', 600, 11, 15, 50],
-    ['Chocolate con leche', 540, 7, 57, 31],
-    ['Galletas tipo María', 435, 7, 73, 12],
-    ['Croissant', 406, 8, 46, 21],
-    ['Patatas fritas de bolsa', 536, 6.6, 50, 34],
-    ['Pizza margarita (congelada)', 240, 10, 30, 8.5],
-    ['Tortilla de patatas (envasada)', 180, 6, 12, 12],
   ]);
 
   window.FOODS_DEFAULT = list;

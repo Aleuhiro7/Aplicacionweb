@@ -82,9 +82,11 @@
   /** Igual que la biblioteca de ejercicios: añade los alimentos de serie que falten (de solo lectura). */
   function seedFoods(d) {
     const defaults = window.FOODS_DEFAULT || [];
-    if (!defaults.length) return;
     const byId = new Map(defaults.map((x) => [x.id, x]));
-    d.foods = d.foods.map((x) => (byId.has(x.id) ? Object.assign({}, byId.get(x.id), { builtIn: true }) : x));
+    // Los alimentos de serie que ya no están en la lista se quitan; los demás se muestran tal cual vienen.
+    d.foods = d.foods
+      .filter((x) => !x.builtIn || byId.has(x.id))
+      .map((x) => (byId.has(x.id) ? Object.assign({}, byId.get(x.id), { builtIn: true }) : x));
     const have = new Set(d.foods.map((x) => x.id));
     const removed = new Set(d.settings.foodsRemoved || []);
     for (const f of defaults) if (!have.has(f.id) && !removed.has(f.id)) d.foods.push(Object.assign({ builtIn: true }, f));
