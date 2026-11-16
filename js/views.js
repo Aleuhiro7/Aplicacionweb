@@ -94,7 +94,6 @@
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', default: today(), hint: `Te avisaré ${Store.REMIND_DAYS} días antes.` },
-      { name: 'lastReview', label: 'Última revisión', type: 'date', hint: `La siguiente será ${Store.REVIEW_EVERY} días después. Si la dejas vacía, se cuenta desde la fecha de alta.` },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -306,7 +305,8 @@
     atrasada: { label: 'Atrasada', badge: 'danger' },
     hoy: { label: 'Hoy', badge: 'warning' },
     pronto: { label: 'Pronto', badge: 'warning' },
-    'al-dia': { label: 'Al día', badge: 'success' },
+    'al-dia': { label: 'Programada', badge: 'info' },
+    hecha: { label: 'Hecha', badge: 'success' },
   };
 
   function reviewText(ri) {
@@ -315,7 +315,8 @@
     if (ri.status === 'atrasada') return `Revisión atrasada ${plural(-ri.days, 'día', 'días')} (${date})`;
     if (ri.status === 'hoy') return 'Le toca revisión hoy';
     if (ri.status === 'pronto') return `Revisión ${ri.days === 1 ? 'mañana' : `en ${ri.days} días`} (${date})`;
-    return `Próxima revisión: ${date}`;
+    if (ri.status === 'hecha') return `Revisión hecha el ${U.fmtDateShort(ri.doneDate)}`;
+    return `Revisión el ${date}`;
   }
 
   /** Fila de aviso de revisión: el nombre abre WhatsApp y la casilla marca la revisión como hecha. */
@@ -338,13 +339,14 @@
   function completeReview(clientId) {
     const c = Store.get('clients', clientId);
     if (!c) return;
-    const prev = c.lastReview || '';
-    const rec = Store.add('reviews', { clientId, date: today() });
-    Store.update('clients', clientId, { lastReview: today() });
+    const ri = Store.reviewInfo(c);
+    const prev = { lastReview: c.lastReview || '', reviewedPayment: c.reviewedPayment || '' };
+    const rec = Store.add('reviews', { clientId, date: today(), paymentId: ri ? ri.paymentId : '' });
+    Store.update('clients', clientId, { lastReview: today(), reviewedPayment: ri ? ri.paymentId : '' });
     App.render();
-    UI.toast(`Revisión de ${c.name.split(' ')[0]} hecha · la próxima el ${U.fmtDateShort(U.addDays(today(), Store.REVIEW_EVERY))}`, {
+    UI.toast(`Revisión de ${c.name.split(' ')[0]} hecha · la siguiente, ${Store.REVIEW_AFTER} días después de su próximo pago`, {
       label: 'Deshacer',
-      onClick: () => { Store.remove('reviews', rec.id); Store.update('clients', clientId, { lastReview: prev }); App.render(); },
+      onClick: () => { Store.remove('reviews', rec.id); Store.update('clients', clientId, prev); App.render(); },
     });
   }
 
@@ -540,7 +542,7 @@
     const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
     const reviews = Store.clients()
       .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
-      .filter((x) => x.ri && x.ri.status !== 'al-dia')
+      .filter((x) => x.ri && ['atrasada', 'hoy', 'pronto'].includes(x.ri.status))
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
     return pay.concat(reviews, progress, tasks);
   }
@@ -683,7 +685,7 @@
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Próxima revisión</th><th class="hide-sm">Último peso</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Revisión</th><th class="hide-sm">Último peso</th></tr></thead>
       <tbody>${list.map((c) => {
         const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
@@ -693,7 +695,7 @@
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
           <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
-          <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? `${esc(U.fmtDateShort(ri.date))} ${ri.status !== 'al-dia' ? badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge) : ''}` : '<span class="muted">—</span>'; })()}</td>
+          <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? (ri.status === 'hecha' ? badge('Hecha', 'success') : `${esc(U.fmtDateShort(ri.date))} ${ri.status !== 'al-dia' ? badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge) : ''}`) : '<span class="muted">—</span>'; })()}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -822,7 +824,7 @@
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
-        <div class="card stat"><div class="stat-label">Próxima revisión</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${ri ? `${esc(reviewText(ri).replace(/ \(.*\)$/, ''))}` : 'Solo para clientes activos'}</div>${ri ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Revisión hecha</button>` : ''}</div>
+        <div class="card stat"><div class="stat-label">Revisión</div><div class="stat-value" style="font-size:1.8rem">${!ri ? '—' : ri.status === 'hecha' ? 'Hecha' : esc(U.fmtDateShort(ri.date))}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? `Se programa ${Store.REVIEW_AFTER} días después de cada pago` : 'Solo para clientes activos') : ri.status === 'hecha' ? `El ${esc(U.fmtDateShort(ri.doneDate))} · la siguiente, ${Store.REVIEW_AFTER} días tras el próximo pago` : `${esc(reviewText(ri).replace(/ \(.*\)$/, ''))} · ${Store.REVIEW_AFTER} días tras el pago del ${esc(U.fmtDateShort(ri.paidDate))}`}</div>${ri && ri.status !== 'hecha' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Revisión hecha</button>` : ''}</div>
       </div>
       <div class="grid-2">
         <section class="card">
@@ -1057,17 +1059,17 @@
     const t = today();
     // due = días hasta el próximo pago (negativo = vencido)
     const people = [
-      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', gain: false, rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, due: 15, review: 13, lastM: 3 },
-      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', gain: true, rate: 80, height: 180, w: 78, fat: 18, months: 4, due: -4, review: 17, lastM: 6 },
-      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', gain: false, rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, due: 3, review: 5, lastM: 20 },
-      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', gain: false, rate: 60, height: 176, w: 74, fat: 15, months: 2, due: 25, review: 15, lastM: 2 },
-      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', gain: false, rate: 60, height: 170, w: 63, fat: 24, months: 4, due: -20, review: 30, status: 'pausa', lastM: 40 },
+      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', gain: false, rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, due: 15, lastM: 3 },
+      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', gain: true, rate: 80, height: 180, w: 78, fat: 18, months: 4, due: -4, lastM: 6 },
+      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', gain: false, rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, due: 3, lastM: 20 },
+      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', gain: false, rate: 60, height: 176, w: 74, fat: 15, months: 2, due: 25, lastM: 2 },
+      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', gain: false, rate: 60, height: 170, w: 63, fat: 24, months: 4, due: -20, status: 'pausa', lastM: 40 },
     ];
     people.forEach((p) => {
       const nextDue = U.addDays(t, p.due);
       const c = Store.add('clients', {
         name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender,
-        rate: p.rate, nextDue, lastReview: U.addDays(t, -(p.review ?? 5)), height: p.height, health: p.health || '', notes: '', startDate: U.addMonths(nextDue, -p.months), status: p.status || 'activo',
+        rate: p.rate, nextDue, lastReview: '', height: p.height, health: p.health || '', notes: '', startDate: U.addMonths(nextDue, -p.months), status: p.status || 'activo',
       });
       // Un pago al mes hasta la fecha del próximo pago
       for (let i = p.months; i >= 1; i--) {

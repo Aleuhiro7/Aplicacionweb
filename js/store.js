@@ -192,25 +192,39 @@
     return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
   }
 
-  const REVIEW_EVERY = 15; // días entre revisiones
+  const REVIEW_AFTER = 15; // días después de cada pago en que toca la revisión
   const REVIEW_NOTICE = 2; // días de antelación para avisar
 
+  /** Último pago cobrado de un cliente (el más reciente por fecha y, si empatan, por hora de registro). */
+  function lastPaid(clientId) {
+    let last = null;
+    for (const p of data.payments) {
+      if (p.clientId !== clientId || p.status !== 'pagado') continue;
+      if (!last || p.date > last.date || (p.date === last.date && (p.createdAt || '') > (last.createdAt || ''))) last = p;
+    }
+    return last;
+  }
+
   /**
-   * Próxima revisión de un cliente activo: 15 días después de la última
-   * (o de la fecha de alta si aún no ha tenido ninguna).
-   * Estado: 'atrasada', 'hoy', 'pronto' (en los próximos 2 días) o 'al-dia'.
+   * Revisión de un cliente activo: toca 15 días después de su último pago.
+   * Estado: 'hecha' (ya marcada en este periodo), 'atrasada', 'hoy',
+   * 'pronto' (en los próximos 2 días) o 'al-dia'. null si no tiene pagos.
    */
   function reviewInfo(client) {
     if (!client || (client.status || 'activo') !== 'activo') return null;
-    const base = client.lastReview || client.startDate || (client.createdAt || '').slice(0, 10);
-    if (!base) return null;
-    const date = U.addDays(base, REVIEW_EVERY);
+    const pay = lastPaid(client.id);
+    if (!pay) return null;
+    const paidDate = pay.date;
+    const date = U.addDays(paidDate, REVIEW_AFTER);
     const days = U.daysBetween(today(), date);
+    // La revisión de este periodo está hecha si se marcó para este mismo pago.
+    const done = client.reviewedPayment ? client.reviewedPayment === pay.id : (!!client.lastReview && client.lastReview > paidDate);
     let status = 'al-dia';
-    if (days < 0) status = 'atrasada';
+    if (done) status = 'hecha';
+    else if (days < 0) status = 'atrasada';
     else if (days === 0) status = 'hoy';
     else if (days <= REVIEW_NOTICE) status = 'pronto';
-    return { status, days, date, last: client.lastReview || '' };
+    return { status, days, date, paidDate, paymentId: pay.id, doneDate: done ? client.lastReview : '' };
   }
 
   function reviewsFor(clientId) {
@@ -277,7 +291,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, REVIEW_EVERY, REVIEW_NOTICE,
+    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, REVIEW_AFTER, REVIEW_NOTICE,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },
