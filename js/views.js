@@ -717,16 +717,17 @@
   function dietTargetsCard(c, d) {
     const t = d && d.targets;
     if (!t || !(Number(t.kcal) > 0)) {
-      return `<section class="card diet-goals">
+      return `<div class="diet-sec diet-goals">
         <div class="card-header"><h2>Objetivos</h2>${badge('Sin objetivos', 'warning')}</div>
         ${empty('trend', `<strong>Fija las calorías y el reparto de macros de ${esc(c.name.split(' ')[0])}.</strong><br>Serán la base para preparar su dieta.`,
           `<div style="margin-top:14px"><button class="btn primary" data-action="diet-targets" data-client="${c.id}">${U.icon('plus')}Fijar objetivos</button></div>`)}
-      </section>`;
+      </div>`;
     }
     const split = macroSplit(t);
     const lastW = Store.lastMeasurement(c.id);
     const kg = lastW && Number(lastW.weight) > 0 ? Number(lastW.weight) : null;
-    return `<section class="card diet-goals">
+    return `<div class="diet-sec diet-goals">
+      <div class="card-header"><h2>Objetivos</h2></div>
       <button class="kcal-goal" data-action="diet-targets" data-client="${c.id}">
         <span class="kcal-icon">${U.icon('flame')}</span>
         <span class="grow"><span class="kcal-label">Objetivo de calorías</span><span class="kcal-value">${fmtNum(t.kcal, 0)} kcal</span></span>
@@ -747,7 +748,7 @@
         <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
       </div>
       ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
-    </section>`;
+    </div>`;
   }
 
   function dietTargetsForm(clientId) {
@@ -953,7 +954,7 @@
     const groups = mealGroups(meal);
     const items = groups.flatMap((g) => g.rows);
     const multi = groups.some((g) => g.rows.length > 1);
-    return `<details class="card meal-card"${open ? ' open' : ''}>
+    return `<details class="meal-card"${open ? ' open' : ''}>
       <summary data-action="meal-toggle" data-id="${meal.id}">
         <span class="meal-num">${idx + 1}</span>
         <div class="grow">
@@ -999,22 +1000,23 @@
         ${current ? '<button class="btn sm" data-action="meal-count-cancel">Cancelar</button>' : ''}
       </div>`;
     if (!meals.length) {
-      return `<section class="card">
+      return `<div class="diet-sec">
         <div class="card-header"><h2>Comidas</h2></div>
         <p class="muted" style="margin:0 0 12px">Elige cuántas comidas hará al día. Las calorías y los macros se repartirán a partes iguales entre ellas.</p>
         ${chooser(false)}
-      </section>`;
+      </div>`;
     }
     const day = dayTargets(d);
     const tot = meals.reduce((t, m) => { const x = mealTotals(m); for (const k in t) t[k] += x[k]; return t; }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
-    return `<section class="card meals-summary">
-        <div class="card-header"><h2>Total del día</h2><button class="btn sm" data-action="meal-count-edit">${U.icon('edit')}${plural(meals.length, 'comida', 'comidas')}</button></div>
+    return `<div class="diet-sec meals-summary">
+        <div class="card-header"><h2>Comidas</h2><button class="btn sm" data-action="meal-count-edit">${U.icon('edit')}${plural(meals.length, 'comida', 'comidas')}</button></div>
         ${state.editMealCount ? chooser(true) : ''}
         ${day ? '' : `<div class="alert" style="margin:0 0 12px">${U.icon('alert')}<div>Fija los objetivos de calorías y macros arriba para que la app pueda calcular las cantidades.</div></div>`}
+        <h3 class="meal-day-title">Total del día</h3>
         ${macroBars(tot, day)}
-      </section>
       <datalist id="meal-names">${['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'].map((n) => `<option value="${n}"></option>`).join('')}</datalist>
-      ${meals.map((m, i) => mealCard(c, d, m, i)).join('')}`;
+      <div class="meal-list">${meals.map((m, i) => mealCard(c, d, m, i)).join('')}</div>
+      </div>`;
   }
 
   /** Abre la biblioteca de bloques para elegir varios alimentos y añadirlos a una comida. */
@@ -1123,18 +1125,40 @@
   function clientDiet(c) {
     const d = Store.dietFor(c.id);
     if (!state.mealCount) state.mealCount = 5;
-    return `${dietTargetsCard(c, d)}
+    const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim());
+    return `<section class="card diet-panel">
+    ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
-    <section class="card">
+    <div class="diet-sec">
       <div class="card-header">
         <h2>Indicaciones</h2>
         ${d && (d.text || '').trim() ? `<span class="muted" style="font-size:.85rem">Actualizado el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : ''}
       </div>
       <form class="diet-form" data-client="${c.id}">
-        <textarea name="text" rows="5" placeholder="Indicaciones para ${esc(c.name.split(' ')[0])}: agua, horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
+        <textarea name="text" rows="5" placeholder="Recomendaciones para ${esc(c.name.split(' ')[0])}: agua, horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
+    </div>
+    ${has ? `<div class="diet-sec diet-delete">
+      <button class="btn danger" data-action="diet-delete" data-client="${c.id}">${U.icon('trash')}Eliminar toda la dieta</button>
+      <span class="muted">Borra los objetivos, las comidas y las indicaciones.</span>
+    </div>` : ''}
     </section>`;
+  }
+
+  /** Borra la dieta completa del cliente (objetivos, comidas e indicaciones), con opción de deshacer. */
+  function deleteDiet(clientId) {
+    const d = Store.dietFor(clientId);
+    if (!d) return;
+    UI.confirm({ title: 'Eliminar toda la dieta', message: 'Se borrarán los objetivos de calorías y macros, todas las comidas con sus alimentos y las indicaciones. ¿Continuar?', confirmLabel: 'Eliminar todo' })
+      .then((ok) => {
+        if (!ok) return;
+        const copy = Object.assign({}, d);
+        Store.remove('diets', d.id);
+        state.openMeal = null; state.editMealCount = false;
+        App.render();
+        UI.toast('Dieta eliminada', { label: 'Deshacer', onClick: () => { Store.add('diets', copy); App.render(); } });
+      });
   }
 
   function submitDietForm(form) {
@@ -2626,6 +2650,7 @@
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
+    'diet-delete': (d) => deleteDiet(d.client),
     'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },
     'meal-count-apply': (d) => applyMealCount(d.client),
     'meal-count-edit': () => { state.editMealCount = !state.editMealCount; App.render(); },

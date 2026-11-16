@@ -897,7 +897,11 @@ body.q-page { min-height: 100vh; }
 /* ---------- Objetivos de la dieta ---------- */
 /* Colores de los macros: los mismos tonos de la app (turquesa, azul y violeta suaves). */
 :root { --m-carbs: var(--primary); --m-protein: var(--info); --m-fat: var(--violet); }
-.diet-goals { padding-bottom: 14px; }
+.diet-panel { padding-top: 4px; padding-bottom: 4px; }
+.diet-sec { padding: 18px 0; }
+.diet-sec + .diet-sec { border-top: 1px solid var(--border); }
+.diet-delete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.diet-delete .muted { font-size: .85rem; }
 .kcal-goal { appearance: none; width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .kcal-goal:hover { border-color: var(--primary); }
 .kcal-icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
@@ -948,6 +952,8 @@ button.diet-row:hover { color: var(--primary); }
 .meal-count > span { font-weight: 700; }
 .meal-count .segmented button { min-width: 42px; }
 .meals-summary .meal-count { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.meal-day-title { font-size: .95rem; margin: 0 0 8px; }
+.meal-list { margin-top: 16px; }
 .mbars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .mbar-top { display: flex; justify-content: space-between; gap: 6px; font-size: .78rem; margin-bottom: 5px; flex-wrap: wrap; }
 .mbar-top span:first-child { font-weight: 700; }
@@ -957,15 +963,15 @@ button.diet-row:hover { color: var(--primary); }
 .mbar.m-protein .mbar-track span { background: var(--m-protein); } .mbar.m-carbs .mbar-track span { background: var(--m-carbs); } .mbar.m-fat .mbar-track span { background: var(--m-fat); }
 .mbar.kcal .mbar-track span { background: var(--muted); }
 @media (max-width: 560px) { .mbars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.meal-card { padding: 0; }
-.meal-card + .meal-card, .meals-summary + datalist + .meal-card { margin-top: 10px; }
-.meal-card summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.meal-card { padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.meal-card + .meal-card { margin-top: 10px; }
+.meal-card summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
 .meal-card summary::-webkit-details-marker { display: none; }
 .meal-card summary h3 { margin: 0 0 2px; font-size: 1.05rem; }
 .meal-card summary .muted { font-size: .85rem; }
 .meal-card[open] .block-chev .ico { transform: rotate(180deg); }
 .meal-num { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-weight: 800; flex-shrink: 0; }
-.meal-body { padding: 0 18px 16px; }
+.meal-body { padding: 0 14px 14px; }
 .meal-name { max-width: 320px; margin-bottom: 14px; }
 .meal-items { margin: 12px 0; }
 .meal-items li { gap: 8px; }
