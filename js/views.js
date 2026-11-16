@@ -874,40 +874,60 @@
     return MACRO_KEYS.reduce((a, k) => (kc[k] > kc[a] ? k : a), 'protein');
   }
 
+  const ROLE_LABEL = { protein: 'Proteína', carbs: 'Hidratos', fat: 'Grasa' };
+  /** Redondeo de las cantidades: grasas de 5 en 5; proteínas e hidratos de 10 en 10. */
+  const stepOf = (role) => (role === 'fat' ? 5 : 10);
+
+  /**
+   * Agrupa los alimentos de una comida por el macro que aportan. Los alimentos de un mismo
+   * grupo son OPCIONES entre las que elegir (pollo o pavo o lomo), no se suman entre sí.
+   */
+  function mealGroups(meal) {
+    const rows = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
+    rows.forEach((r) => { r.role = roleOf(r.it, r.f); });
+    return MACRO_KEYS.map((k) => ({ key: k, rows: rows.filter((r) => r.role === k) })).filter((g) => g.rows.length);
+  }
+
+  /**
+   * Opción de referencia de un grupo: la fijada a mano o, si no, la primera. Las demás opciones
+   * aportan lo mismo de su macro principal; para el resto de macros se cuenta la de referencia.
+   */
+  const refRow = (g) => g.rows.find((r) => r.it.locked && per1g(r.f, g.key) > 0) || g.rows[0];
+  function rowAmount(r, key) {
+    return (Number(r.it.grams) || 0) * (key === 'kcal' ? (num(r.f.kcal) || 0) / 100 : per1g(r.f, key));
+  }
+
   /**
    * Ajusta los gramos de los alimentos no fijados para acercarse al objetivo de la comida.
-   * Cada alimento cubre su macro (los del mismo macro se lo reparten a partes iguales),
-   * descontando lo que ya aportan los demás alimentos. Se repite hasta que se estabiliza.
+   * Cada opción de un grupo aporta por sí sola la cantidad de su macro que falta tras descontar
+   * lo que aporta la opción de referencia de los otros grupos; así cualquier combinación cuadra más o menos.
+   * Si una opción está fijada a mano, las demás de su grupo se igualan a ella.
    */
   function solveMeal(meal, target) {
     if (!target) return;
-    const rows = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
-    rows.forEach((r) => { r.role = roleOf(r.it, r.f); if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; });
+    const groups = mealGroups(meal);
+    groups.forEach((g) => g.rows.forEach((r) => { if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; }));
     for (let iter = 0; iter < 40; iter++) {
-      for (const k of MACRO_KEYS) {
-        const group = rows.filter((r) => !r.it.locked && r.role === k && per1g(r.f, k) > 0);
-        if (!group.length) continue;
-        const others = rows.filter((r) => !group.includes(r)).reduce((n, r) => n + (Number(r.it.grams) || 0) * per1g(r.f, k), 0);
-        const share = Math.max(0, target[k] - others) / group.length;
-        for (const r of group) r.it.grams = share / per1g(r.f, k);
+      for (const g of groups) {
+        const k = g.key;
+        const fixed = g.rows.find((r) => r.it.locked && per1g(r.f, k) > 0);
+        const others = groups.filter((x) => x !== g).reduce((n, x) => n + rowAmount(refRow(x), k), 0);
+        const amount = fixed ? (Number(fixed.it.grams) || 0) * per1g(fixed.f, k) : Math.max(0, target[k] - others);
+        for (const r of g.rows) if (!r.it.locked && per1g(r.f, k) > 0) r.it.grams = amount / per1g(r.f, k);
       }
     }
-    rows.forEach((r) => {
+    groups.forEach((g) => g.rows.forEach((r) => {
       if (r.it.locked) return;
-      const g = Math.min(1500, Math.max(0, Number(r.it.grams) || 0));
-      r.it.grams = g >= 20 ? Math.round(g / 5) * 5 : Math.round(g);
-    });
+      const step = stepOf(g.key);
+      const raw = Math.min(1500, Math.max(0, Number(r.it.grams) || 0));
+      r.it.grams = raw > 0 ? Math.max(step, Math.round(raw / step) * step) : 0;
+    }));
   }
 
+  /** Totales de una comida: la opción de referencia de cada grupo. */
   function mealTotals(meal) {
     const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-    for (const it of meal.items || []) {
-      const f = Store.get('foods', it.foodId);
-      if (!f) continue;
-      const g = Number(it.grams) || 0;
-      t.kcal += (num(f.kcal) || 0) * g / 100;
-      for (const k of MACRO_KEYS) t[k] += per1g(f, k) * g;
-    }
+    for (const g of mealGroups(meal)) for (const k in t) t[k] += rowAmount(refRow(g), k);
     return t;
   }
 
@@ -930,13 +950,15 @@
     const target = mealTargets(d);
     const tot = mealTotals(meal);
     const open = state.openMeal === meal.id;
-    const items = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
+    const groups = mealGroups(meal);
+    const items = groups.flatMap((g) => g.rows);
+    const multi = groups.some((g) => g.rows.length > 1);
     return `<details class="card meal-card"${open ? ' open' : ''}>
       <summary data-action="meal-toggle" data-id="${meal.id}">
         <span class="meal-num">${idx + 1}</span>
         <div class="grow">
           <h3>${esc(meal.name)}</h3>
-          <div class="muted">${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
+          <div class="muted">${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${multi ? '≈ ' : ''}${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
         </div>
         <span class="block-chev">${U.icon('down')}</span>
       </summary>
@@ -944,19 +966,22 @@
         <div class="field meal-name"><label for="mn-${meal.id}">Nombre de la comida</label>
           <input id="mn-${meal.id}" value="${esc(meal.name)}" data-action-change="meal-rename" data-client="${c.id}" data-meal="${meal.id}" list="meal-names" placeholder="Ej.: Desayuno, Preentreno…"></div>
         ${macroBars(tot, target)}
-        ${items.length ? `<ul class="list meal-items">${items.map(({ it, f }) => {
-          const g = Number(it.grams) || 0;
+        ${multi ? '<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: cada una aporta lo mismo de su macro. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>' : ''}
+        ${items.length ? groups.map((g) => `<div class="meal-group m-${g.key}">
+          <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
+          <ul class="list meal-items">${g.rows.map(({ it, f }, i) => {
+          const gr = Number(it.grams) || 0;
           const b = it.blockId && Store.get('foodBlocks', it.blockId);
-          return `<li>
+          return `${i ? '<li class="meal-or" aria-hidden="true"><span>o</span></li>' : ''}<li>
             <div class="grow">
               <div class="title">${esc(f.name)}</div>
-              <div class="meta">${b ? `${esc(b.name)} · ` : ''}${fmtNum((num(f.kcal) || 0) * g / 100, 0)} kcal · P ${fmtNum(per1g(f, 'protein') * g, 1)} · H ${fmtNum(per1g(f, 'carbs') * g, 1)} · G ${fmtNum(per1g(f, 'fat') * g, 1)}</div>
+              <div class="meta">${b ? `${esc(b.name)} · ` : ''}${fmtNum((num(f.kcal) || 0) * gr / 100, 0)} kcal · P ${fmtNum(per1g(f, 'protein') * gr, 1)} · H ${fmtNum(per1g(f, 'carbs') * gr, 1)} · G ${fmtNum(per1g(f, 'fat') * gr, 1)}</div>
             </div>
-            <div class="grams-input"><input type="number" min="0" step="5" inputmode="numeric" value="${g}" aria-label="Cantidad de ${esc(f.name)}" data-action-change="meal-grams" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}"><span>${unitOf(f)}</span></div>
+            <div class="grams-input"><input type="number" min="0" step="${stepOf(g.key)}" inputmode="numeric" value="${gr}" aria-label="Cantidad de ${esc(f.name)}" data-action-change="meal-grams" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}"><span>${unitOf(f)}</span></div>
             <button class="icon-btn lock-btn${it.locked ? ' locked' : ''}" data-action="meal-lock" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}" aria-pressed="${!!it.locked}" title="${it.locked ? 'Cantidad fijada por ti: toca para que la app la ajuste' : 'La app ajusta esta cantidad: toca para fijarla'}">${U.icon(it.locked ? 'lock' : 'unlock')}</button>
             <button class="icon-btn" data-action="meal-remove" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}" aria-label="Quitar ${esc(f.name)}">${U.icon('close')}</button>
           </li>`;
-        }).join('')}</ul>` : `<p class="muted" style="margin:12px 0">Añade alimentos de los bloques: la app calculará las cantidades para cuadrar ${target ? 'el objetivo de esta comida' : 'los objetivos (fíjalos arriba)'}.</p>`}
+        }).join('')}</ul></div>`).join('') : `<p class="muted" style="margin:12px 0">Añade alimentos de los bloques: la app calculará las cantidades para cuadrar ${target ? 'el objetivo de esta comida' : 'los objetivos (fíjalos arriba)'}. Si eliges varios del mismo tipo (pollo, pavo, lomo…), serán opciones a elegir.</p>`}
         <div class="actions">
           <button class="btn primary sm" data-action="meal-add" data-client="${c.id}" data-meal="${meal.id}">${U.icon('plus')}Añadir alimentos</button>
           ${items.length && target ? `<button class="btn sm" data-action="meal-solve" data-client="${c.id}" data-meal="${meal.id}">${U.icon('activity')}Reajustar cantidades</button>` : ''}
@@ -1003,7 +1028,7 @@
     const fams = BLOCK_FAMILIES.filter((fm) => blocks.some((b) => (b.family || 'Otros') === fm));
     const item = (f, blockId) => `<label class="pick-item" data-name="${esc(normalizeText(f.name))}"><input type="checkbox" value="${f.id}" data-block="${blockId || ''}">
         <span class="grow">${esc(f.name)}</span><span class="muted">${fmtNum(f.kcal, 0)} kcal · P ${fmtNum(f.protein)} · H ${fmtNum(f.carbs)} · G ${fmtNum(f.fat)}</span></label>`;
-    const body = `<p class="muted" style="margin:0 0 10px">Marca uno o varios alimentos. Al añadirlos, la app calcula los gramos para cuadrar el objetivo de «${esc(meal.name)}». Valores por 100 g.</p>
+    const body = `<p class="muted" style="margin:0 0 10px">Marca uno o varios alimentos. Los del mismo tipo (por ejemplo, pollo, pavo y lomo) serán <strong>opciones</strong> a elegir, no se suman. La app calcula los gramos de cada uno para cuadrar el objetivo de «${esc(meal.name)}». Valores por 100 g.</p>
       <input type="search" id="mp-search" placeholder="Buscar alimento…" aria-label="Buscar alimento">
       <div class="mp-list">
         ${fams.map((fm) => `<div class="mp-fam" data-group><div class="bf-cat-name">${esc(fm)}</div>
