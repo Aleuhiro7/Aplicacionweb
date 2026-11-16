@@ -97,6 +97,11 @@
     const have = new Set(d.foods.map((x) => x.id));
     const removed = new Set(d.settings.foodsRemoved || []);
     for (const f of defaults) if (!have.has(f.id) && !removed.has(f.id)) d.foods.push(Object.assign({ builtIn: true }, f));
+    // Las comidas de las dietas no conservan alimentos que ya no existen.
+    const ids = new Set(d.foods.map((x) => x.id));
+    for (const diet of d.diets || []) {
+      for (const m of diet.meals || []) if ((m.items || []).some((it) => !ids.has(it.foodId))) m.items = m.items.filter((it) => ids.has(it.foodId));
+    }
   }
 
   /** Carga una sola vez los bloques de equivalencia de serie (después se pueden editar). */

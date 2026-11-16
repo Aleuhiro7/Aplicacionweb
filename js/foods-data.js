@@ -281,7 +281,6 @@
   cat('Suplementos', [
     ['Proteína de suero (whey concentrada)', 390, 75, 8, 6, '', 'Un cacito suele ser de 30 g (≈ 117 kcal).'],
     ['Proteína de suero aislada (isolate)', 365, 88, 1.5, 0.5],
-    ['Barrita de proteínas (media)', 360, 30, 35, 12, '', 'Varía mucho según la marca.'],
   ]);
 
   cat('Salsas y condimentos', [
@@ -307,11 +306,12 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 4;
+window.FOOD_BLOCKS_VERSION = 5;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
   4: { replace: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'], add: ['blk-quesos-curados'] },
+  5: { add: ['blk-proteina-polvo'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -330,6 +330,9 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Atún en aceite de oliva (lata, escurrido)', 'Sardinas en aceite (lata, escurridas)', 'Caballa en aceite (lata, escurrida)', 'Salmón ahumado'] },
   { id: 'blk-huevos', family: 'Proteínas', name: 'Huevos', macro: 'protein', amount: 25,
     foods: ['Huevo entero', 'Clara de huevo'] },
+  { id: 'blk-proteina-polvo', family: 'Proteínas', name: 'Proteína en polvo', macro: 'protein', amount: 25,
+    notes: 'En las comidas va siempre aparte, como añadido: no es una opción equivalente a la carne o el pescado, y su proteína se resta de la que tienen que aportar los demás alimentos.',
+    foods: ['Proteína de suero (whey concentrada)', 'Proteína de suero aislada (isolate)'] },
   { id: 'blk-proteina-vegetal', family: 'Proteínas', name: 'Proteína vegetal', macro: 'protein', amount: 25,
     foods: ['Tofu firme', 'Seitán', 'Tempeh', 'Soja texturizada (seca)', 'Edamame'] },
 

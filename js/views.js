@@ -872,7 +872,7 @@
 
   /** Macro que «aporta» cada alimento: el del bloque del que se eligió o, si no, el que más kcal da. */
   function roleOf(item, food) {
-    if (isProteinPowder(food)) return 'extra';
+    if (isProteinPowder(food) || Store.blocksForFood(item.foodId).some((b) => b.id === 'blk-proteina-polvo')) return 'extra';
     // El bloque con el que se eligió; si el alimento ya no está en él (bloques reorganizados), el bloque en el que esté ahora.
     let b = item.blockId && Store.get('foodBlocks', item.blockId);
     if (!b || !(b.foodIds || []).includes(item.foodId)) b = Store.blocksForFood(item.foodId)[0];
