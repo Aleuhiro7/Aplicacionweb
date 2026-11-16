@@ -1679,6 +1679,7 @@
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
     const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
+    const formAlerts = Store.data.forms.filter((f) => f.answeredAt && !f.reviewedAt && !f.clientId);
     const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
     const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
     const planItem = (c, tab, text, label) => `
@@ -1704,7 +1705,7 @@
           </section>`,
     });
     const alertSections = [
-      section('cuestionarios', 'Cuestionarios respondidos', answerAlerts.length, '',
+      section('cuestionarios', 'Cuestionarios respondidos', answerAlerts.length + formAlerts.length, formAlerts.length ? '<a class="btn sm" href="#/formularios">Formularios</a>' : '',
         `<ul class="list task-list">${answerAlerts.map((a) => `
           <li class="task review">
             <button class="task-check" data-action="review-questionnaire" data-client="${a.c.id}" role="checkbox" aria-checked="false" aria-label="Marcar el cuestionario de ${esc(a.c.name)} como revisado" title="Marcar como revisado"></button>
@@ -1717,7 +1718,20 @@
               ${badge('Nuevo', 'success')}
               <button class="btn sm primary" data-action="open-answers" data-client="${a.c.id}">${U.icon('file')}Ver respuestas</button>
             </div>
-          </li>`).join('')}</ul>`,
+          </li>`).join('')}${formAlerts.map((f) => {
+          const who = f.name || (f.items[0] && f.items[0].a) || 'Sin nombre';
+          return `<li class="task review">
+            <span class="avatar">${esc(who.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''))}</span>
+            <div class="grow">
+              <span class="title">${esc(who)}</span>
+              <div class="meta"><span>Formulario · aún no es cliente · respondió el ${esc(fmtDate(f.answeredAt))}</span></div>
+            </div>
+            <div class="review-actions">
+              ${badge('Nuevo', 'success')}
+              <button class="btn sm primary" data-action="form-answers" data-id="${f.id}">${U.icon('file')}Ver respuestas</button>
+            </div>
+          </li>`;
+        }).join('')}</ul>`,
         'No hay cuestionarios nuevos'),
       section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
         `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
@@ -2670,11 +2684,178 @@
         found++;
         UI.toast(`${c.name.split(' ')[0]} ha respondido el cuestionario`);
       }
+      // Formularios enviados desde «Formularios» a personas que aún no son clientes.
+      for (const f of onlyClientId ? [] : Store.data.forms.filter((x) => x.token && !x.answeredAt)) {
+        const doc = await Sync.fetchQuestionnaire(f.token).catch(() => null);
+        if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
+        const qs = Array.isArray(doc.questions) ? doc.questions : [];
+        const items = qs.map((q, i) => ({ q, a: (doc.answers[i] || '').trim() }));
+        const answeredAt = doc.answeredAt && doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
+        const name = (items[0] && items[0].a) || f.name || 'Alguien';
+        Store.update('forms', f.id, { items, answeredAt, reviewedAt: '', name: f.name || name, phone: f.phone || (items[1] && items[1].a) || '' });
+        found++;
+        UI.toast(`${name.split(' ')[0]} ha respondido el formulario`);
+      }
     } finally {
       checkingLinks = false;
     }
     if (found) App.render();
     else if (manual) UI.toast('Todavía no ha respondido');
+  }
+
+  /* =========================================================
+   * Formularios: cuestionario inicial por enlace para personas que aún no son clientes
+   * ======================================================= */
+
+  const FORM_ID_QUESTIONS = ['Nombre y apellidos', 'Teléfono (WhatsApp)'];
+  /** Preguntas del formulario para alguien nuevo: nombre y teléfono primero, sin repetir el nombre. */
+  const prospectQuestions = () => FORM_ID_QUESTIONS.concat(questions().flatMap((q) => {
+    if (/^\s*nombre( completo)?\s+y\s+edad/i.test(q)) return ['¿Qué edad tienes?'];
+    if (/^\s*(¿\s*)?(cu[aá]l es tu )?nombre/i.test(q)) return [];
+    return [q];
+  }));
+  const newToken = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const formUrl = (token) => new URL(`cuestionario.html?t=${token}`, location.href.split('#')[0]).href;
+  const coachFirst = () => (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
+  function formMessage(f) {
+    const hi = f.name ? `Hola ${f.name.split(' ')[0]}` : 'Hola';
+    return `${hi}, soy ${coachFirst()}. Para preparar tu plan necesito conocerte un poco mejor. Rellena este cuestionario, son solo unos minutos:\n${formUrl(f.token)}\n¡Muchas gracias!`;
+  }
+  const formWa = (f) => `${U.waLink(f.phone) || 'https://wa.me/'}?text=${encodeURIComponent(formMessage(f))}`;
+
+  async function needCloud() {
+    if (location.protocol === 'file:') { UI.toast('Abre la app desde tu web publicada para poder enviar enlaces'); return true; }
+    if (!window.Sync || !Sync.state.user) {
+      const ok = await UI.confirm({
+        title: 'Inicia sesión con Google',
+        message: 'Para enviar formularios por enlace, la app tiene que estar conectada a la nube (sincronización con Google). Así las respuestas te llegan solas.',
+        confirmLabel: 'Iniciar sesión', danger: false,
+      });
+      if (ok && window.Sync) Sync.signIn();
+      return true;
+    }
+    return false;
+  }
+
+  /** Muestra el enlace de un formulario listo para enviar por WhatsApp o copiar. */
+  function formShare(f) {
+    UI.openModal({
+      title: 'Formulario listo',
+      body: `<p style="margin-top:0">Envíalo por WhatsApp${f.name ? ` a <strong>${esc(f.name)}</strong>` : ''} o copia el enlace para mandarlo por Instagram, email…</p>
+        <div class="form-link"><input readonly value="${esc(formUrl(f.token))}" aria-label="Enlace del formulario" onclick="this.select()"></div>
+        <p class="muted" style="font-size:.85rem;margin-bottom:0">Cuando lo rellene, sus respuestas aparecerán aquí, en Formularios, y en el panel.</p>`,
+      footer: `<button type="button" class="btn" id="fs-copy">${U.icon('file')}Copiar enlace</button><a class="btn primary wa-solid" href="${formWa(f)}" target="_blank" rel="noopener" id="fs-wa">${U.icon('message')}Enviar por WhatsApp</a>`,
+      onOpen: (dlg) => {
+        dlg.querySelector('#fs-copy').addEventListener('click', () => copyText(formUrl(f.token), 'Enlace copiado'));
+        dlg.querySelector('#fs-wa').addEventListener('click', () => setTimeout(() => UI.closeModal(), 300));
+      },
+    });
+  }
+
+  function newForm() {
+    UI.form({
+      title: 'Nuevo formulario',
+      fields: [
+        { name: 'name', label: 'Nombre (opcional)', placeholder: 'Ej.: Laura' },
+        { name: 'phone', label: 'Teléfono (opcional)', type: 'tel', placeholder: 'Para abrir directamente su WhatsApp' },
+      ],
+      values: {},
+      submitLabel: 'Crear enlace',
+      onSubmit: async (v) => {
+        if (await needCloud()) return;
+        const token = newToken();
+        try {
+          await Sync.createQuestionnaire(token, { clientName: (v.name || '').trim().split(' ')[0], coach: coachFirst(), questions: prospectQuestions() });
+        } catch (e) {
+          console.error(e);
+          UI.toast('No se ha podido crear el enlace (revisa la conexión y las reglas de Firebase)');
+          return;
+        }
+        const f = Store.add('forms', { name: (v.name || '').trim(), phone: (v.phone || '').trim(), token, sentAt: today(), answeredAt: '', reviewedAt: '', items: [], clientId: '' });
+        App.render();
+        formShare(f);
+      },
+    });
+  }
+
+  function formAnswers(id) {
+    const f = Store.get('forms', id);
+    if (!f) return;
+    const who = f.name || (f.items[0] && f.items[0].a) || 'Sin nombre';
+    UI.openModal({
+      title: `Respuestas de ${who}`,
+      body: `<p class="muted" style="margin-top:0">Respondió el ${esc(fmtDate(f.answeredAt))}.</p>
+        <dl class="form-answers">${(f.items || []).map((x, i) => `<dt>${i + 1}. ${esc(x.q)}</dt><dd>${x.a ? esc(x.a).replace(/\n/g, '<br>') : '<span class="muted">Sin respuesta</span>'}</dd>`).join('')}</dl>`,
+      footer: `${f.clientId ? `<a class="btn" href="#/clientes/${f.clientId}" data-close>${U.icon('users')}Ver su ficha</a>` : `<button type="button" class="btn primary" id="fa-client">${U.icon('plus')}Crear cliente</button>`}<button type="button" class="btn" data-close>Cerrar</button>`,
+      onOpen: (dlg) => {
+        if (!f.reviewedAt) { Store.update('forms', f.id, { reviewedAt: today() }); }
+        const b = dlg.querySelector('#fa-client');
+        if (b) b.addEventListener('click', () => { UI.closeModal(); formToClient(f.id); });
+      },
+    });
+    setTimeout(() => App.render(), 0);
+  }
+
+  /** Da de alta como cliente a quien respondió el formulario (sus respuestas pasan a su ficha). */
+  function formToClient(id) {
+    const f = Store.get('forms', id);
+    if (!f) return;
+    const name = (f.items[0] && f.items[0].a) || f.name || '';
+    const phone = f.phone || (f.items[1] && f.items[1].a) || '';
+    const rate = Number(Store.settings.defaultRate) || 0;
+    const c = Store.add('clients', {
+      name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
+      questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
+    });
+    Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
+    UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
+    location.hash = `#/clientes/${c.id}`;
+    setTimeout(() => openClientForm(c.id), 150);
+  }
+
+  function renderForms() {
+    const forms = Store.data.forms.slice().sort((a, b) => String(b.answeredAt || b.sentAt).localeCompare(String(a.answeredAt || a.sentAt)));
+    const answered = forms.filter((f) => f.answeredAt);
+    const pending = forms.filter((f) => !f.answeredAt);
+    const who = (f) => f.name || (f.items && f.items[0] && f.items[0].a) || 'Sin nombre';
+    const initialsOf = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+    const row = (f) => `<li class="form-row">
+        <span class="avatar">${esc(initialsOf(who(f)))}</span>
+        <div class="grow">
+          <div class="title">${esc(who(f))}${f.answeredAt && !f.reviewedAt ? ` ${badge('Nuevo', 'success')}` : ''}${f.clientId ? ` ${badge('Ya es cliente', 'info')}` : ''}</div>
+          <div class="meta">${f.answeredAt ? `Respondió el ${esc(fmtDate(f.answeredAt))}` : `Enviado el ${esc(fmtDate(f.sentAt))} · sin responder`}${f.phone ? ` · ${esc(f.phone)}` : ''}</div>
+        </div>
+        <div class="actions">
+          ${f.answeredAt
+            ? `<button class="btn sm primary" data-action="form-answers" data-id="${f.id}">${U.icon('file')}Ver respuestas</button>${f.clientId ? '' : `<button class="btn sm" data-action="form-client" data-id="${f.id}">${U.icon('plus')}Crear cliente</button>`}`
+            : `<button class="btn sm" data-action="form-share" data-id="${f.id}">${U.icon('message')}Reenviar</button>`}
+          <button class="icon-btn" data-action="form-delete" data-id="${f.id}" aria-label="Eliminar formulario de ${esc(who(f))}" title="Eliminar">${U.icon('trash')}</button>
+        </div>
+      </li>`;
+    return `
+      <div class="page-header">
+        <div><h1 class="display">Formularios</h1><p>Envía el cuestionario inicial por enlace a quien quieras, aunque todavía no sea cliente</p></div>
+        <button class="btn primary pill" data-action="form-new">${U.icon('plus')}Nuevo formulario</button>
+      </div>
+      <section class="card form-hero">
+        <div class="grow">
+          <h2>Cuestionario inicial</h2>
+          <p class="muted">${plural(prospectQuestions().length, 'pregunta', 'preguntas')}: nombre, teléfono, objetivo, salud, experiencia, disponibilidad, hábitos… La persona lo rellena desde el móvil sin registrarse y las respuestas te llegan aquí. Si te contrata, con «Crear cliente» se da de alta con sus respuestas en la ficha.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" data-action="form-new">${U.icon('message')}Enviar formulario</button>
+          <a class="btn" href="#/ajustes">${U.icon('edit')}Editar preguntas</a>
+          ${window.Sync && Sync.state.user ? `<button class="btn" data-action="form-check">${U.icon('activity')}Comprobar respuestas</button>` : ''}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header"><h2>Respondidos ${answered.length ? `<span class="count">${answered.length}</span>` : ''}</h2></div>
+        ${answered.length ? `<ul class="list">${answered.map(row).join('')}</ul>` : '<p class="muted" style="margin:0">Todavía no ha respondido nadie.</p>'}
+      </section>
+      <section class="card">
+        <div class="card-header"><h2>Pendientes de responder ${pending.length ? `<span class="count">${pending.length}</span>` : ''}</h2></div>
+        ${pending.length ? `<ul class="list">${pending.map(row).join('')}</ul>` : empty('file', 'No hay formularios pendientes. Pulsa «Enviar formulario» para mandar uno.')}
+      </section>`;
   }
 
   /** Reparte una respuesta pegada de WhatsApp («1. … 2. …») entre las preguntas. */
@@ -3043,6 +3224,17 @@
       location.hash = `#/clientes/${d.client}`;
       setTimeout(() => document.querySelector('.questionnaire-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
     },
+    'form-new': () => newForm(),
+    'form-share': (d) => { const f = Store.get('forms', d.id); if (f) formShare(f); },
+    'form-answers': (d) => formAnswers(d.id),
+    'form-client': (d) => formToClient(d.id),
+    'form-check': () => checkQuestionnaireLinks(null, true),
+    'form-delete': (d) => {
+      const f = Store.get('forms', d.id);
+      if (!f) return;
+      UI.confirm({ title: 'Eliminar formulario', message: f.answeredAt ? 'Se borrarán sus respuestas de esta lista (si ya es cliente, su ficha no cambia).' : 'El enlace dejará de aparecer aquí y, si lo rellena, no te llegarán las respuestas.', confirmLabel: 'Eliminar' })
+        .then((ok) => { if (ok) { Store.remove('forms', f.id); App.render(); UI.toast('Formulario eliminado', { label: 'Deshacer', onClick: () => { Store.add('forms', f); App.render(); } }); } });
+    },
     'review-questionnaire': (d) => {
       const c = Store.get('clients', d.client);
       if (!c || !c.questionnaire) return;
@@ -3072,7 +3264,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, renderFoods, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
+    renderLibrary, onLibrarySearch, renderFoods, renderForms, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

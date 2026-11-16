@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods', 'foodBlocks'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods', 'foodBlocks', 'forms'];
 
   function emptyData() {
     return {
@@ -19,6 +19,7 @@
       diets: [], // dieta de cada cliente (por ahora, texto libre)
       foods: [], // biblioteca de alimentos
       foodBlocks: [], // bloques de equivalencia de alimentos
+      forms: [], // formularios enviados por enlace a personas que aún no son clientes
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
