@@ -803,3 +803,9 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .lib-guide h4 { margin: 14px 0 6px; font-size: .9rem; color: var(--primary); }
 .lib-guide ul { margin: 0; padding-left: 18px; color: var(--text); font-size: .9rem; }
 .lib-guide li { margin: 4px 0; }
+
+/* Botón «Nuevo cliente» de la barra superior, más compacto */
+.topbar .btn.pill { padding: 7px 15px; font-size: .88rem; gap: 6px; }
+.topbar .btn.pill .ico { width: 16px; height: 16px; }
+@media (max-width: 760px) { .topbar .btn.pill { padding: 6px 12px; font-size: .82rem; } }
+@media (max-width: 400px) { .topbar .btn.pill { padding: 6px 9px; } }
