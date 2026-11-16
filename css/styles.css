@@ -334,6 +334,9 @@ main {
 .stat-sub { color: var(--muted); font-size: .92rem; }
 
 .chart-card { margin-bottom: 18px; }
+.manage-card { margin-top: 18px; }
+.manage-card .btn.danger { margin-left: auto; }
+@media (max-width: 560px) { .manage-card .actions .btn { flex: 1 1 auto; justify-content: center; } .manage-card .btn.danger { margin-left: 0; } }
 .card-header .muted { font-size: 1rem; }
 
 .bars { display: flex; align-items: stretch; gap: 14px; height: 300px; padding-top: 8px; border-bottom: 0; }

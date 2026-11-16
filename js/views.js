@@ -510,7 +510,49 @@
       <div class="tabs" role="tablist">
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
       </div>
-      ${body}`;
+      ${body}
+      ${clientManage(c)}`;
+  }
+
+  /** Sección al final del perfil para pausar, dar de baja, reactivar o eliminar al cliente. */
+  function clientManage(c) {
+    const st = clientStatus(c);
+    const pauseBtn = st === 'pausa'
+      ? `<button class="btn" data-action="set-status" data-id="${c.id}" data-value="activo">${U.icon('done')}Reactivar</button>`
+      : `<button class="btn" data-action="set-status" data-id="${c.id}" data-value="pausa">${U.icon('clock')}Pausar</button>`;
+    const leaveBtn = st === 'inactivo'
+      ? `<button class="btn" data-action="set-status" data-id="${c.id}" data-value="activo">${U.icon('done')}Reactivar</button>`
+      : `<button class="btn" data-action="set-status" data-id="${c.id}" data-value="inactivo">${U.icon('back')}Dar de baja</button>`;
+    const info = {
+      activo: 'Aparece en pagos y en los avisos.',
+      pausa: 'En pausa: no aparece en pagos ni en avisos hasta que reactives su ficha.',
+      inactivo: 'De baja: se conserva todo su historial, pero no aparece en pagos ni en avisos.',
+    }[st];
+    return `<section class="card manage-card">
+      <div class="card-header"><h2>Gestionar cliente</h2>${statusBadge(c)}</div>
+      <p class="muted" style="margin:0 0 14px">${info}</p>
+      <div class="actions">
+        ${st === 'inactivo' ? leaveBtn : `${pauseBtn}${leaveBtn}`}
+        <button class="btn danger" data-action="delete-client" data-id="${c.id}">${U.icon('trash')}Eliminar</button>
+      </div>
+    </section>`;
+  }
+
+  async function setClientStatus(id, status) {
+    const c = Store.get('clients', id);
+    if (!c) return;
+    const first = esc(c.name.split(' ')[0]);
+    const texts = {
+      pausa: { title: 'Pausar cliente', msg: `${first} dejará de aparecer en pagos y avisos hasta que reactives su ficha. No se borra nada.`, btn: 'Pausar', done: 'Cliente en pausa' },
+      inactivo: { title: 'Dar de baja', msg: `${first} pasará a la lista de bajas. Se conserva todo su historial y podrás reactivar su ficha cuando quieras.`, btn: 'Dar de baja', done: 'Cliente dado de baja' },
+      activo: { title: 'Reactivar cliente', msg: `${first} volverá a aparecer en pagos y avisos. Revisa la fecha de su próximo pago.`, btn: 'Reactivar', done: 'Cliente reactivado' },
+    }[status];
+    const ok = await UI.confirm({ title: texts.title, message: texts.msg, confirmLabel: texts.btn, danger: false });
+    if (!ok) return;
+    const prev = c.status || 'activo';
+    Store.update('clients', id, { status });
+    App.render();
+    UI.toast(texts.done, { label: 'Deshacer', onClick: () => { Store.update('clients', id, { status: prev }); App.render(); } });
   }
 
   function clientSummary(c) {
@@ -857,6 +899,8 @@
       else { location.hash = '#/panel'; setTimeout(go, 60); }
     },
     'edit-client': (d) => openClientForm(d.id),
+    'delete-client': (d) => deleteClient(d.id),
+    'set-status': (d) => setClientStatus(d.id, d.value),
     'new-measurement': (d) => openMeasurementForm(null, d.client),
     'edit-measurement': (d) => openMeasurementForm(d.id),
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),
