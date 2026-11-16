@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods', 'foodBlocks'];
 
   function emptyData() {
     return {
@@ -18,6 +18,7 @@
       library: [], // biblioteca de ejercicios
       diets: [], // dieta de cada cliente (por ahora, texto libre)
       foods: [], // biblioteca de alimentos
+      foodBlocks: [], // bloques de equivalencia de alimentos
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -27,7 +28,7 @@
 
   function normalize(raw) {
     const base = emptyData();
-    if (!raw || typeof raw !== 'object') { seedLibrary(base); seedFoods(base); return base; }
+    if (!raw || typeof raw !== 'object') { seedLibrary(base); seedFoods(base); seedBlocks(base); return base; }
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
     migrateNextDue(base);
@@ -37,6 +38,7 @@
     }
     seedLibrary(base);
     seedFoods(base);
+    seedBlocks(base);
     // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
     for (const c of base.clients) if (c.startDate && c.nextDue) c.nextDue = snapToStart(c.startDate, c.nextDue);
     return base;
@@ -90,6 +92,19 @@
     const have = new Set(d.foods.map((x) => x.id));
     const removed = new Set(d.settings.foodsRemoved || []);
     for (const f of defaults) if (!have.has(f.id) && !removed.has(f.id)) d.foods.push(Object.assign({ builtIn: true }, f));
+  }
+
+  /** Carga una sola vez los bloques de equivalencia de serie (después se pueden editar). */
+  function seedBlocks(d) {
+    const defaults = window.FOOD_BLOCKS_DEFAULT || [];
+    if (!defaults.length || d.settings.blocksSeeded) return;
+    const idByName = new Map(d.foods.map((f) => [f.name, f.id]));
+    const have = new Set(d.foodBlocks.map((b) => b.id));
+    for (const b of defaults) {
+      if (have.has(b.id)) continue;
+      d.foodBlocks.push({ id: b.id, family: b.family, name: b.name, macro: b.macro, amount: b.amount, notes: b.notes || '', foodIds: b.foods.map((n) => idByName.get(n)).filter(Boolean) });
+    }
+    d.settings.blocksSeeded = true;
   }
 
   function seedLibrary(d) {
@@ -342,6 +357,10 @@
     return data.foods.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 
+  function blocksForFood(foodId) {
+    return data.foodBlocks.filter((b) => (b.foodIds || []).includes(foodId));
+  }
+
   function removeFood(id) {
     const f = get('foods', id);
     if (f && f.builtIn) data.settings.foodsRemoved = [...new Set([...(data.settings.foodsRemoved || []), id])];
@@ -413,6 +432,8 @@
     data.settings = settings;
     seedLibrary(data);
     seedFoods(data);
+    data.settings.blocksSeeded = false;
+    seedBlocks(data);
     save();
   }
 
@@ -421,7 +442,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, blocksForFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

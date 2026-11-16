@@ -40,6 +40,7 @@
     libSearch: '',
     foodSearch: '',
     foodCat: 'todos',
+    foodView: 'alimentos', // 'alimentos' | 'bloques'
     pick: null, // { client, day } cuando se elige un ejercicio para una rutina
     libGroup: 'todos',
     openPay: null, // cliente con el desplegable de pago abierto
@@ -1450,11 +1451,25 @@
     const cats = foodCategories();
     if (state.foodCat !== 'todos' && !cats.includes(state.foodCat)) state.foodCat = 'todos';
     const chip = (v, l) => `<button class="chip${state.foodCat === v ? ' active' : ''}" data-action="food-cat" data-value="${esc(v)}">${esc(l)}</button>`;
+    const tabs = `<div class="tabs food-tabs" role="tablist">
+        <button role="tab" class="${state.foodView === 'alimentos' ? 'active' : ''}" data-action="food-view" data-value="alimentos">Alimentos <span class="muted">${Store.data.foods.length}</span></button>
+        <button role="tab" class="${state.foodView === 'bloques' ? 'active' : ''}" data-action="food-view" data-value="bloques">Bloques de equivalencia <span class="muted">${Store.data.foodBlocks.length}</span></button>
+      </div>`;
+    if (state.foodView === 'bloques') {
+      return `
+        <div class="page-header">
+          <div><h1 class="display">Biblioteca de alimentos</h1><p>Alimentos parecidos en macros y calorías, para pautar dietas por equivalencias</p></div>
+          <button class="btn primary pill" data-action="block-new">${U.icon('plus')}Bloque</button>
+        </div>
+        ${tabs}
+        ${renderBlocks()}`;
+    }
     return `
       <div class="page-header">
         <div><h1 class="display">Biblioteca de alimentos</h1><p>${plural(Store.data.foods.length, 'alimento', 'alimentos')}</p></div>
         <button class="btn primary pill" data-action="food-new">${U.icon('plus')}Alimento</button>
       </div>
+      ${tabs}
       <div class="card">
         <div class="toolbar">
           <input type="search" class="search" id="food-search" placeholder="Buscar alimento o categoría…" value="${esc(state.foodSearch)}" aria-label="Buscar alimentos">
@@ -1462,6 +1477,132 @@
         ${cats.length ? `<div class="lib-chips">${chip('todos', 'Todos')}${cats.map((g) => chip(g, g)).join('')}</div>` : ''}
         <div id="food-list">${foodList()}</div>
       </div>`;
+  }
+
+  /* ---------- Bloques de equivalencia ---------- */
+
+  const MACROS = {
+    protein: { label: 'proteína', short: 'P' },
+    carbs: { label: 'hidratos', short: 'C' },
+    fat: { label: 'grasa', short: 'G' },
+    kcal: { label: 'kcal', short: 'kcal' },
+  };
+  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Otros'];
+  const unitOf = (f) => (/ml/.test(f.portion || '') ? 'ml' : 'g');
+
+  /** Gramos de un alimento que aportan la cantidad de referencia del bloque, con sus macros. */
+  function equivalence(block, f) {
+    const per100 = num(f[block.macro]);
+    if (!per100) return null;
+    const raw = (Number(block.amount) / per100) * 100;
+    const grams = raw >= 20 ? Math.round(raw / 5) * 5 : Math.max(1, Math.round(raw));
+    const k = grams / 100;
+    const v = (x) => (num(x) === null ? null : num(x) * k);
+    return { grams, kcal: v(f.kcal), protein: v(f.protein), carbs: v(f.carbs), fat: v(f.fat) };
+  }
+
+  function blockRef(b) {
+    const m = MACROS[b.macro] || MACROS.protein;
+    return b.macro === 'kcal' ? `${fmtNum(b.amount, 0)} kcal` : `${fmtNum(b.amount)} g de ${m.label}`;
+  }
+
+  function blockCard(b) {
+    const foods = (b.foodIds || []).map((id) => Store.get('foods', id)).filter(Boolean);
+    const rows = foods.map((f) => ({ f, e: equivalence(b, f) })).sort((x, y) => (x.e ? x.e.grams : 1e9) - (y.e ? y.e.grams : 1e9));
+    const cell = (v, d = 0) => (v === null || v === undefined ? '—' : fmtNum(v, d));
+    return `<details class="card block-card"${state.openBlock === b.id ? ' open' : ''}>
+      <summary data-action="block-toggle" data-id="${b.id}">
+        <div class="grow">
+          <h3>${esc(b.name)}</h3>
+          <div class="muted">${plural(foods.length, 'alimento', 'alimentos')} · cantidades para ${esc(blockRef(b))}</div>
+        </div>
+        <span class="block-chev">${U.icon('down')}</span>
+      </summary>
+      ${b.notes ? `<p class="muted" style="margin:0 0 10px">${esc(b.notes)}</p>` : ''}
+      ${rows.length ? `<div class="table-wrap"><table class="eq-table">
+        <thead><tr><th>Alimento</th><th class="num">Cantidad</th><th class="num">kcal</th><th class="num">P</th><th class="num">C</th><th class="num">G</th></tr></thead>
+        <tbody>${rows.map(({ f, e }) => `<tr>
+          <td><button class="link-btn eq-food" data-action="food-open" data-id="${f.id}">${esc(f.name)}</button></td>
+          <td class="num"><strong>${e ? `${e.grams} ${unitOf(f)}` : '—'}</strong></td>
+          <td class="num">${e ? cell(e.kcal) : '—'}</td>
+          <td class="num">${e ? cell(e.protein, 1) : '—'}</td>
+          <td class="num">${e ? cell(e.carbs, 1) : '—'}</td>
+          <td class="num">${e ? cell(e.fat, 1) : '—'}</td>
+        </tr>`).join('')}</tbody></table></div>` : '<p class="muted">Este bloque aún no tiene alimentos.</p>'}
+      <div class="actions" style="margin-top:12px"><button class="btn sm" data-action="block-edit" data-id="${b.id}">${U.icon('edit')}Editar bloque</button></div>
+    </details>`;
+  }
+
+  function renderBlocks() {
+    const blocks = Store.data.foodBlocks;
+    if (!blocks.length) return `<div class="card">${empty('apple', '<strong>Todavía no hay bloques.</strong><br>Crea uno con «+ Bloque» y elige los alimentos que son equivalentes.')}</div>`;
+    const fams = BLOCK_FAMILIES.filter((f) => blocks.some((b) => (b.family || 'Otros') === f))
+      .concat([...new Set(blocks.map((b) => b.family || 'Otros'))].filter((f) => !BLOCK_FAMILIES.includes(f)));
+    return `<p class="muted block-intro">Cada bloque reúne alimentos parecidos. La tabla indica cuánto de cada uno equivale a la misma cantidad de referencia (pesos en crudo salvo que el alimento diga otra cosa). Toca un bloque para verlo.</p>
+      ${fams.map((fam) => `<h2 class="section-title">${esc(fam)}</h2>${blocks.filter((b) => (b.family || 'Otros') === fam).map(blockCard).join('')}`).join('')}`;
+  }
+
+  function blockForm(id) {
+    const existing = id ? Store.get('foodBlocks', id) : null;
+    const selected = new Set(existing ? existing.foodIds || [] : []);
+    const cats = foodCategories();
+    const foodsByCat = cats.map((c) => ({ c, items: Store.foods().filter((f) => f.category === c) }));
+    const body = `<div class="form-grid">
+        <div class="field full"><label for="bf-name">Nombre del bloque *</label><input id="bf-name" value="${esc(existing ? existing.name : '')}" placeholder="Ej.: Aves magras"></div>
+        <div class="field"><label for="bf-family">Grupo</label><select id="bf-family">${BLOCK_FAMILIES.map((f) => `<option ${existing && existing.family === f ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
+        <div class="field"><label for="bf-macro">Equivaler por</label><select id="bf-macro">${Object.entries(MACROS).map(([k, m]) => `<option value="${k}" ${existing && existing.macro === k ? 'selected' : ''}>${k === 'kcal' ? 'Calorías' : m.label.charAt(0).toUpperCase() + m.label.slice(1)}</option>`).join('')}</select></div>
+        <div class="field"><label for="bf-amount">Cantidad de referencia</label><input id="bf-amount" type="number" step="0.5" min="0.5" value="${esc(existing ? existing.amount : 25)}"><div class="hint">En gramos (o kcal si equivales por calorías).</div></div>
+        <div class="field full"><label for="bf-notes">Notas</label><textarea id="bf-notes" rows="2" placeholder="Ej.: pesos en crudo, sin piel…">${esc(existing ? existing.notes || '' : '')}</textarea></div>
+        <div class="field full">
+          <label>Alimentos del bloque <span class="muted" id="bf-count">(${selected.size})</span></label>
+          <input type="search" id="bf-search" placeholder="Buscar alimento…" aria-label="Buscar alimento para el bloque">
+          <div class="bf-list">${foodsByCat.filter((g) => g.items.length).map((g) => `<div class="bf-cat" data-cat><div class="bf-cat-name">${esc(g.c)}</div>${g.items.map((f) => `
+            <label class="bf-item" data-name="${esc(normalizeText(f.name))}"><input type="checkbox" value="${f.id}" ${selected.has(f.id) ? 'checked' : ''}> <span>${esc(f.name)}</span></label>`).join('')}</div>`).join('')}</div>
+        </div>
+      </div>`;
+    UI.openModal({
+      title: existing ? 'Editar bloque' : 'Nuevo bloque',
+      body,
+      footer: `${existing ? '<button type="button" class="btn danger" id="bf-delete" style="margin-right:auto">Eliminar</button>' : ''}<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary">${existing ? 'Guardar' : 'Crear bloque'}</button>`,
+      onOpen: (dlg) => {
+        const search = dlg.querySelector('#bf-search');
+        search.addEventListener('input', () => {
+          const q = normalizeText(search.value);
+          dlg.querySelectorAll('.bf-item').forEach((el) => { el.hidden = q && !el.dataset.name.includes(q); });
+          dlg.querySelectorAll('[data-cat]').forEach((c) => { c.hidden = ![...c.querySelectorAll('.bf-item')].some((el) => !el.hidden); });
+        });
+        dlg.querySelector('.bf-list').addEventListener('change', () => { dlg.querySelector('#bf-count').textContent = `(${dlg.querySelectorAll('.bf-item input:checked').length})`; });
+        const del = dlg.querySelector('#bf-delete');
+        if (del) del.onclick = async () => {
+          UI.closeModal();
+          const ok = await UI.confirm({ title: 'Eliminar bloque', message: `¿Eliminar el bloque «${esc(existing.name)}»? Los alimentos no se borran.` });
+          if (!ok) return;
+          Store.remove('foodBlocks', existing.id);
+          UI.toast('Bloque eliminado');
+          App.render();
+        };
+        dlg.querySelector('#bf-name').focus();
+      },
+      onSubmit: () => {
+        const dlg = document.getElementById('modal');
+        const name = dlg.querySelector('#bf-name').value.trim();
+        const amount = Number(dlg.querySelector('#bf-amount').value);
+        if (!name) { dlg.querySelector('#bf-name').focus(); UI.toast('Ponle un nombre al bloque'); return; }
+        if (!(amount > 0)) { dlg.querySelector('#bf-amount').focus(); UI.toast('Indica la cantidad de referencia'); return; }
+        const v = {
+          name, amount,
+          family: dlg.querySelector('#bf-family').value,
+          macro: dlg.querySelector('#bf-macro').value,
+          notes: dlg.querySelector('#bf-notes').value.trim(),
+          foodIds: [...dlg.querySelectorAll('.bf-item input:checked')].map((i) => i.value),
+        };
+        if (existing) Store.update('foodBlocks', existing.id, v);
+        else { const b = Store.add('foodBlocks', v); state.openBlock = b.id; }
+        UI.closeModal();
+        UI.toast(existing ? 'Bloque actualizado' : 'Bloque creado');
+        App.render();
+      },
+    });
   }
 
   function onFoodSearch(value) {
@@ -1513,6 +1654,7 @@
         <div class="actions" style="margin-bottom:14px">${f.category ? badge(f.category, 'primary') : ''}${f.portion ? badge(`Por ${f.portion}`) : ''}</div>
         <div class="macros">${cell('Calorías', f.kcal, 'kcal')}${cell('Proteínas', f.protein, 'g')}${cell('Carbohidratos', f.carbs, 'g')}${cell('Grasas', f.fat, 'g')}</div>
         ${f.notes ? `<p class="lib-detail-desc" style="margin-top:14px">${esc(f.notes)}</p>` : ''}
+        ${Store.blocksForFood(f.id).length ? `<p class="muted" style="margin:14px 0 0">Bloques: ${Store.blocksForFood(f.id).map((b) => { const e = equivalence(b, f); return `<strong>${esc(b.name)}</strong>${e ? ` (${e.grams} ${unitOf(f)} = ${esc(blockRef(b))})` : ''}`; }).join(' · ')}</p>` : ''}
       </div>`,
       footer: `${f.builtIn ? '<span style="margin-right:auto"></span>' : `<button type="button" class="btn" id="food-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>`}<button type="button" class="btn primary" data-close>Cerrar</button>`,
       onOpen: () => { const b = document.getElementById('food-edit'); if (b) b.onclick = () => foodForm(id); },
@@ -1998,6 +2140,10 @@
     'food-new': () => foodForm(),
     'food-open': (d) => openFood(d.id),
     'food-cat': (d) => { state.foodCat = d.value; App.render(); },
+    'food-view': (d) => { state.foodView = d.value; App.render(); },
+    'block-new': () => blockForm(),
+    'block-edit': (d) => blockForm(d.id),
+    'block-toggle': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.openBlock = det.open ? d.id : null; },
     'lib-open': (d) => openLibraryExercise(d.id),
     'lib-group': (d) => { state.libGroup = d.value; App.render(); },
     'routine-create': (d) => routineForm(Store.get('clients', d.client)),

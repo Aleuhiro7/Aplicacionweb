@@ -304,3 +304,51 @@
 
   window.FOODS_DEFAULT = list;
 })();
+
+/* Bloques de equivalencia: alimentos parecidos en macronutrientes y calorías.
+ * Cada bloque tiene un macronutriente de referencia y una cantidad (p. ej. 25 g de proteína);
+ * la app calcula los gramos de cada alimento que aportan esa cantidad. Pesos en crudo.
+ * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
+window.FOOD_BLOCKS_DEFAULT = [
+  { id: 'blk-aves', family: 'Proteínas', name: 'Aves magras', macro: 'protein', amount: 25,
+    foods: ['Pechuga de pollo (cruda)', 'Pechuga de pavo (cruda)', 'Fiambre de pechuga de pavo', 'Fiambre de pechuga de pollo'] },
+  { id: 'blk-carnes-magras', family: 'Proteínas', name: 'Carnes magras', macro: 'protein', amount: 25,
+    foods: ['Ternera magra (cruda)', 'Solomillo de cerdo (crudo)', 'Lomo de cerdo (crudo)', 'Conejo (crudo)', 'Muslo de pollo sin piel (crudo)', 'Jamón cocido extra', 'Lomo embuchado'] },
+  { id: 'blk-carnes-grasas', family: 'Proteínas', name: 'Carnes con más grasa', macro: 'protein', amount: 25,
+    foods: ['Carne picada de vacuno (cruda)', 'Hamburguesa de vacuno (cruda)', 'Hamburguesa de pollo (cruda)', 'Cordero pierna (crudo)', 'Pollo entero con piel (crudo)', 'Jamón serrano', 'Jamón ibérico'] },
+  { id: 'blk-pescado-blanco', family: 'Proteínas', name: 'Pescado blanco y marisco', macro: 'protein', amount: 25,
+    foods: ['Merluza (cruda)', 'Bacalao fresco (crudo)', 'Bacalao desalado (crudo)', 'Lubina (cruda)', 'Atún al natural (lata, escurrido)', 'Gambas peladas congeladas (crudas)', 'Langostinos / gambas cocidos', 'Calamar (crudo)', 'Sepia (cruda)', 'Pulpo (crudo)', 'Mejillones (crudos)'] },
+  { id: 'blk-pescado-azul', family: 'Proteínas', name: 'Pescado azul y semigraso', macro: 'protein', amount: 25,
+    foods: ['Salmón fresco (crudo)', 'Atún fresco (crudo)', 'Emperador / pez espada (crudo)', 'Sardinas frescas (crudas)', 'Boquerones frescos (crudos)', 'Dorada (cruda)'] },
+  { id: 'blk-conservas', family: 'Proteínas', name: 'Conservas en aceite y ahumados', macro: 'protein', amount: 25,
+    foods: ['Atún en aceite de oliva (lata, escurrido)', 'Sardinas en aceite (lata, escurridas)', 'Caballa en aceite (lata, escurrida)', 'Salmón ahumado'] },
+  { id: 'blk-huevos', family: 'Proteínas', name: 'Huevos', macro: 'protein', amount: 25,
+    foods: ['Huevo entero', 'Clara de huevo'] },
+  { id: 'blk-lacteos-proteicos', family: 'Proteínas', name: 'Claras y lácteos proteicos', macro: 'protein', amount: 25,
+    foods: ['Clara de huevo', 'Queso fresco batido 0 %', 'Yogur proteico natural', 'Skyr natural', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light', 'Proteína de suero (whey concentrada)'] },
+  { id: 'blk-proteina-vegetal', family: 'Proteínas', name: 'Proteína vegetal', macro: 'protein', amount: 25,
+    foods: ['Tofu firme', 'Seitán', 'Tempeh', 'Soja texturizada (seca)', 'Edamame'] },
+
+  { id: 'blk-cereales', family: 'Hidratos de carbono', name: 'Cereales (en crudo)', macro: 'carbs', amount: 40,
+    foods: ['Arroz blanco (crudo)', 'Arroz integral (crudo)', 'Arroz basmati (crudo)', 'Pasta (cruda)', 'Pasta integral (cruda)', 'Copos de avena', 'Harina de avena', 'Cuscús (crudo)', 'Quinoa (cruda)', 'Fideos de arroz (crudos)', 'Muesli sin azúcar añadido'] },
+  { id: 'blk-pan', family: 'Hidratos de carbono', name: 'Pan y tortitas', macro: 'carbs', amount: 40,
+    foods: ['Pan de barra', 'Pan integral', 'Pan de molde integral', 'Pan de centeno', 'Pan tostado / biscotes', 'Tortillas de trigo (wraps)', 'Tortitas de arroz', 'Tortitas de arroz integral', 'Tortitas de maíz', 'Tortitas de lentejas', 'Tortitas de garbanzo'] },
+  { id: 'blk-tuberculos', family: 'Hidratos de carbono', name: 'Tubérculos', macro: 'carbs', amount: 40,
+    foods: ['Patata', 'Boniato', 'Yuca', 'Ñoquis de patata'] },
+  { id: 'blk-legumbres-secas', family: 'Hidratos de carbono', name: 'Legumbres (en seco)', macro: 'carbs', amount: 40,
+    foods: ['Lentejas (secas)', 'Garbanzos (secos)', 'Alubias blancas (secas)'] },
+  { id: 'blk-legumbres-cocidas', family: 'Hidratos de carbono', name: 'Legumbres cocidas (bote)', macro: 'carbs', amount: 40,
+    foods: ['Lentejas cocidas (bote, escurridas)', 'Garbanzos cocidos (bote, escurridos)', 'Alubias cocidas (bote, escurridas)', 'Guisantes congelados', 'Habas', 'Maíz dulce (lata, escurrido)'] },
+  { id: 'blk-fruta', family: 'Hidratos de carbono', name: 'Fruta (una ración)', macro: 'carbs', amount: 15,
+    foods: ['Manzana', 'Plátano', 'Naranja', 'Mandarina', 'Pera', 'Fresas', 'Uvas', 'Melocotón', 'Nectarina', 'Kiwi', 'Piña', 'Melón', 'Sandía', 'Mango', 'Arándanos', 'Frambuesas', 'Cerezas', 'Ciruela', 'Higos', 'Granada'] },
+
+  { id: 'blk-grasas', family: 'Grasas', name: 'Aceite, aguacate y aceitunas', macro: 'fat', amount: 10,
+    foods: ['Aceite de oliva virgen extra', 'Mantequilla', 'Aguacate', 'Aceitunas verdes', 'Aceitunas negras'] },
+  { id: 'blk-frutos-secos', family: 'Grasas', name: 'Frutos secos y semillas', macro: 'fat', amount: 10,
+    foods: ['Almendras', 'Nueces', 'Avellanas', 'Anacardos', 'Pistachos (sin cáscara)', 'Cacahuetes tostados', 'Crema de cacahuete 100 %', 'Semillas de chía', 'Semillas de lino', 'Semillas de girasol (peladas)', 'Semillas de calabaza', 'Semillas de sésamo'] },
+
+  { id: 'blk-leche', family: 'Lácteos', name: 'Leche y yogures', macro: 'protein', amount: 6.5,
+    foods: ['Leche entera', 'Leche semidesnatada', 'Leche desnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural', 'Yogur natural desnatado', 'Kéfir natural'] },
+  { id: 'blk-quesos', family: 'Lácteos', name: 'Quesos', macro: 'protein', amount: 7,
+    foods: ['Queso curado', 'Queso semicurado', 'Queso en lonchas (tipo gouda)', 'Queso en lonchas light', 'Queso rallado', 'Mozzarella fresca', 'Queso de cabra (rulo)', 'Queso fresco tipo Burgos'] },
+];

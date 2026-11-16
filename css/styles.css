@@ -868,3 +868,28 @@ body.q-page { min-height: 100vh; }
 .macro-val small { font-size: .8rem; color: var(--muted); }
 .macro-label { font-size: .75rem; color: var(--muted); font-weight: 600; }
 @media (max-width: 420px) { .macros { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Bloques de equivalencia ---------- */
+.food-tabs { margin: 0 0 18px; }
+.food-tabs .muted { font-weight: 500; margin-left: 4px; }
+.block-intro { margin: 0 0 6px; }
+.block-card { padding: 0; }
+.block-card + .block-card { margin-top: 10px; }
+.block-card summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 16px 20px; }
+.block-card summary::-webkit-details-marker { display: none; }
+.block-card summary h3 { margin: 0 0 2px; font-size: 1.05rem; }
+.block-card summary .muted { font-size: .85rem; }
+.block-chev .ico { transition: transform .15s; color: var(--muted); }
+.block-card[open] .block-chev .ico { transform: rotate(180deg); }
+.block-card[open] { padding-bottom: 16px; }
+.block-card > :not(summary) { margin-left: 20px; margin-right: 20px; }
+.block-card .table-wrap { margin-left: 0; margin-right: 0; padding: 0; }
+.eq-table td, .eq-table th { padding: 9px 8px; }
+.eq-food { color: var(--text); text-decoration: none; text-align: left; font-weight: 600; }
+.eq-food:hover { color: var(--primary); }
+.bf-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 11px; margin-top: 8px; padding: 6px 10px; }
+.bf-cat-name { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--primary); margin: 10px 0 4px; }
+.bf-item { display: flex !important; align-items: center; gap: 8px; padding: 4px 0; font-weight: 500 !important; font-size: .9rem !important; cursor: pointer; }
+.bf-item[hidden], .bf-cat[hidden] { display: none !important; }
+@media (max-width: 560px) { .eq-table th:nth-child(4), .eq-table td:nth-child(4), .eq-table th:nth-child(5), .eq-table td:nth-child(5), .eq-table th:nth-child(6), .eq-table td:nth-child(6) { display: none; } }
+.block-card summary .grow { flex: 1; min-width: 0; }
