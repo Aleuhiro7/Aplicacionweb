@@ -23,7 +23,23 @@
     if (!raw || typeof raw !== 'object') return base;
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
+    migrateNextDue(base);
     return base;
+  }
+
+  /** Versiones anteriores usaban «día de cobro»; se convierte en fecha de próximo pago. */
+  function migrateNextDue(d) {
+    const t = U.today();
+    const pad = U.pad;
+    for (const c of d.clients) {
+      if (c.nextDue || !c.billingDay || !(Number(c.rate) > 0)) continue;
+      const now = U.parseDate(t);
+      const from = U.toISODate(new Date(now.getFullYear(), now.getMonth(), 1));
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const due = from.slice(0, 8) + pad(Math.min(lastDay, Number(c.billingDay)));
+      const paid = d.payments.some((p) => p.clientId === c.id && p.status === 'pagado' && p.date >= from && p.date <= t);
+      c.nextDue = paid ? U.addMonths(due, 1) : due;
+    }
   }
 
   function load() {
@@ -101,43 +117,38 @@
     };
   }
 
-  /**
-   * Estado de la cuota mensual de un cliente en el mes de `iso` (por defecto, hoy).
-   * Devuelve null si el cliente no está activo o no tiene cuota.
-   */
-  function feeStatus(client, iso) {
-    const ref = iso || today();
-    if (!client || (client.status || 'activo') !== 'activo' || !(Number(client.rate) > 0)) return null;
-    const { from, to } = monthRange(ref);
-    const paid = data.payments
-      .filter((p) => p.clientId === client.id && p.status === 'pagado' && p.date >= from && p.date <= to)
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const lastDay = Number(to.slice(8));
-    const day = Math.min(lastDay, Math.max(1, Number(client.billingDay) || 1));
-    const dueDate = from.slice(0, 8) + U.pad(day);
-    let status = 'pendiente';
-    if (paid > 0) status = 'pagado';
-    else if (ref > dueDate) status = 'vencido';
-    return { status, amount: Number(client.rate), paid, dueDate };
+  const REMIND_DAYS = 5; // días de antelación para avisar de un pago
+
+  function lastPaidAmount(clientId) {
+    const list = data.payments.filter((p) => p.clientId === clientId && p.status === 'pagado').sort(byDateTime);
+    return list.length ? Number(list[list.length - 1].amount) || 0 : 0;
   }
 
   /**
-   * Lo que falta por cobrar: cuotas de este mes sin pagar (si no hay ya un pago
-   * pendiente registrado para ese cliente este mes) y pagos marcados como pendientes.
+   * Próximo pago de un cliente activo: fecha, días que faltan y estado
+   * ('vencido', 'hoy', 'pronto' = dentro de los próximos 5 días, 'al-dia').
+   * null si el cliente no está activo o no tiene fecha de próximo pago.
    */
+  function dueInfo(client) {
+    if (!client || (client.status || 'activo') !== 'activo' || !client.nextDue) return null;
+    const days = U.daysBetween(today(), client.nextDue);
+    let status = 'al-dia';
+    if (days < 0) status = 'vencido';
+    else if (days === 0) status = 'hoy';
+    else if (days <= REMIND_DAYS) status = 'pronto';
+    return { status, days, date: client.nextDue, amount: Number(client.rate) || lastPaidAmount(client.id) || 0 };
+  }
+
+  /** Lo que falta por cobrar: pagos que vencen hoy o ya vencidos, y pagos marcados como pendientes. */
   function receivables(clientId) {
     const t = today();
-    const { from, to } = monthRange(t);
-    const pending = data.payments.filter((p) => p.status === 'pendiente');
     const items = [];
     for (const c of data.clients) {
       if (clientId && c.id !== clientId) continue;
-      const fs = feeStatus(c, t);
-      if (!fs || fs.status === 'pagado') continue;
-      const hasRecord = pending.some((p) => p.clientId === c.id && p.date >= from && p.date <= to);
-      if (!hasRecord) items.push({ clientId: c.id, amount: fs.amount, overdue: fs.status === 'vencido', fee: true, date: fs.dueDate });
+      const d = dueInfo(c);
+      if (d && d.days <= 0) items.push({ clientId: c.id, amount: d.amount, overdue: d.days < 0, date: d.date });
     }
-    for (const p of pending) {
+    for (const p of data.payments.filter((x) => x.status === 'pendiente')) {
       if (clientId && p.clientId !== clientId) continue;
       items.push({ clientId: p.clientId, amount: Number(p.amount) || 0, overdue: p.date < t, payment: p, date: p.date });
     }
@@ -190,7 +201,7 @@
 
   window.Store = {
     load, save, add, update, remove, get, reset, exportJSON, importJSON,
-    clients, measurementsFor, paymentsFor, monthRange, feeStatus, receivables, pendingAmount,
+    clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

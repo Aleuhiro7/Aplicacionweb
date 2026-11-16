@@ -11,10 +11,11 @@
     pausa: { label: 'En pausa', badge: 'warning' },
     inactivo: { label: 'Baja', badge: '' },
   };
-  const FEE_STATUS = {
-    pagado: { label: 'Pagado', badge: 'success' },
-    pendiente: { label: 'Pendiente', badge: 'info' },
+  const DUE_STATUS = {
     vencido: { label: 'Vencido', badge: 'danger' },
+    hoy: { label: 'Hoy', badge: 'warning' },
+    pronto: { label: 'Pronto', badge: 'warning' },
+    'al-dia': { label: 'Al día', badge: 'success' },
   };
   const PAY_METHODS = ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'];
   const CURRENCIES = [
@@ -47,12 +48,22 @@
     clientTab: 'resumen',
     metric: 'weight',
     payFilter: 'todos',
+    openPay: null, // cliente con el desplegable de pago abierto
   };
 
   const badge = (text, kind) => `<span class="badge ${kind || ''}">${esc(text)}</span>`;
   const clientStatus = (c) => (CLIENT_STATUS[c.status] ? c.status : 'activo');
   const statusBadge = (c) => badge(CLIENT_STATUS[clientStatus(c)].label, CLIENT_STATUS[clientStatus(c)].badge);
-  const feeBadge = (fs) => (fs ? badge(FEE_STATUS[fs.status].label, FEE_STATUS[fs.status].badge) : '<span class="muted">—</span>');
+  const dueBadge = (di) => (di ? badge(DUE_STATUS[di.status].label, DUE_STATUS[di.status].badge) : badge('Sin fecha'));
+  /** Texto del próximo pago: «Le toca pagar en 3 días», «Vencido hace 2 días»… */
+  function dueText(di) {
+    if (!di) return 'Sin fecha de próximo pago';
+    const date = U.fmtDateShort(di.date);
+    if (di.status === 'vencido') return `Vencido hace ${plural(-di.days, 'día', 'días')} (${date})`;
+    if (di.status === 'hoy') return 'Le toca pagar hoy';
+    if (di.status === 'pronto') return `Le toca pagar ${di.days === 1 ? 'mañana' : `en ${di.days} días`} (${date})`;
+    return `Próximo pago: ${date}`;
+  }
   const payBadge = (p) => (p.status === 'pagado' ? badge('Pagado', 'success') : badge('Pendiente', 'warning'));
   const empty = (icon, text, extra = '') => `<div class="empty"><span class="empty-icon">${U.icon(icon)}</span><div>${text}</div>${extra}</div>`;
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -83,8 +94,8 @@
       { type: 'section', label: 'Asesoría' },
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today() },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
-      { name: 'rate', label: `Cuota mensual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate },
-      { name: 'billingDay', label: 'Día de cobro', type: 'number', min: 1, max: 31, step: 1, default: Number(today().slice(8)), hint: 'Día del mes en que vence la cuota.' },
+      { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
+      { name: 'nextDue', label: 'Próximo pago', type: 'date', default: today(), hint: `Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -201,18 +212,73 @@
     return last ? last.method : '';
   }
 
-  /** Marca la cuota del mes como pagada con un toque (con opción de deshacer). */
-  function payFee(clientId) {
-    const c = Store.get('clients', clientId);
+  /** Fecha base para proponer el siguiente pago: la fecha que tocaba (si es reciente) o hoy. */
+  function payBase(c) {
+    return c.nextDue && c.nextDue >= U.addDays(today(), -31) ? c.nextDue : today();
+  }
+
+  /** Desplegable para registrar un pago: cantidad y fecha del próximo pago. */
+  function payForm(c) {
+    const amount = Number(c.rate) || Store.lastPaidAmount(c.id) || Store.settings.defaultRate || '';
+    const base = payBase(c);
+    const quick = [1, 2, 3, 6].map((n) => `<button type="button" class="chip" data-action="pay-months" data-months="${n}">${n === 1 ? '1 mes' : `${n} meses`}</button>`).join('');
+    return `<form class="pay-form" data-client="${c.id}" data-base="${base}">
+      <div class="pay-fields">
+        <div class="field"><label for="pa-${c.id}">Cantidad (${esc(Store.settings.currency)})</label><input id="pa-${c.id}" name="amount" type="number" step="0.01" min="0" inputmode="decimal" required value="${esc(amount)}"></div>
+        <div class="field"><label for="pd-${c.id}">Próximo pago</label><input id="pd-${c.id}" name="nextDue" type="date" required value="${U.addMonths(base, 1)}"></div>
+      </div>
+      <div class="pay-quick"><span class="muted">Siguiente pago dentro de:</span>${quick}</div>
+      <p class="hint">Te avisaré ${Store.REMIND_DAYS} días antes de la fecha del próximo pago.</p>
+      <div class="pay-actions">
+        <button type="button" class="btn sm" data-action="pay-close">Cancelar</button>
+        <button type="submit" class="btn primary sm">${U.icon('check')}Guardar pago</button>
+      </div>
+    </form>`;
+  }
+
+  /** Fila de un cliente con su próximo pago y el botón «Pago» que abre el desplegable. */
+  function payRow(c) {
+    const di = Store.dueInfo(c);
+    const open = state.openPay === c.id;
+    return `<li class="pay-item${open ? ' open' : ''}" data-pay-row="${c.id}">
+      <div class="pay-line">
+        ${avatar(c)}
+        <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${esc(dueText(di))}</div></div>
+        <div class="pay-row">
+          ${di && di.status !== 'al-dia' ? dueBadge(di) : ''}
+          <button class="btn ${open ? '' : 'primary '}sm pay" data-action="pay-open" data-client="${c.id}" aria-expanded="${open}">${U.icon('wallet')}Pago${U.icon(open ? 'up' : 'down', 'chev')}</button>
+        </div>
+      </div>
+      ${open ? payForm(c) : ''}
+    </li>`;
+  }
+
+  /** Clientes activos ordenados por fecha de próximo pago (los que no tienen fecha, al final). */
+  function clientsByDue() {
+    return Store.clients()
+      .filter((c) => clientStatus(c) === 'activo')
+      .sort((a, b) => (a.nextDue || '9999').localeCompare(b.nextDue || '9999') || a.name.localeCompare(b.name, 'es'));
+  }
+
+  function submitPayForm(form) {
+    const c = Store.get('clients', form.dataset.client);
     if (!c) return;
-    const p = Store.add('payments', {
-      clientId, date: today(), amount: Number(c.rate) || 0, concept: `Cuota de ${monthName(today())}`,
-      method: lastMethod(clientId), status: 'pagado', notes: '',
+    const amountEl = form.elements.amount;
+    const dateEl = form.elements.nextDue;
+    const amount = Number(amountEl.value);
+    if (amountEl.value === '' || !(amount >= 0)) { amountEl.focus(); UI.toast('Indica la cantidad'); return; }
+    if (!dateEl.value) { dateEl.focus(); UI.toast('Indica la fecha del próximo pago'); return; }
+    const prev = { nextDue: c.nextDue || '', rate: c.rate };
+    const pay = Store.add('payments', {
+      clientId: c.id, date: today(), amount, concept: 'Pago', method: lastMethod(c.id),
+      status: 'pagado', nextDue: dateEl.value, notes: '',
     });
+    Store.update('clients', c.id, { nextDue: dateEl.value, rate: amount });
+    state.openPay = null;
     App.render();
-    UI.toast(`${c.name.split(' ')[0]} marcado como pagado`, {
+    UI.toast(`Pago de ${c.name.split(' ')[0]} guardado · próximo el ${U.fmtDateShort(dateEl.value)}`, {
       label: 'Deshacer',
-      onClick: () => { Store.remove('payments', p.id); App.render(); },
+      onClick: () => { Store.remove('payments', pay.id); Store.update('clients', c.id, prev); App.render(); },
     });
   }
 
@@ -241,22 +307,22 @@
    * Resumen
    * ======================================================= */
 
-  /** Avisos: cuotas vencidas y clientes activos sin actualizar su progreso. */
+  /** Avisos: pagos vencidos o que vencen en los próximos días y clientes sin actualizar su progreso. */
   function computeAlerts() {
     const t = today();
-    const alerts = [];
+    const pay = [];
+    const progress = [];
     for (const c of Store.clients().filter((x) => clientStatus(x) === 'activo')) {
-      const fs = Store.feeStatus(c);
-      if (fs && fs.status === 'vencido') {
-        alerts.push({ c, text: `Cuota de ${monthName(t)} vencida (${money(fs.amount)})`, action: 'pay-fee', label: 'Marcar pagado' });
-      }
+      const di = Store.dueInfo(c);
+      if (di && di.status !== 'al-dia') pay.push({ c, di, kind: 'pago' });
       const last = Store.lastMeasurement(c.id);
       const days = last ? U.daysBetween(last.date, t) : null;
       if (days === null || days >= STALE_DAYS) {
-        alerts.push({ c, text: last ? `Sin actualizar progreso desde hace ${days} días` : 'Sin mediciones todavía', action: 'new-measurement', label: 'Medición' });
+        progress.push({ c, kind: 'progreso', text: last ? `Sin actualizar progreso desde hace ${days} días` : 'Sin mediciones todavía' });
       }
     }
-    return alerts;
+    pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
+    return pay.concat(progress);
   }
 
   function incomeChart() {
@@ -301,7 +367,8 @@
     const income = Store.paidBetween(from, to);
     const rec = Store.receivables();
     const pending = rec.reduce((s, r) => s + r.amount, 0);
-    const pendingMonth = rec.filter((r) => r.date >= from && r.date <= to).reduce((s, r) => s + r.amount, 0);
+    const dueThisMonth = d.clients.map((c) => Store.dueInfo(c)).filter((x) => x && x.days > 0 && x.date <= to).reduce((s, x) => s + x.amount, 0);
+    const pendingMonth = rec.reduce((s, r) => s + r.amount, 0) + dueThisMonth;
     const pendingClients = new Set(rec.map((r) => r.clientId)).size;
     const overdue = rec.filter((r) => r.overdue).length;
     const active = d.clients.filter((c) => clientStatus(c) === 'activo');
@@ -309,19 +376,16 @@
     const newThisMonth = d.clients.filter((c) => c.startDate >= from && c.startDate <= to).length;
     const alerts = computeAlerts();
 
-    const order = ['vencido', 'pendiente', 'pagado'];
-    const fees = active
-      .map((c) => ({ c, fs: Store.feeStatus(c) }))
-      .filter((x) => x.fs)
-      .sort((a, b) => order.indexOf(a.fs.status) - order.indexOf(b.fs.status) || a.fs.dueDate.localeCompare(b.fs.dueDate));
-    const paidCount = fees.filter((x) => x.fs.status === 'pagado').length;
+    const payAlerts = alerts.filter((a) => a.kind === 'pago');
+    const otherAlerts = alerts.filter((a) => a.kind !== 'pago');
+    const soon = payAlerts.filter((a) => a.di.days >= 0).length;
 
     return `
       <div class="page-header">
         <div>
           ${dateLine}
           <h1 class="display">${greeting()}, ${esc(firstName)}.</h1>
-          <p>${fees.length ? `${paidCount} de ${plural(fees.length, 'cuota cobrada', 'cuotas cobradas')} este mes${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.` : 'Añade la cuota mensual de tus clientes para controlar los cobros.'}</p>
+          <p>${soon ? `${plural(soon, 'cliente tiene', 'clientes tienen')} que pagar en los próximos ${Store.REMIND_DAYS} días` : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.</p>
         </div>
       </div>
 
@@ -338,24 +402,18 @@
       </section>
 
       <div class="grid-2">
-        <section class="card">
-          <div class="card-header"><h2>Cuotas de ${month}</h2><a href="#/pagos" class="btn sm">Ver pagos</a></div>
-          ${fees.length ? `<ul class="list">${fees.map(({ c, fs }) => `
-            <li>
-              ${avatar(c)}
-              <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${money(fs.amount)} · ${fs.status === 'pagado' ? 'cobrada' : 'vence el ' + esc(U.fmtDateShort(fs.dueDate))}</div></div>
-              ${feeBadge(fs)}
-              ${fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Pagado</button>` : ''}
-            </li>`).join('')}</ul>` : empty('wallet', 'Ningún cliente activo tiene cuota mensual.')}
+        <section class="card" id="proximos-pagos">
+          <div class="card-header"><h2>Próximos pagos</h2><a href="#/pagos" class="btn sm">Ver todos</a></div>
+          ${payAlerts.length ? `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>` : empty('done', `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`)}
         </section>
         <section class="card" id="atencion">
           <div class="card-header"><h2>Requieren atención</h2></div>
-          ${alerts.length ? `<ul class="list">${alerts.slice(0, 10).map((a) => `
+          ${otherAlerts.length ? `<ul class="list">${otherAlerts.slice(0, 10).map((a) => `
             <li>
               ${avatar(a.c)}
               <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-              <button class="btn sm" data-action="${a.action}" data-client="${a.c.id}">${esc(a.label)}</button>
-            </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes están al día.')}
+              <button class="btn sm" data-action="new-measurement" data-client="${a.c.id}">Medición</button>
+            </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes tienen su progreso al día.')}
         </section>
       </div>`;
   }
@@ -380,18 +438,17 @@
         ? empty('search', 'Ningún cliente coincide con la búsqueda.')
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
-    const monthLabel = monthName(today()).replace(/^./, (m) => m.toUpperCase());
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Cuota</th><th>${esc(monthLabel)}</th><th class="hide-sm">Última medición</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Última medición</th></tr></thead>
       <tbody>${list.map((c) => {
-        const fs = Store.feeStatus(c);
+        const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
         return `<tr class="clickable" data-href="#/clientes/${c.id}" tabindex="0">
           <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</div></div></td>
           <td class="hide-sm">${c.email ? esc(c.email) : '—'}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
-          <td>${feeBadge(fs)}</td>
+          <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -458,8 +515,8 @@
 
   function clientSummary(c) {
     const t = today();
-    const fs = Store.feeStatus(c);
-    const pend = Store.pendingAmount(c.id);
+    const di = Store.dueInfo(c);
+    const lastPay = Store.paymentsFor(c.id).find((p) => p.status === 'pagado');
     const totalPaid = Store.paymentsFor(c.id).filter((p) => p.status === 'pagado').reduce((s, p) => s + Number(p.amount || 0), 0);
     const all = Store.measurementsFor(c.id);
     const lastAny = all[all.length - 1];
@@ -472,8 +529,8 @@
 
     return `
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Cuota mensual</div><div class="stat-value">${c.rate ? money(c.rate) : '—'}</div><div class="stat-sub">${c.billingDay ? `Cobro el día ${esc(c.billingDay)}` : 'Sin día de cobro'}</div></div>
-        <div class="card stat"><div class="stat-label">Cuota de ${monthName(t)}</div><div class="stat-value" style="font-size:1.8rem">${fs ? esc(FEE_STATUS[fs.status].label) : '—'}</div><div class="stat-sub">${pend ? `${money(pend)} por cobrar` : 'Nada pendiente'}</div></div>
+        <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
+        <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Última medición</div><div class="stat-value" style="font-size:1.8rem">${lastAny ? esc(U.fmtDateShort(lastAny.date)) : '—'}</div><div class="stat-sub">${lastAny ? `hace ${plural(U.daysBetween(lastAny.date, t), 'día', 'días')}` : 'Sin mediciones'}</div></div>
         <div class="card stat"><div class="stat-label">Cliente desde</div><div class="stat-value" style="font-size:1.8rem">${c.startDate ? esc(U.fmtDateShort(c.startDate)) : '—'}</div><div class="stat-sub">${months !== null ? `${plural(months, 'mes', 'meses')} · ` : ''}${money(totalPaid)} cobrado</div></div>
       </div>
@@ -557,13 +614,10 @@
 
   function clientPayments(c) {
     const list = Store.paymentsFor(c.id);
-    const fs = Store.feeStatus(c);
-    return `<section class="card">
-      <div class="card-header"><h2>Pagos (${list.length})</h2>
-        <div class="actions">
-          ${fs && fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Marcar ${monthName(today())} como pagado</button>` : ''}
-          <button class="btn primary sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Pago</button>
-        </div>
+    return `${clientStatus(c) === 'activo' ? `<section class="card"><ul class="list pay-list">${payRow(c)}</ul></section>` : ''}
+    <section class="card">
+      <div class="card-header"><h2>Historial de pagos (${list.length})</h2>
+        <button class="btn sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Otro pago</button>
       </div>
       ${paymentsTable(list, { showClient: false })}
     </section>`;
@@ -573,36 +627,6 @@
    * Pagos
    * ======================================================= */
 
-  /** Lista de quién falta por pagar: cuotas del mes sin pagar y pagos marcados como pendientes. */
-  function pendingList() {
-    const t = today();
-    const items = Store.receivables().sort((a, b) => (b.overdue - a.overdue) || a.date.localeCompare(b.date));
-    const noFee = Store.data.clients.filter((c) => clientStatus(c) === 'activo' && !(Number(c.rate) > 0));
-    const noFeeNote = noFee.length
-      ? `<p class="muted" style="margin:12px 0 0;font-size:.88rem">${plural(noFee.length, 'cliente activo no tiene', 'clientes activos no tienen')} cuota mensual asignada, por eso no ${noFee.length === 1 ? 'aparece' : 'aparecen'} aquí: ${noFee.map((c) => `<a href="#/clientes/${c.id}">${esc(c.name)}</a>`).join(', ')}.</p>`
-      : '';
-    if (!items.length) {
-      return empty('done', `<strong>Todos tus clientes han pagado ${monthName(t)}.</strong>`) + noFeeNote;
-    }
-    return `<ul class="list pending-list">${items.map((r) => {
-      const c = Store.get('clients', r.clientId) || { id: r.clientId, name: Store.clientName(r.clientId) };
-      const when = r.overdue ? `Vencido desde el ${U.fmtDateShort(r.date)}` : r.date === t ? 'Vence hoy' : `Vence el ${U.fmtDateShort(r.date)}`;
-      const concept = r.payment ? (r.payment.concept || 'Pago pendiente') : `Cuota de ${monthName(t)}`;
-      const btn = r.payment
-        ? `<button class="btn primary sm pay" data-action="mark-paid" data-id="${r.payment.id}">${U.icon('check')}Marcar pagado</button>`
-        : `<button class="btn primary sm pay" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Marcar pagado</button>`;
-      return `<li>
-        ${avatar(c)}
-        <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${esc(concept)} · ${esc(when)}</div></div>
-        <div class="pay-row">
-          ${r.overdue ? badge('Vencido', 'danger') : badge('Pendiente', 'info')}
-          <span class="amount">${money(r.amount)}</span>
-          ${btn}
-        </div>
-      </li>`;
-    }).join('')}</ul>${noFeeNote}`;
-  }
-
   function renderPayments() {
     const t = today();
     const all = Store.data.payments.slice().sort((a, b) => b.date.localeCompare(a.date));
@@ -611,18 +635,20 @@
     const month = Store.paidBetween(from, to);
     const year = Store.paidBetween(t.slice(0, 4) + '-01-01', t.slice(0, 4) + '-12-31');
     const rec = Store.receivables();
+    const clients = clientsByDue();
+    const dueThisMonth = Store.data.clients.map((c) => Store.dueInfo(c)).filter((x) => x && x.days > 0 && x.date <= to).reduce((s, x) => s + x.amount, 0);
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Pagos</h1><p>Marca a tus clientes como pagados cuando te paguen</p></div>
+        <div><h1 class="display">Pagos</h1><p>Pulsa «Pago» cuando un cliente te pague e indica cuándo le toca el siguiente</p></div>
         <button class="btn pill" data-action="new-payment">${U.icon('plus')}Otro pago</button>
       </div>
       <section class="card" id="pendientes">
-        <div class="card-header"><h2>Pendientes de pago</h2><span class="muted">${plural(rec.length, 'pendiente', 'pendientes')}</span></div>
-        ${pendingList()}
+        <div class="card-header"><h2>Clientes</h2><span class="muted">${plural(clients.length, 'cliente activo', 'clientes activos')}</span></div>
+        ${clients.length ? `<ul class="list pay-list">${clients.map(payRow).join('')}</ul>` : empty('users', 'No tienes clientes activos.')}
       </section>
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Cobrado en ${monthName(t)}</div><div class="stat-value">${money(month)}</div><div class="stat-sub">de ${money(month + rec.filter((r) => r.date >= from && r.date <= to).reduce((s, r) => s + r.amount, 0))} previstos</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${monthName(t)}</div><div class="stat-value">${money(month)}</div><div class="stat-sub">de ${money(month + rec.reduce((s, r) => s + r.amount, 0) + dueThisMonth)} previstos</div></div>
         <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(rec.reduce((s, r) => s + r.amount, 0))}</div><div class="stat-sub">${plural(new Set(rec.map((r) => r.clientId)).size, 'cliente', 'clientes')} · ${plural(rec.filter((r) => r.overdue).length, 'vencido', 'vencidos')}</div></div>
         <div class="card stat"><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div><div class="stat-sub">desde enero</div></div>
       </div>
@@ -649,9 +675,14 @@
             <div class="field"><label for="s-currency">Moneda</label><select id="s-currency" name="currency">${CURRENCIES.map((c) => `<option value="${c.value}" ${s.currency === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}</select></div>
             <div class="field"><label for="s-theme">Tema</label><select id="s-theme" name="theme">
               ${[['dark', 'Oscuro'], ['light', 'Claro'], ['auto', 'Automático']].map(([v, l]) => `<option value="${v}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-            <div class="field full"><label for="s-defaultRate">Cuota mensual por defecto</label><input id="s-defaultRate" name="defaultRate" type="number" step="0.01" min="0" value="${esc(s.defaultRate)}"></div>
+            <div class="field full"><label for="s-defaultRate">Importe habitual por defecto</label><input id="s-defaultRate" name="defaultRate" type="number" step="0.01" min="0" value="${esc(s.defaultRate)}"></div>
             <div class="full"><button type="submit" class="btn primary">Guardar preferencias</button></div>
           </form>
+          <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
+          <h2 style="margin-bottom:6px">Avisos de pago</h2>
+          <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen, en la campana y, si lo activas, con una notificación del navegador.</p>
+          ${notificationStatus() ? `<p style="margin:0 0 12px">${esc(notificationStatus())}</p>` : ''}
+          ${canNotify() && Notification.permission === 'default' ? `<button class="btn" data-action="enable-notifications">${U.icon('bell')} Activar notificaciones</button>` : ''}
         </section>
         <section class="card">
           <div class="card-header"><h2>Tus datos</h2></div>
@@ -700,7 +731,7 @@
   }
 
   function exportCSV() {
-    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
+    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['status', 'Estado'], ['rate', 'Importe habitual'], ['nextDue', 'Próximo pago'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [cols.map((c) => q(c[1])).join(';')].concat(
       Store.clients().map((c) => cols.map(([k]) => q(k === 'status' ? CLIENT_STATUS[clientStatus(c)].label : c[k])).join(';'))
@@ -734,33 +765,30 @@
       if (!ok) return;
     }
     const t = today();
-    const tDay = Number(t.slice(8));
+    // due = días hasta el próximo pago (negativo = vencido)
     const people = [
-      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', goal: 'Pérdida de grasa', rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, billingDay: 1, paidNow: true, lastM: 3 },
-      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', goal: 'Ganancia muscular', rate: 80, height: 180, w: 78, fat: 18, months: 4, billingDay: Math.max(1, tDay - 4), paidNow: false, lastM: 6 },
-      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', goal: 'Salud general', rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, billingDay: Math.min(28, tDay + 6), paidNow: false, lastM: 20 },
-      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', goal: 'Rendimiento deportivo', rate: 60, height: 176, w: 74, fat: 15, months: 2, billingDay: 1, paidNow: true, lastM: 2 },
-      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', goal: 'Fuerza', rate: 60, height: 170, w: 63, fat: 24, months: 4, billingDay: 10, status: 'pausa', lastM: 40 },
+      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', gain: false, rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, due: 15, lastM: 3 },
+      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', gain: true, rate: 80, height: 180, w: 78, fat: 18, months: 4, due: -4, lastM: 6 },
+      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', gain: false, rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, due: 3, lastM: 20 },
+      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', gain: false, rate: 60, height: 176, w: 74, fat: 15, months: 2, due: 25, lastM: 2 },
+      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', gain: false, rate: 60, height: 170, w: 63, fat: 24, months: 4, due: -20, status: 'pausa', lastM: 40 },
     ];
-    const now = U.parseDate(t);
     people.forEach((p) => {
-      const start = U.toISODate(new Date(now.getFullYear(), now.getMonth() - p.months, Math.min(28, p.billingDay)));
+      const nextDue = U.addDays(t, p.due);
       const c = Store.add('clients', {
         name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender,
-        rate: p.rate, billingDay: p.billingDay, height: p.height, health: p.health || '', notes: '', startDate: start, status: p.status || 'activo',
+        rate: p.rate, nextDue, height: p.height, health: p.health || '', notes: '', startDate: U.addMonths(nextDue, -p.months), status: p.status || 'activo',
       });
-      // Cuotas cobradas de los meses anteriores (y la de este mes si procede)
-      for (let i = p.months; i >= 0; i--) {
-        if (i === 0 && !p.paidNow) continue;
-        if (p.status === 'pausa' && i < 2) continue;
-        const d = new Date(now.getFullYear(), now.getMonth() - i, Math.min(28, p.billingDay));
-        const date = U.toISODate(d) > t ? t : U.toISODate(d);
-        Store.add('payments', { clientId: c.id, date, amount: p.rate, concept: `Cuota de ${MONTHS[d.getMonth()]}`, method: i % 2 ? 'Bizum' : 'Transferencia', status: 'pagado' });
+      // Un pago al mes hasta la fecha del próximo pago
+      for (let i = p.months; i >= 1; i--) {
+        const date = U.addMonths(nextDue, -i);
+        if (date > t) continue;
+        Store.add('payments', { clientId: c.id, date, amount: p.rate, concept: 'Pago', method: i % 2 ? 'Bizum' : 'Transferencia', status: 'pagado', nextDue: U.addMonths(date, 1) });
       }
       // Revisiones cada 2 semanas
       const total = Math.max(2, Math.floor((p.months * 30 - p.lastM) / 14) + 1);
       for (let i = 0; i < total; i++) {
-        const trend = p.goal === 'Ganancia muscular' ? 0.4 : -0.6;
+        const trend = p.gain ? 0.4 : -0.6;
         Store.add('measurements', {
           clientId: c.id, date: U.addDays(t, -p.lastM - (total - 1 - i) * 14),
           weight: Math.round((p.w + trend * i + (i % 2 ? 0.2 : 0)) * 10) / 10,
@@ -782,6 +810,40 @@
     App.render();
   }
 
+  /* ---------- Notificaciones del navegador ---------- */
+  const NOTIFY_KEY = 'entrenapro:notified';
+  const canNotify = () => 'Notification' in window;
+
+  /** Una vez al día, avisa de los pagos que vencen en los próximos días (si se dio permiso). */
+  function notifyDue(force) {
+    try {
+      if (!canNotify() || Notification.permission !== 'granted') return;
+      if (!force && localStorage.getItem(NOTIFY_KEY) === today()) return;
+      const due = computeAlerts().filter((a) => a.kind === 'pago');
+      if (!due.length && !force) return;
+      const body = due.length
+        ? due.slice(0, 5).map((a) => `${a.c.name}: ${dueText(a.di)}`).join('\n')
+        : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`;
+      new Notification(due.length ? `${plural(due.length, 'pago', 'pagos')} próximos o vencidos` : 'Avisos activados', { body, tag: 'pagos' });
+      localStorage.setItem(NOTIFY_KEY, today());
+    } catch (e) { /* sin notificaciones disponibles */ }
+  }
+
+  async function enableNotifications() {
+    if (!canNotify()) { UI.toast('Este navegador no permite notificaciones'); return; }
+    const res = await Notification.requestPermission();
+    if (res === 'granted') { UI.toast('Notificaciones activadas'); notifyDue(true); }
+    else UI.toast('No se han permitido las notificaciones');
+    App.render();
+  }
+
+  function notificationStatus() {
+    if (!canNotify()) return 'Este navegador no permite notificaciones.';
+    if (Notification.permission === 'granted') return 'Activadas: te avisaré al abrir la app cuando a alguien le toque pagar.';
+    if (Notification.permission === 'denied') return 'Bloqueadas. Puedes permitirlas en los ajustes del navegador para esta página.';
+    return '';
+  }
+
   /* =========================================================
    * Acciones (delegadas desde app.js)
    * ======================================================= */
@@ -789,7 +851,8 @@
   const actions = {
     'new-client': () => openClientForm(),
     alerts: () => {
-      const go = () => document.getElementById('atencion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = computeAlerts().some((a) => a.kind === 'pago') ? 'proximos-pagos' : 'atencion';
+      const go = () => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
       else { location.hash = '#/panel'; setTimeout(go, 60); }
     },
@@ -798,7 +861,20 @@
     'edit-measurement': (d) => openMeasurementForm(d.id),
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),
     'edit-payment': (d) => openPaymentForm(d.id),
-    'pay-fee': (d) => payFee(d.client),
+    'pay-open': (d) => {
+      state.openPay = state.openPay === d.client ? null : d.client;
+      App.render();
+      if (state.openPay) {
+        const input = document.getElementById(`pa-${d.client}`);
+        if (input) { input.focus({ preventScroll: true }); input.closest('.pay-item').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      }
+    },
+    'pay-close': () => { state.openPay = null; App.render(); },
+    'pay-months': (d, el) => {
+      const form = el.closest('.pay-form');
+      form.elements.nextDue.value = U.addMonths(form.dataset.base, Number(d.months));
+      form.querySelectorAll('.chip').forEach((b) => b.classList.toggle('active', b === el));
+    },
     'mark-paid': (d) => markPaid(d.id),
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'client-filter': (d) => { state.clientFilter = d.value; App.render(); },
@@ -807,6 +883,7 @@
     export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
+    'enable-notifications': () => enableNotifications(),
     'reset-data': () => resetData(),
   };
 
@@ -818,6 +895,6 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    saveSettings, importFile, onClientSearch, computeAlerts,
+    saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, notifyDue,
   };
 })();

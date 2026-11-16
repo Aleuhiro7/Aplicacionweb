@@ -594,16 +594,33 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 #toast { display: flex; align-items: center; gap: 14px; width: max-content; }
 #toast.show.has-action { pointer-events: auto; }
 .toast-action { appearance: none; border: 0; background: none; color: #5eead4; font: inherit; font-weight: 800; cursor: pointer; padding: 2px 4px; }
-.pending-list li { padding: 14px 0; }
-.pending-list .amount { font: 700 1.25rem/1 "Barlow Semi Condensed", sans-serif; white-space: nowrap; }
 .btn.pay { white-space: nowrap; }
-@media (max-width: 560px) {
-  .pending-list li { flex-wrap: wrap; }
-  .pending-list .grow { flex: 1 1 calc(100% - 56px); }
-  .pending-list .pay-row { display: flex; align-items: center; gap: 10px; width: 100%; padding-left: 52px; }
-  .pending-list .pay-row .btn.pay { margin-left: auto; }
-}
+
 .pay-row { display: flex; align-items: center; gap: 12px; }
+.list li.pay-item { display: block; padding: 0; }
+.pay-line { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.pay-line .grow { flex: 1; min-width: 0; }
+.btn .ico.chev { width: 15px; height: 15px; margin-left: -2px; }
+.list li.pay-item.open { background: var(--surface-2); margin: 0 -20px; padding: 0 20px; border-radius: 0; }
+.pay-form { padding: 4px 0 16px 52px; }
+.pay-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 12px; }
+.pay-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: .88rem; }
+.pay-quick .muted { margin-right: 4px; }
+.chip { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: .84rem; font-weight: 600; padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.chip:hover { border-color: var(--primary); }
+.chip.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+.pay-form .hint { color: var(--muted); font-size: .82rem; margin: 10px 0 0; }
+.pay-actions { display: flex; gap: 8px; margin-top: 12px; }
+@media (max-width: 560px) {
+  .pay-line { flex-wrap: wrap; }
+  .pay-line .grow { flex: 1 1 calc(100% - 56px); }
+  .pay-line .pay-row { width: 100%; padding-left: 52px; }
+  .pay-line .pay-row .btn.pay { margin-left: auto; }
+  .list li.pay-item.open { margin: 0 -16px; padding: 0 16px; }
+  .pay-form { padding-left: 0; }
+  .pay-fields { grid-template-columns: 1fr 1fr; }
+  .pay-actions .btn { flex: 1; justify-content: center; }
+}
 
 .muted { color: var(--muted); }
 .mt { margin-top: 16px; }

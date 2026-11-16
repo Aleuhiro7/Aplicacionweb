@@ -24,6 +24,16 @@
     return toISODate(d);
   }
 
+  /** Suma meses a una fecha YYYY-MM-DD (si el día no existe, usa el último del mes). */
+  function addMonths(iso, n) {
+    const d = parseDate(iso);
+    const day = d.getDate();
+    const target = new Date(d.getFullYear(), d.getMonth() + n, 1);
+    const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(day, last));
+    return toISODate(target);
+  }
+
   /** Lunes de la semana de la fecha dada. */
   function startOfWeek(iso) {
     const d = parseDate(iso);
@@ -135,6 +145,8 @@
     home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/>',
     euro: '<path d="M18 7a7 7 0 1 0 0 10M4 10h10M4 14h10"/>',
     bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
+    up: '<path d="m18 15-6-6-6 6"/>',
     menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
@@ -165,7 +177,7 @@
 
   window.U = {
     icon,
-    pad, toISODate, parseDate, today, addDays, startOfWeek, daysBetween, age,
+    pad, toISODate, parseDate, today, addDays, addMonths, startOfWeek, daysBetween, age,
     fmtDate, fmtDateShort, fmtWeekday, fmtWeekdayShort, relativeDay, fmtMoney, fmtNum,
     esc, uid, initials, avatar,
   };
