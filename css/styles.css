@@ -1145,3 +1145,8 @@ button.diet-row:hover { color: var(--primary); }
 .ds-page .ds-foot { border-top-color: rgba(255, 255, 255, .12); color: #94a3b8; }
 .ds-page .ds-page-n { color: var(--ds-mint); }
 .ds-cover { background: var(--ds-navy); }
+/* Cada bloque tintado con el color de su tipo de alimento. */
+.ds-page .ds-group { background: color-mix(in srgb, var(--ds-accent) 18%, rgba(255, 255, 255, .02)); border-color: color-mix(in srgb, var(--ds-accent) 45%, transparent); }
+.ds-page .ds-glabel b { color: var(--ds-accent); }
+.ds-page .ds-g { background: color-mix(in srgb, var(--ds-accent) 32%, transparent); }
+.ds-page .ds-or::after { background: color-mix(in srgb, var(--ds-accent) 25%, transparent); }

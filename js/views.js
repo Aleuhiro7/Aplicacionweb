@@ -1238,6 +1238,38 @@
     return lines.join('\n');
   }
 
+  /** Colores del PDF según el tipo de alimento: carne roja, fruto seco marrón, hidrato trigo… */
+  const FOOD_TONES = {
+    carne: '#f87171', pescado: '#7dd3fc', huevo: '#fdba74', polvo: '#c4b5fd', vegetal: '#a3e635',
+    hidrato: '#f2d27a', fruta: '#fb923c', aceite: '#cfd96a', fruto: '#b8794a', queso: '#facc15', lacteo: '#e2e8f0', verdura: '#4ade80',
+  };
+  const BLOCK_TONE = {
+    'blk-carnes-magras': 'carne', 'blk-carnes-grasas': 'carne', 'blk-embutidos': 'carne',
+    'blk-pescado-blanco': 'pescado', 'blk-pescado-azul': 'pescado', 'blk-conservas': 'pescado',
+    'blk-huevos': 'huevo', 'blk-proteina-polvo': 'polvo', 'blk-proteina-vegetal': 'vegetal',
+    'blk-cereales': 'hidrato', 'blk-pan': 'hidrato', 'blk-tuberculos': 'hidrato', 'blk-legumbres-secas': 'hidrato', 'blk-legumbres-cocidas': 'hidrato',
+    'blk-fruta': 'fruta', 'blk-grasas': 'aceite', 'blk-frutos-secos': 'fruto', 'blk-quesos-curados': 'queso',
+    'blk-lacteos-menos-grasa': 'lacteo', 'blk-lacteos-mas-grasa': 'lacteo',
+  };
+  const CATEGORY_TONE = {
+    'Carnes y aves': 'carne', 'Embutidos y fiambres': 'carne', 'Pescados y mariscos': 'pescado', 'Huevos': 'huevo', 'Proteína vegetal': 'vegetal',
+    'Lácteos': 'lacteo', 'Cereales, pan y pasta': 'hidrato', 'Tortitas': 'hidrato', 'Tubérculos': 'hidrato', 'Legumbres': 'hidrato',
+    'Frutas': 'fruta', 'Frutos secos y semillas': 'fruto', 'Grasas y aceites': 'aceite', 'Suplementos': 'polvo', 'Verduras y hortalizas': 'verdura',
+  };
+  function toneOf(it, f) {
+    let b = it.blockId && Store.get('foodBlocks', it.blockId);
+    if (!b || !(b.foodIds || []).includes(it.foodId)) b = Store.blocksForFood(it.foodId)[0];
+    if (/queso/i.test(f.name) && /curado|lonchas|rallado|cabra/i.test(f.name)) return 'queso';
+    return (b && BLOCK_TONE[b.id]) || CATEGORY_TONE[f.category] || null;
+  }
+  /** Color de un grupo: el tipo de alimento que más se repite entre sus opciones. */
+  function groupTone(g) {
+    const n = {};
+    for (const r of g.rows) { const t = toneOf(r.it, r.f); if (t) n[t] = (n[t] || 0) + 1; }
+    const best = Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+    return best ? FOOD_TONES[best] : null;
+  }
+
   /**
    * Hoja de la dieta para imprimir o guardar como PDF (A4, en claro): portada, una página por
    * comida (centrada) y, si hay, una página de indicaciones.
@@ -1277,7 +1309,8 @@
           <span class="ds-rule"></span>
           <div class="ds-groups">${groups.map((g) => {
             const many = g.key !== 'extra' && g.rows.length > 1;
-            return `<div class="ds-group ds-${g.key}" style="--rows:${g.rows.length + 1}">
+            const tone = groupTone(g);
+            return `<div class="ds-group ds-${g.key}" style="--rows:${g.rows.length + 1}${tone ? `;--ds-accent:${tone}` : ''}">
               <div class="ds-glabel"><i></i><b>${ROLE_LABEL[g.key]}</b>${many ? `<em>${g.rows.length} opciones · elige una</em>` : g.key === 'extra' ? '<em>además</em>' : ''}</div>
               <div class="ds-items">${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}</span></div>`).join('')}</div>
             </div>`;
