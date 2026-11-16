@@ -699,7 +699,7 @@
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
       </div>
       ${body}
-      ${clientManage(c)}`;
+      ${state.clientTab === 'resumen' ? clientManage(c) : ''}`;
   }
 
   /** Sección al final del perfil para pausar, dar de baja, reactivar o eliminar al cliente. */
