@@ -192,39 +192,56 @@
     return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
   }
 
-  const REVIEW_AFTER = 15; // días después de cada pago en que toca la revisión
+  const FOLLOWUP_DAY = 15; // días después del inicio de cada mes en que toca el seguimiento
   const REVIEW_NOTICE = 2; // días de antelación para avisar
+  const REVIEW_TYPES = { seguimiento: 'Seguimiento', mensual: 'Revisión mensual' };
 
-  /** Último pago cobrado de un cliente (el más reciente por fecha y, si empatan, por hora de registro). */
-  function lastPaid(clientId) {
-    let last = null;
-    for (const p of data.payments) {
-      if (p.clientId !== clientId || p.status !== 'pagado') continue;
-      if (!last || p.date > last.date || (p.date === last.date && (p.createdAt || '') > (last.createdAt || ''))) last = p;
-    }
-    return last;
+  function clientStart(client) {
+    return client.startDate || (client.createdAt || '').slice(0, 10);
   }
 
   /**
-   * Revisión de un cliente activo: toca 15 días después de su último pago.
-   * Estado: 'hecha' (ya marcada en este periodo), 'atrasada', 'hoy',
-   * 'pronto' (en los próximos 2 días) o 'al-dia'. null si no tiene pagos.
+   * Calendario de revisiones desde el alta: cada mes, a los 15 días un seguimiento
+   * y al cumplir el mes una revisión mensual. Devuelve las que caen hasta `until`.
+   */
+  function reviewSchedule(client, until) {
+    const start = clientStart(client);
+    const list = [];
+    if (!start) return list;
+    for (let k = 0; k < 1200; k++) {
+      const seguimiento = U.addDays(U.addMonths(start, k), FOLLOWUP_DAY);
+      if (seguimiento > until) break;
+      list.push({ type: 'seguimiento', date: seguimiento });
+      const mensual = U.addMonths(start, k + 1);
+      if (mensual > until) break;
+      list.push({ type: 'mensual', date: mensual });
+    }
+    return list;
+  }
+
+  function reviewDone(clientId, cp) {
+    return data.reviews.find((r) => r.clientId === clientId && r.due === cp.date && r.type === cp.type) || null;
+  }
+
+  /**
+   * Revisión que toca a un cliente activo. Si la más reciente (hasta dentro de 2 días)
+   * está sin hacer, esa; si no, la siguiente del calendario.
+   * Estado: 'atrasada', 'hoy', 'pronto' (en los próximos 2 días) o 'al-dia'.
    */
   function reviewInfo(client) {
-    if (!client || (client.status || 'activo') !== 'activo') return null;
-    const pay = lastPaid(client.id);
-    if (!pay) return null;
-    const paidDate = pay.date;
-    const date = U.addDays(paidDate, REVIEW_AFTER);
-    const days = U.daysBetween(today(), date);
-    // La revisión de este periodo está hecha si se marcó para este mismo pago.
-    const done = client.reviewedPayment ? client.reviewedPayment === pay.id : (!!client.lastReview && client.lastReview > paidDate);
+    if (!client || (client.status || 'activo') !== 'activo' || !clientStart(client)) return null;
+    const t = today();
+    const horizon = U.addDays(t, REVIEW_NOTICE);
+    const due = reviewSchedule(client, horizon);
+    let cp = due[due.length - 1];
+    if (!cp || reviewDone(client.id, cp)) {
+      cp = reviewSchedule(client, U.addMonths(horizon, 2)).find((x) => x.date > horizon);
+      if (!cp) return null;
+    }
+    const days = U.daysBetween(t, cp.date);
     let status = 'al-dia';
-    if (done) status = 'hecha';
-    else if (days < 0) status = 'atrasada';
-    else if (days === 0) status = 'hoy';
-    else if (days <= REVIEW_NOTICE) status = 'pronto';
-    return { status, days, date, paidDate, paymentId: pay.id, doneDate: done ? client.lastReview : '' };
+    if (cp.date <= horizon) status = days < 0 ? 'atrasada' : days === 0 ? 'hoy' : 'pronto';
+    return { status, days, date: cp.date, type: cp.type, label: REVIEW_TYPES[cp.type] };
   }
 
   function reviewsFor(clientId) {
@@ -291,7 +308,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, REVIEW_AFTER, REVIEW_NOTICE,
+    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

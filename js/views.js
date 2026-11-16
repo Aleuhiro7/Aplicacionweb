@@ -306,17 +306,16 @@
     hoy: { label: 'Hoy', badge: 'warning' },
     pronto: { label: 'Pronto', badge: 'warning' },
     'al-dia': { label: 'Programada', badge: 'info' },
-    hecha: { label: 'Hecha', badge: 'success' },
   };
+  const reviewBadge = (ri) => badge(ri.type === 'mensual' ? 'Revisión mensual' : 'Seguimiento', REVIEW_STATUS[ri.status].badge);
 
   function reviewText(ri) {
     if (!ri) return '';
     const date = U.fmtDateShort(ri.date);
-    if (ri.status === 'atrasada') return `Revisión atrasada ${plural(-ri.days, 'día', 'días')} (${date})`;
-    if (ri.status === 'hoy') return 'Le toca revisión hoy';
-    if (ri.status === 'pronto') return `Revisión ${ri.days === 1 ? 'mañana' : `en ${ri.days} días`} (${date})`;
-    if (ri.status === 'hecha') return `Revisión hecha el ${U.fmtDateShort(ri.doneDate)}`;
-    return `Revisión el ${date}`;
+    if (ri.status === 'atrasada') return `${ri.label} pendiente desde hace ${plural(-ri.days, 'día', 'días')} (${date})`;
+    if (ri.status === 'hoy') return `${ri.label} hoy`;
+    if (ri.status === 'pronto') return `${ri.label} ${ri.days === 1 ? 'mañana' : `en ${ri.days} días`} (${date})`;
+    return `${ri.label} el ${date}`;
   }
 
   /** Fila de aviso de revisión: el nombre abre WhatsApp y la casilla marca la revisión como hecha. */
@@ -326,27 +325,26 @@
       ? `<a class="title wa-link" href="${wa}" target="_blank" rel="noopener" title="Abrir WhatsApp con ${esc(c.name)}">${U.icon('message')}${esc(c.name)}</a>`
       : `<a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>`;
     return `<li class="task review">
-      <button class="task-check" data-action="complete-review" data-client="${c.id}" role="checkbox" aria-checked="false" aria-label="Marcar revisión de ${esc(c.name)} como hecha" title="Marcar revisión como hecha"></button>
+      <button class="task-check" data-action="complete-review" data-client="${c.id}" role="checkbox" aria-checked="false" aria-label="Marcar ${esc(ri.label.toLowerCase())} de ${esc(c.name)} como hecho" title="Marcar como hecho"></button>
       ${avatar(c)}
       <div class="grow">
         ${name}
         <div class="meta"><span>${esc(reviewText(ri))}</span>${wa ? '' : `<a href="#/clientes/${c.id}" data-action="edit-client" data-id="${c.id}">Añade su teléfono para abrir WhatsApp</a>`}</div>
       </div>
-      ${badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge)}
+      ${reviewBadge(ri)}
     </li>`;
   }
 
   function completeReview(clientId) {
     const c = Store.get('clients', clientId);
-    if (!c) return;
-    const ri = Store.reviewInfo(c);
-    const prev = { lastReview: c.lastReview || '', reviewedPayment: c.reviewedPayment || '' };
-    const rec = Store.add('reviews', { clientId, date: today(), paymentId: ri ? ri.paymentId : '' });
-    Store.update('clients', clientId, { lastReview: today(), reviewedPayment: ri ? ri.paymentId : '' });
+    const ri = c && Store.reviewInfo(c);
+    if (!ri || ri.status === 'al-dia') return;
+    const rec = Store.add('reviews', { clientId, type: ri.type, due: ri.date, date: today() });
     App.render();
-    UI.toast(`Revisión de ${c.name.split(' ')[0]} hecha · la siguiente, ${Store.REVIEW_AFTER} días después de su próximo pago`, {
+    const next = Store.reviewInfo(c);
+    UI.toast(`${ri.label} de ${c.name.split(' ')[0]} hecho${next ? ` · siguiente: ${next.label.toLowerCase()} el ${U.fmtDateShort(next.date)}` : ''}`, {
       label: 'Deshacer',
-      onClick: () => { Store.remove('reviews', rec.id); Store.update('clients', clientId, prev); App.render(); },
+      onClick: () => { Store.remove('reviews', rec.id); App.render(); },
     });
   }
 
@@ -542,7 +540,7 @@
     const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
     const reviews = Store.clients()
       .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
-      .filter((x) => x.ri && ['atrasada', 'hoy', 'pronto'].includes(x.ri.status))
+      .filter((x) => x.ri && x.ri.status !== 'al-dia')
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
     return pay.concat(reviews, progress, tasks);
   }
@@ -619,9 +617,9 @@
       section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
         `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
         `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`),
-      section('revisiones', 'Revisiones', reviewAlerts.length, '',
+      section('revisiones', 'Seguimientos y revisiones', reviewAlerts.length, '',
         `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
-        `Ninguna revisión en los próximos ${Store.REVIEW_NOTICE} días`),
+        `Nada en los próximos ${Store.REVIEW_NOTICE} días`),
       section('atencion', 'Pesos pendientes', otherAlerts.length, '',
         `<ul class="list">${otherAlerts.map((a) => `
           <li>
@@ -641,7 +639,7 @@
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
           <p>${payAlerts.length || reviewAlerts.length || otherAlerts.length || taskAlerts.length
-            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'revisión', 'revisiones') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
+            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'seguimiento o revisión', 'seguimientos o revisiones') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
             : 'Todo al día: no tienes pagos, revisiones, pesos ni tareas pendientes.'}</p>
         </div>
       </div>
@@ -685,7 +683,7 @@
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Revisión</th><th class="hide-sm">Último peso</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Próxima revisión</th><th class="hide-sm">Último peso</th></tr></thead>
       <tbody>${list.map((c) => {
         const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
@@ -695,7 +693,7 @@
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
           <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
-          <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? (ri.status === 'hecha' ? badge('Hecha', 'success') : `${esc(U.fmtDateShort(ri.date))} ${ri.status !== 'al-dia' ? badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge) : ''}`) : '<span class="muted">—</span>'; })()}</td>
+          <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? `${esc(U.fmtDateShort(ri.date))} ${badge(ri.type === 'mensual' ? 'Mensual' : 'Seguimiento', REVIEW_STATUS[ri.status].badge)}` : '<span class="muted">—</span>'; })()}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -824,7 +822,7 @@
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
-        <div class="card stat"><div class="stat-label">Revisión</div><div class="stat-value" style="font-size:1.8rem">${!ri ? '—' : ri.status === 'hecha' ? 'Hecha' : esc(U.fmtDateShort(ri.date))}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? `Se programa ${Store.REVIEW_AFTER} días después de cada pago` : 'Solo para clientes activos') : ri.status === 'hecha' ? `El ${esc(U.fmtDateShort(ri.doneDate))} · la siguiente, ${Store.REVIEW_AFTER} días tras el próximo pago` : `${esc(reviewText(ri).replace(/ \(.*\)$/, ''))} · ${Store.REVIEW_AFTER} días tras el pago del ${esc(U.fmtDateShort(ri.paidDate))}`}</div>${ri && ri.status !== 'hecha' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Revisión hecha</button>` : ''}</div>
+        <div class="card stat"><div class="stat-label">${ri ? esc(ri.label) : 'Próxima revisión'}</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${!ri ? 'Solo para clientes activos' : ri.status === 'atrasada' ? `Pendiente desde hace ${plural(-ri.days, 'día', 'días')}` : ri.days === 0 ? 'Hoy' : ri.days === 1 ? 'Mañana' : `En ${ri.days} días`}</div>${ri && ri.status !== 'al-dia' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Hecho</button>` : ''}</div>
       </div>
       <div class="grid-2">
         <section class="card">
