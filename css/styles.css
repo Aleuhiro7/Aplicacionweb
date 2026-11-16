@@ -1118,3 +1118,30 @@ button.diet-row:hover { color: var(--primary); }
 .ds-sparse .ds-or::before { flex-basis: 36mm; }
 .ds-sparse .ds-name { font-size: 20pt; }
 .ds-sparse .ds-glabel { font-size: 11pt; }
+/* Todas las hojas con el fondo de la portada (azul marino) y el logo en turquesa. */
+.ds-page {
+  background: radial-gradient(120mm 120mm at 100% 0%, rgba(94, 234, 212, .14), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(15, 118, 110, .3), transparent 70%), var(--ds-navy);
+  color: #e2e8f0;
+  --ds-p: #60a5fa; --ds-c: #2dd4bf; --ds-f: #a78bfa; --ds-x: #fbbf24;
+}
+.ds-page .ds-brand strong { color: #fff; }
+.ds-page .ds-brand small { color: var(--ds-mint); }
+.ds-page .ds-logo { background: var(--ds-mint); color: var(--ds-navy); }
+.ds-page .ds-top { border-bottom-color: rgba(255, 255, 255, .12); }
+.ds-page .ds-client { color: #cbd5e1; }
+.ds-page .ds-kicker { color: var(--ds-mint); }
+.ds-page .ds-title { color: #fff; }
+.ds-page .ds-rule { background: var(--ds-mint); }
+.ds-page .ds-group { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .1); box-shadow: none; }
+.ds-page .ds-glabel { color: #94a3b8; }
+.ds-page .ds-glabel b { color: #fff; }
+.ds-page .ds-g { background: rgba(94, 234, 212, .12); color: #fff; }
+.ds-page .ds-g small { color: #94a3b8; }
+.ds-page .ds-name { color: #f1f5f9; }
+.ds-page .ds-or::after { background: rgba(255, 255, 255, .1); }
+.ds-page .ds-veg { background: rgba(74, 222, 128, .12); color: #bbf7d0; border: 1px solid rgba(74, 222, 128, .25); }
+.ds-page .ds-veg b { color: #86efac; }
+.ds-page .ds-notes { background: rgba(255, 255, 255, .05); color: #f1f5f9; border-left-color: var(--ds-mint); }
+.ds-page .ds-foot { border-top-color: rgba(255, 255, 255, .12); color: #94a3b8; }
+.ds-page .ds-page-n { color: var(--ds-mint); }
+.ds-cover { background: var(--ds-navy); }
