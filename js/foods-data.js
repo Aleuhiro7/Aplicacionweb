@@ -151,6 +151,7 @@
     ['Harina de trigo', 345, 10, 72, 1.2],
     ['Harina de avena', 375, 13, 60, 7.5],
     ['Muesli sin azúcar añadido', 360, 9.5, 62, 6.5],
+    ['Cereales tipo cornflakes', 378, 7, 84, 0.9, '', 'Copos de maíz tostados. Mejor sin azúcar añadido ni chocolate; un bol suele ser de 30-40 g.'],
     ['Fideos de arroz (crudos)', 360, 6, 82, 0.5],
     ['Ñoquis de patata', 150, 3.5, 32, 0.5],
     ['Maíz dulce (lata, escurrido)', 80, 2.6, 14.5, 1.3],
@@ -274,7 +275,7 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 9;
+window.FOOD_BLOCKS_VERSION = 10;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
@@ -284,6 +285,7 @@ window.FOOD_BLOCKS_CHANGES = {
   7: { replace: ['blk-verdura'] },
   8: { replace: ['blk-verdura'] },
   9: { remove: ['blk-verdura'] },
+  10: { replace: ['blk-cereales'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -309,7 +311,7 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Tofu firme', 'Seitán', 'Tempeh', 'Soja texturizada (seca)', 'Edamame'] },
 
   { id: 'blk-cereales', family: 'Hidratos de carbono', name: 'Cereales (en crudo)', macro: 'carbs', amount: 40,
-    foods: ['Arroz blanco (crudo)', 'Arroz integral (crudo)', 'Arroz basmati (crudo)', 'Pasta (cruda)', 'Pasta integral (cruda)', 'Copos de avena', 'Harina de avena', 'Cuscús (crudo)', 'Quinoa (cruda)', 'Fideos de arroz (crudos)', 'Muesli sin azúcar añadido'] },
+    foods: ['Arroz blanco (crudo)', 'Arroz integral (crudo)', 'Arroz basmati (crudo)', 'Pasta (cruda)', 'Pasta integral (cruda)', 'Copos de avena', 'Harina de avena', 'Cuscús (crudo)', 'Quinoa (cruda)', 'Fideos de arroz (crudos)', 'Muesli sin azúcar añadido', 'Cereales tipo cornflakes'] },
   { id: 'blk-pan', family: 'Hidratos de carbono', name: 'Pan y tortitas', macro: 'carbs', amount: 40,
     foods: ['Pan de barra', 'Pan integral', 'Pan de molde integral', 'Pan de centeno', 'Pan tostado / biscotes', 'Tortillas de trigo (wraps)', 'Tortitas de arroz', 'Tortitas de arroz integral', 'Tortitas de maíz', 'Tortitas de lentejas', 'Tortitas de garbanzo'] },
   { id: 'blk-tuberculos', family: 'Hidratos de carbono', name: 'Tubérculos', macro: 'carbs', amount: 40,
