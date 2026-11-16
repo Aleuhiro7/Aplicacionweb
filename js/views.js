@@ -690,6 +690,46 @@
     });
   }
 
+  const ACTIVITY = [
+    { v: 1.2, label: 'Sedentaria (poco o ningún ejercicio)' },
+    { v: 1.375, label: 'Ligera (1-3 días de ejercicio)' },
+    { v: 1.55, label: 'Moderada (3-5 días de ejercicio)' },
+    { v: 1.725, label: 'Alta (6-7 días de ejercicio)' },
+    { v: 1.9, label: 'Muy alta (trabajo físico + entreno)' },
+  ];
+
+  /** Mantenimiento estimado (Mifflin-St Jeor × actividad) con los datos de la ficha, o null si faltan. */
+  function estimateMaintenance(c, activity) {
+    const w = Store.lastMeasurement(c.id);
+    const kg = w && Number(w.weight) > 0 ? Number(w.weight) : null;
+    const cm = Number(c.height) > 0 ? Number(c.height) : null;
+    const age = U.age(c.birthDate);
+    if (!kg || !cm || !age) return null;
+    const sex = c.gender === 'Hombre' ? 5 : c.gender === 'Mujer' ? -161 : -78;
+    const bmr = 10 * kg + 6.25 * cm - 5 * age + sex;
+    return Math.round((bmr * (Number(activity) || 1.55)) / 10) * 10;
+  }
+
+  /** Déficit (o superávit) frente al mantenimiento. */
+  function deficitInfo(t) {
+    const m = Number(t && t.maintenance);
+    const k = Number(t && t.kcal);
+    if (!(m > 0) || !(k > 0)) return null;
+    const diff = m - k;
+    const pct = Math.round((Math.abs(diff) / m) * 100);
+    if (Math.abs(diff) < 50) return { kind: 'mant', diff, pct, label: 'Mantenimiento', text: 'Calorías de mantenimiento' };
+    return diff > 0
+      ? { kind: 'deficit', diff, pct, label: 'Déficit', text: `Déficit de ${fmtNum(diff, 0)} kcal al día (−${pct} %)` }
+      : { kind: 'superavit', diff, pct, label: 'Superávit', text: `Superávit de ${fmtNum(-diff, 0)} kcal al día (+${pct} %)` };
+  }
+
+  /** Agua recomendada al día: unos 35 ml por kg (mínimo 2 L), redondeada a medio litro. */
+  function waterLiters(clientId) {
+    const w = Store.lastMeasurement(clientId);
+    const kg = w && Number(w.weight) > 0 ? Number(w.weight) : null;
+    return kg ? Math.max(2, Math.round(kg * 0.035 * 2) / 2) : 2.5;
+  }
+
   function presetName(t) {
     const hit = Object.entries(DIET_PRESETS).find(([, p]) => p.carbs === Math.round(t.carbsPct) && p.protein === Math.round(t.proteinPct) && p.fat === Math.round(t.fatPct));
     return hit ? hit[1].label : 'Personalizada';
@@ -745,6 +785,7 @@
       <div class="donut-legend">${split.map((m) => `<span class="${m.cls}"><i></i>${m.label === 'Carbohidratos' ? 'Carbohidratos' : m.label}</span>`).join('')}</div>
       <div class="diet-rows">
         <div class="diet-row"><span>Tipo de dieta</span><strong class="accent">${esc(presetName(t))}</strong></div>
+        ${deficitInfo(t) ? `<div class="diet-row"><span>Mantenimiento ${fmtNum(t.maintenance, 0)} kcal</span><strong class="accent">${esc(deficitInfo(t).label)}${deficitInfo(t).kind === 'mant' ? '' : ` ${fmtNum(Math.abs(deficitInfo(t).diff), 0)} kcal (${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${deficitInfo(t).pct} %)`}</strong></div>` : ''}
         <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
       </div>
       ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
@@ -758,8 +799,12 @@
     const t0 = (d && d.targets) || { kcal: 2000, carbsPct: 33, proteinPct: 40, fatPct: 27 };
     const lastW = Store.lastMeasurement(clientId);
     const kg = lastW && Number(lastW.weight) > 0 ? Number(lastW.weight) : null;
+    const act0 = Number(t0.activity) || 1.55;
     const body = `<div class="form-grid">
-      <div class="field full"><label for="dt-kcal">Objetivo de calorías (kcal)</label><input id="dt-kcal" type="number" min="500" max="8000" step="10" inputmode="numeric" value="${esc(t0.kcal)}"></div>
+      <div class="field"><label for="dt-activity">Actividad</label><select id="dt-activity">${ACTIVITY.map((a) => `<option value="${a.v}" ${a.v === act0 ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>
+      <div class="field"><label for="dt-maint">Mantenimiento (kcal)</label><input id="dt-maint" type="number" min="0" max="9000" step="10" inputmode="numeric" value="${esc(t0.maintenance || '')}" placeholder="Opcional"></div>
+      <div class="full hint" id="dt-est" style="margin-top:-6px"></div>
+      <div class="field full"><label for="dt-kcal">Objetivo de calorías (kcal)</label><input id="dt-kcal" type="number" min="500" max="8000" step="10" inputmode="numeric" value="${esc(t0.kcal)}"><div class="hint" id="dt-deficit"></div></div>
       <div class="field full"><label for="dt-preset">Tipo de dieta</label><select id="dt-preset">
         <option value="">Personalizada</option>
         ${Object.entries(DIET_PRESETS).map(([k, p]) => `<option value="${k}">${p.label} (${p.carbs} / ${p.protein} / ${p.fat})</option>`).join('')}
@@ -798,7 +843,22 @@
           const hit = Object.entries(DIET_PRESETS).find(([, p]) => p.carbs === Math.round(pct.carbs) && p.protein === Math.round(pct.protein) && p.fat === Math.round(pct.fat));
           $('dt-preset').value = hit ? hit[0] : '';
         };
-        $('dt-kcal').addEventListener('input', () => paint());
+        const est = () => estimateMaintenance(c, $('dt-activity').value);
+        const paintMaint = () => {
+          const e = est();
+          $('dt-est').innerHTML = e
+            ? `Estimado con su peso, altura, edad y actividad: <strong>${fmtNum(e, 0)} kcal</strong> <button type="button" class="link-btn" id="dt-use">Usar</button>`
+            : 'Para estimarlo, rellena en su ficha la altura, la fecha de nacimiento y el sexo, y apunta su peso.';
+          const use = $('dt-use');
+          if (use) use.onclick = () => { $('dt-maint').value = e; paintMaint(); };
+          const di = deficitInfo({ maintenance: $('dt-maint').value, kcal: kcal() });
+          $('dt-deficit').textContent = di ? di.text : '';
+        };
+        if (!t0.maintenance && est()) $('dt-maint').value = est();
+        $('dt-activity').addEventListener('change', paintMaint);
+        $('dt-maint').addEventListener('input', paintMaint);
+        $('dt-kcal').addEventListener('input', () => { paint(); paintMaint(); });
+        paintMaint();
         $('dt-preset').addEventListener('change', () => {
           const p = DIET_PRESETS[$('dt-preset').value];
           if (p) { pct.carbs = p.carbs; pct.protein = p.protein; pct.fat = p.fat; paint(); }
@@ -821,7 +881,8 @@
         if (!(k >= 500)) { UI.toast('Indica un objetivo de calorías válido'); return; }
         const sum = pct.carbs + pct.protein + pct.fat;
         if (Math.abs(sum - 100) >= 0.6) { UI.toast('El reparto de macros debe sumar 100 %'); return; }
-        const targets = { kcal: Math.round(k), carbsPct: pct.carbs, proteinPct: pct.protein, fatPct: pct.fat };
+        const maint = Number(dlg.querySelector('#dt-maint').value) || 0;
+        const targets = { kcal: Math.round(k), carbsPct: pct.carbs, proteinPct: pct.protein, fatPct: pct.fat, activity: Number(dlg.querySelector('#dt-activity').value) || 1.55, maintenance: maint > 0 ? Math.round(maint) : 0 };
         if (d) Store.update('diets', d.id, { targets }); else Store.add('diets', { clientId, text: '', targets });
         UI.closeModal();
         UI.toast('Objetivos guardados');
@@ -1188,17 +1249,20 @@
   function clientDiet(c) {
     const d = Store.dietFor(c.id);
     if (!state.mealCount) state.mealCount = 5;
-    const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim());
+    const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim() || (d.supps || '').trim());
     return `<section class="card diet-panel">
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
     <div class="diet-sec">
       <div class="card-header">
-        <h2>Indicaciones</h2>
+        <h2>Indicaciones y suplementación</h2>
         ${d && (d.text || '').trim() ? `<span class="muted" style="font-size:.85rem">Actualizado el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : ''}
       </div>
       <form class="diet-form" data-client="${c.id}">
-        <textarea name="text" rows="5" placeholder="Recomendaciones para ${esc(c.name.split(' ')[0])}: agua, horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
+        <textarea name="text" rows="5" placeholder="Recomendaciones para ${esc(c.name.split(' ')[0])}: horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
+        <h3 class="diet-subtitle">Suplementación</h3>
+        <textarea name="supps" rows="4" placeholder="Ej.: Creatina monohidrato · 5 g al día, cualquier hora&#10;Whey · 30 g después de entrenar&#10;Vitamina D · 2000 UI con el desayuno" aria-label="Suplementación">${esc(d ? d.supps || '' : '')}</textarea>
+        <div class="hint" style="margin-top:6px">Una línea por suplemento. En el PDF también salen los consejos de agua (unos ${fmtNum(waterLiters(c.id), 1)} L al día para ${esc(c.name.split(' ')[0])}) y el plato saludable para improvisar.</div>
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
     </div>
@@ -1217,7 +1281,7 @@
     </section>`;
   }
 
-  const dietSendable = (d) => !!d && ((d.meals || []).some((m) => (m.items || []).length || m.vegFree) || !!(d.text || '').trim());
+  const dietSendable = (d) => !!d && ((d.meals || []).some((m) => (m.items || []).length || m.vegFree) || !!(d.text || '').trim() || !!(d.targets && Number(d.targets.kcal) > 0));
 
   /** Texto de la dieta para WhatsApp (con *negritas* y _cursivas_ de WhatsApp). */
   function dietText(c, d) {
@@ -1278,7 +1342,13 @@
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
     const notes = (d.text || '').trim();
-    const total = 1 + meals.length + (notes ? 1 : 0);
+    const supps = (d.supps || '').split('\n').map((x) => x.trim()).filter(Boolean);
+    const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
+    // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
+    const extraPages = [t ? 'Tu plan' : null].filter(Boolean);
+    const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
+    const total = 1 + extraPages.length + meals.length + afterPages.length;
+    const firstMeal = 2 + extraPages.length;
     const brand = '<div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Coach</small></span></div>';
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
@@ -1292,7 +1362,7 @@
             <span class="ds-rule"></span>
             <p>${esc(fmtDate(today()))}</p>
           </div>
-          <ol class="ds-index">${meals.map((m, i) => `<li><span>${i + 1}</span>${esc(m.name)}</li>`).join('')}${notes ? `<li><span>${meals.length + 1}</span>Indicaciones</li>` : ''}</ol>
+          <ol class="ds-index">${extraPages.concat(meals.map((m) => m.name), afterPages).map((name, i) => `<li><span>${i + 1}</span>${esc(name)}</li>`).join('')}</ol>
           ${anyOptions ? `<p class="ds-cover-note">${optNote}</p>` : '<p class="ds-cover-note"></p>'}
         </div>
       </section>`;
@@ -1318,20 +1388,86 @@
           ${m.vegFree ? '<div class="ds-veg"><span>🥗</span><div><b>Verdura libre</b>Puedes añadir hasta 150 g de verdura, la que quieras.</div></div>' : ''}
           </div>
         </div>
-        ${foot(i + 2, groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '')}
+        ${foot(firstMeal + i, groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '')}
       </section>`;
     };
-    const notesPage = notes ? `<section class="ds-page">
+    const page = (n, kicker, title, inner, cls = '', footTxt = 'David Orihuela · Coach') => `<section class="ds-page ${cls}">
         ${top}
         <div class="ds-main">
-          <span class="ds-kicker">Para tener en cuenta</span>
-          <h2 class="ds-title">Indicaciones</h2>
+          <span class="ds-kicker">${kicker}</span>
+          <h2 class="ds-title">${title}</h2>
           <span class="ds-rule"></span>
-          <div class="ds-notes">${esc(notes).replace(/\n/g, '<br>')}</div>
+          ${inner}
         </div>
-        ${foot(total, 'David Orihuela · Coach')}
-      </section>` : '';
-    return `<article class="ds">${cover}${meals.map(mealPage).join('')}${notesPage}</article>`;
+        ${foot(n, footTxt)}
+      </section>`;
+    let n = 1;
+    const out = [cover];
+    if (t) {
+      const split = macroSplit(t);
+      const w = Store.lastMeasurement(c.id);
+      const kg = w && Number(w.weight) > 0 ? Number(w.weight) : null;
+      const di = deficitInfo(t);
+      const tone = { protein: 'var(--ds-p)', carbs: 'var(--ds-c)', fat: 'var(--ds-f)' };
+      const order = ['protein', 'carbs', 'fat'].map((k) => split.find((m) => m.key === k));
+      out.push(page(++n, 'Tus números', 'Tu plan', `<div class="ds-plan">
+          <div class="ds-kpis">
+            <div class="ds-kpi"><span>Calorías al día</span><b>${fmtNum(t.kcal, 0)}<small>kcal</small></b></div>
+            ${Number(t.maintenance) > 0 ? `<div class="ds-kpi"><span>Mantenimiento</span><b>${fmtNum(t.maintenance, 0)}<small>kcal</small></b></div>` : ''}
+            ${di ? `<div class="ds-kpi ds-kpi-${di.kind}"><span>${di.label}</span><b>${di.kind === 'mant' ? '0' : `${di.kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(di.diff), 0)}`}<small>kcal · ${di.pct} %</small></b></div>` : ''}
+          </div>
+          <table class="ds-table">
+            <thead><tr><th>Macronutriente</th><th>Gramos</th><th>Kcal</th><th>%</th>${kg ? '<th>g/kg</th>' : ''}</tr></thead>
+            <tbody>${order.map((m) => `<tr style="--ds-accent:${tone[m.key]}"><td><i></i>${m.label}</td><td><b>${m.grams} g</b></td><td>${m.kcal}</td><td>${fmtNum(m.pct, 0)} %</td>${kg ? `<td>${fmtNum(m.grams / kg, 1)}</td>` : ''}</tr>`).join('')}</tbody>
+            <tfoot><tr><td>Total</td><td></td><td><b>${fmtNum(order.reduce((x, m) => x + m.kcal, 0), 0)}</b></td><td>100 %</td>${kg ? '<td></td>' : ''}</tr></tfoot>
+          </table>
+          <div class="ds-macrobar">${order.map((m) => `<span style="flex:${m.pct};background:${tone[m.key]}"></span>`).join('')}</div>
+          ${di && di.kind === 'deficit' ? `<p class="ds-plan-note">Comes unas <b>${fmtNum(di.diff, 0)} kcal menos</b> de las que gastas cada día: es lo que te hace perder grasa de forma progresiva, sin pasar hambre ni perder rendimiento.</p>`
+            : di && di.kind === 'superavit' ? `<p class="ds-plan-note">Comes unas <b>${fmtNum(-di.diff, 0)} kcal más</b> de las que gastas: un pequeño superávit para ganar masa muscular.</p>`
+            : di ? '<p class="ds-plan-note">Comes lo mismo que gastas: el objetivo es mantener tu peso mientras mejoras tu composición.</p>' : ''}
+          ${kg ? `<p class="ds-plan-small">g/kg calculado con tu último peso: ${fmtNum(kg)} kg.</p>` : ''}
+        </div>`));
+    }
+    n += 0;
+    out.push(...meals.map(mealPage));
+    n += meals.length;
+    const plate = `<div class="ds-plate">
+        <svg viewBox="0 0 200 200" class="ds-plate-svg" aria-hidden="true">
+          <circle cx="100" cy="100" r="96" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#f87171"/>
+          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#4ade80"/>
+          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#f2d27a"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="#0b1b33" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#0b1b33" stroke-width="3"/>
+          <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
+        </svg>
+        <div class="ds-plate-legend">
+          <div style="--ds-accent:#f87171"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
+          <div style="--ds-accent:#4ade80"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
+          <div style="--ds-accent:#f2d27a"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
+          <div style="--ds-accent:#cfd96a"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
+        </div>
+      </div>
+      <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;
+    out.push(page(++n, 'Para improvisar', 'El plato saludable', plate));
+    const L = waterLiters(c.id);
+    const water = `<div class="ds-water">
+        <div class="ds-water-big"><b>${fmtNum(L, 1)} L</b><span>de agua al día</span></div>
+        <ul class="ds-tips">
+          <li>Empieza el día con un vaso de agua al levantarte.</li>
+          <li>Ten siempre una botella a mano y rellénala.</li>
+          <li>Bebe un vaso con cada comida.</li>
+          <li>Añade 500-750 ml por cada hora de entrenamiento.</li>
+          <li>Si la orina es clara, vas bien hidratado.</li>
+          <li>Infusiones y bebidas zero cuentan, pero la base es el agua.</li>
+        </ul>
+      </div>`;
+    const suppsBox = supps.length ? `<h3 class="ds-sub">Suplementación</h3><ul class="ds-supps">${supps.map((x) => {
+        const [name, ...rest] = x.split(/\s[·:\-–]\s|:\s/);
+        return `<li><b>${esc(name)}</b>${rest.length ? `<span>${esc(rest.join(' · '))}</span>` : ''}</li>`;
+      }).join('')}</ul>` : '';
+    out.push(page(++n, supps.length ? 'Hábitos' : 'Hábitos', supps.length ? 'Agua y suplementación' : 'Hidratación', water + suppsBox, supps.length ? 'ds-dense-info' : ''));
+    if (notes) out.push(page(++n, 'Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(notes).replace(/\n/g, '<br>')}</div>`));
+    return `<article class="ds">${out.join('')}</article>`;
   }
 
   /** Abre el diálogo de impresión con la hoja de la dieta (desde ahí se guarda como PDF). */
@@ -1383,9 +1519,10 @@
   function submitDietForm(form) {
     const clientId = form.dataset.client;
     const text = form.elements.text.value;
+    const supps = form.elements.supps ? form.elements.supps.value : '';
     const d = Store.dietFor(clientId);
-    if (d) Store.update('diets', d.id, { text });
-    else Store.add('diets', { clientId, text });
+    if (d) Store.update('diets', d.id, { text, supps });
+    else Store.add('diets', { clientId, text, supps });
     UI.toast('Indicaciones guardadas');
     App.render();
   }
