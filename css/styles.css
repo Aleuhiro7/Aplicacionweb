@@ -860,3 +860,11 @@ body.q-page { min-height: 100vh; }
 
 #cuestionarios.has-items { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--success); }
 #cuestionarios .count { background: var(--success); color: #04210f; }
+
+/* ---------- Biblioteca de alimentos ---------- */
+.macros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.macro { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 8px; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.macro-val { font: 700 1.5rem/1 "Barlow Semi Condensed", sans-serif; color: var(--primary); }
+.macro-val small { font-size: .8rem; color: var(--muted); }
+.macro-label { font-size: .75rem; color: var(--muted); font-weight: 600; }
+@media (max-width: 420px) { .macros { grid-template-columns: repeat(2, 1fr); } }

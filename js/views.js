@@ -38,6 +38,8 @@
     clientTab: 'resumen',
     payFilter: 'todos',
     libSearch: '',
+    foodSearch: '',
+    foodCat: 'todos',
     pick: null, // { client, day } cuando se elige un ejercicio para una rutina
     libGroup: 'todos',
     openPay: null, // cliente con el desplegable de pago abierto
@@ -1391,6 +1393,132 @@
     });
   }
 
+  /* =========================================================
+   * Biblioteca de alimentos
+   * ======================================================= */
+
+  const FOOD_CATEGORIES = ['Proteínas', 'Carbohidratos', 'Grasas', 'Lácteos', 'Frutas', 'Verduras y hortalizas', 'Legumbres', 'Frutos secos y semillas', 'Bebidas', 'Suplementos', 'Otros'];
+
+  function foodCategories() {
+    const used = new Set(Store.data.foods.map((x) => x.category).filter(Boolean));
+    return FOOD_CATEGORIES.filter((g) => used.has(g)).concat([...used].filter((g) => !FOOD_CATEGORIES.includes(g)).sort((a, b) => a.localeCompare(b, 'es')));
+  }
+
+  const num = (v) => (v === '' || v === undefined || v === null || isNaN(v) ? null : Number(v));
+  /** «100 g · 165 kcal · P 31 g · C 0 g · G 3,6 g» */
+  function foodMacros(f) {
+    const parts = [];
+    if (f.portion) parts.push(f.portion);
+    if (num(f.kcal) !== null) parts.push(`${fmtNum(f.kcal, 0)} kcal`);
+    const m = [['P', f.protein], ['C', f.carbs], ['G', f.fat]].filter(([, v]) => num(v) !== null).map(([k, v]) => `${k} ${fmtNum(v)} g`);
+    return parts.concat(m).join(' · ');
+  }
+
+  function filteredFoods() {
+    const q = normalizeText(state.foodSearch);
+    const order = foodCategories();
+    const rank = (g) => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
+    return Store.foods()
+      .sort((a, b) => rank(a.category) - rank(b.category) || a.name.localeCompare(b.name, 'es'))
+      .filter((f) => (state.foodCat === 'todos' || f.category === state.foodCat)
+        && (!q || [f.name, f.category, f.notes].some((x) => normalizeText(x).includes(q))));
+  }
+
+  function foodList() {
+    if (!Store.data.foods.length) {
+      return empty('apple', '<strong>La biblioteca de alimentos está vacía.</strong><br>Añade alimentos con «+ Alimento».');
+    }
+    const list = filteredFoods();
+    if (!list.length) return empty('search', 'Ningún alimento coincide con la búsqueda.');
+    const groups = [];
+    for (const f of list) {
+      const g = f.category || 'Sin categoría';
+      const last = groups[groups.length - 1];
+      if (last && last.name === g) last.items.push(f); else groups.push({ name: g, items: [f] });
+    }
+    return groups.map((g) => `
+      <h3 class="lib-group">${esc(g.name)} <span class="muted">${g.items.length}</span></h3>
+      <div class="lib-grid">${g.items.map((f) => `
+        <button class="lib-card" data-action="food-open" data-id="${f.id}">
+          <span class="lib-name">${esc(f.name)}</span>
+          ${foodMacros(f) ? `<span class="lib-series">${esc(foodMacros(f))}</span>` : ''}
+          ${f.notes ? `<span class="lib-desc">${esc(f.notes)}</span>` : ''}
+        </button>`).join('')}</div>`).join('');
+  }
+
+  function renderFoods() {
+    const cats = foodCategories();
+    if (state.foodCat !== 'todos' && !cats.includes(state.foodCat)) state.foodCat = 'todos';
+    const chip = (v, l) => `<button class="chip${state.foodCat === v ? ' active' : ''}" data-action="food-cat" data-value="${esc(v)}">${esc(l)}</button>`;
+    return `
+      <div class="page-header">
+        <div><h1 class="display">Biblioteca de alimentos</h1><p>${plural(Store.data.foods.length, 'alimento', 'alimentos')}</p></div>
+        <button class="btn primary pill" data-action="food-new">${U.icon('plus')}Alimento</button>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input type="search" class="search" id="food-search" placeholder="Buscar alimento o categoría…" value="${esc(state.foodSearch)}" aria-label="Buscar alimentos">
+        </div>
+        ${cats.length ? `<div class="lib-chips">${chip('todos', 'Todos')}${cats.map((g) => chip(g, g)).join('')}</div>` : ''}
+        <div id="food-list">${foodList()}</div>
+      </div>`;
+  }
+
+  function onFoodSearch(value) {
+    state.foodSearch = value;
+    const el = document.getElementById('food-list');
+    if (el) el.innerHTML = foodList();
+  }
+
+  function foodForm(id) {
+    const existing = id ? Store.get('foods', id) : null;
+    if (existing && existing.builtIn) return; // los alimentos de serie no se editan
+    UI.form({
+      title: existing ? 'Editar alimento' : 'Nuevo alimento',
+      fields: [
+        { name: 'name', label: 'Nombre', required: true, full: true, placeholder: 'Ej.: Pechuga de pollo, Arroz basmati…' },
+        { name: 'category', label: 'Categoría', datalist: FOOD_CATEGORIES, placeholder: 'Ej.: Proteínas' },
+        { name: 'portion', label: 'Cantidad de referencia', default: '100 g', placeholder: 'Ej.: 100 g, 1 unidad, 1 cucharada' },
+        { type: 'section', label: 'Valores para esa cantidad' },
+        { name: 'kcal', label: 'Calorías (kcal)', type: 'number', step: '0.1', min: 0 },
+        { name: 'protein', label: 'Proteínas (g)', type: 'number', step: '0.1', min: 0 },
+        { name: 'carbs', label: 'Carbohidratos (g)', type: 'number', step: '0.1', min: 0 },
+        { name: 'fat', label: 'Grasas (g)', type: 'number', step: '0.1', min: 0 },
+        { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Marca, cómo pesarlo (crudo/cocinado), equivalencias…' },
+      ],
+      values: existing || (state.foodCat !== 'todos' ? { category: state.foodCat } : {}),
+      submitLabel: existing ? 'Guardar' : 'Añadir',
+      onDelete: existing ? async () => {
+        const ok = await UI.confirm({ title: 'Eliminar alimento', message: `¿Eliminar «${esc(existing.name)}» de la biblioteca?` });
+        if (!ok) return;
+        Store.removeFood(id);
+        UI.toast('Alimento eliminado');
+        App.render();
+      } : null,
+      onSubmit: (v) => {
+        if (existing) Store.update('foods', id, v); else Store.add('foods', v);
+        UI.toast(existing ? 'Alimento actualizado' : 'Alimento añadido');
+        App.render();
+      },
+    });
+  }
+
+  function openFood(id) {
+    const f = Store.get('foods', id);
+    if (!f) return;
+    const cell = (label, v, unit) => `<div class="macro"><span class="macro-val">${num(v) === null ? '—' : esc(fmtNum(v, unit === 'kcal' ? 0 : 1))}${num(v) === null ? '' : ` <small>${unit}</small>`}</span><span class="macro-label">${label}</span></div>`;
+    UI.openModal({
+      title: f.name,
+      body: `<div class="lib-detail">
+        <div class="actions" style="margin-bottom:14px">${f.category ? badge(f.category, 'primary') : ''}${f.portion ? badge(`Por ${f.portion}`) : ''}</div>
+        <div class="macros">${cell('Calorías', f.kcal, 'kcal')}${cell('Proteínas', f.protein, 'g')}${cell('Carbohidratos', f.carbs, 'g')}${cell('Grasas', f.fat, 'g')}</div>
+        ${f.notes ? `<p class="lib-detail-desc" style="margin-top:14px">${esc(f.notes)}</p>` : ''}
+      </div>`,
+      footer: `${f.builtIn ? '<span style="margin-right:auto"></span>' : `<button type="button" class="btn" id="food-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>`}<button type="button" class="btn primary" data-close>Cerrar</button>`,
+      onOpen: () => { const b = document.getElementById('food-edit'); if (b) b.onclick = () => foodForm(id); },
+    });
+  }
+
   /* ---------- Elegir ejercicio de la biblioteca para una rutina ---------- */
 
   /** Cliente, rutina y día para los que se está eligiendo ejercicio (o null). */
@@ -1867,6 +1995,9 @@
     'open-client-tab': (d) => { state.clientTab = d.value; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'toggle-task': (d) => toggleTask(d.id),
     'lib-new': () => libraryForm(),
+    'food-new': () => foodForm(),
+    'food-open': (d) => openFood(d.id),
+    'food-cat': (d) => { state.foodCat = d.value; App.render(); },
     'lib-open': (d) => openLibraryExercise(d.id),
     'lib-group': (d) => { state.libGroup = d.value; App.render(); },
     'routine-create': (d) => routineForm(Store.get('clients', d.client)),
@@ -1928,7 +2059,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
+    renderLibrary, onLibrarySearch, renderFoods, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

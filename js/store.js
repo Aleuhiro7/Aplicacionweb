@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods'];
 
   function emptyData() {
     return {
@@ -17,6 +17,7 @@
       routines: [], // rutina de entrenamiento de cada cliente (días con sus ejercicios)
       library: [], // biblioteca de ejercicios
       diets: [], // dieta de cada cliente (por ahora, texto libre)
+      foods: [], // biblioteca de alimentos
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -26,7 +27,7 @@
 
   function normalize(raw) {
     const base = emptyData();
-    if (!raw || typeof raw !== 'object') { seedLibrary(base); return base; }
+    if (!raw || typeof raw !== 'object') { seedLibrary(base); seedFoods(base); return base; }
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
     migrateNextDue(base);
@@ -35,6 +36,7 @@
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (q === '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?' ? '¿Cuánta agua bebes al día? ¿Consumes alcohol?' : q));
     }
     seedLibrary(base);
+    seedFoods(base);
     // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
     for (const c of base.clients) if (c.startDate && c.nextDue) c.nextDue = snapToStart(c.startDate, c.nextDue);
     return base;
@@ -77,6 +79,17 @@
   }
 
   /** Añade a la biblioteca los ejercicios de serie que falten (salvo los que el usuario borró). */
+  /** Igual que la biblioteca de ejercicios: añade los alimentos de serie que falten (de solo lectura). */
+  function seedFoods(d) {
+    const defaults = window.FOODS_DEFAULT || [];
+    if (!defaults.length) return;
+    const byId = new Map(defaults.map((x) => [x.id, x]));
+    d.foods = d.foods.map((x) => (byId.has(x.id) ? Object.assign({}, byId.get(x.id), { builtIn: true }) : x));
+    const have = new Set(d.foods.map((x) => x.id));
+    const removed = new Set(d.settings.foodsRemoved || []);
+    for (const f of defaults) if (!have.has(f.id) && !removed.has(f.id)) d.foods.push(Object.assign({ builtIn: true }, f));
+  }
+
   function seedLibrary(d) {
     const defaults = window.LIBRARY_DEFAULT || [];
     if (!defaults.length) return;
@@ -323,6 +336,16 @@
   }
 
   /** Borra un ejercicio de la biblioteca; si venía de serie, se recuerda para no volver a añadirlo. */
+  function foods() {
+    return data.foods.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }
+
+  function removeFood(id) {
+    const f = get('foods', id);
+    if (f && f.builtIn) data.settings.foodsRemoved = [...new Set([...(data.settings.foodsRemoved || []), id])];
+    remove('foods', id);
+  }
+
   function removeLibraryExercise(id) {
     const ex = get('library', id);
     if (ex && ex.builtIn) data.settings.libraryRemoved = [...new Set([...(data.settings.libraryRemoved || []), id])];
@@ -387,6 +410,7 @@
     data = emptyData();
     data.settings = settings;
     seedLibrary(data);
+    seedFoods(data);
     save();
   }
 
@@ -395,7 +419,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },
