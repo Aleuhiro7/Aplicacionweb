@@ -68,9 +68,17 @@
   const empty = (icon, text, extra = '') => `<div class="empty"><span class="empty-icon">${U.icon(icon)}</span><div>${text}</div>${extra}</div>`;
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  function greeting() {
-    const h = new Date().getHours();
-    return h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+  /** Saludo según la hora local del dispositivo: días 6–14 h, tardes 14–21 h, noches 21–6 h. */
+  function greeting(date = new Date()) {
+    const h = date.getHours();
+    if (h >= 6 && h < 14) return 'Buenos días';
+    if (h >= 14 && h < 21) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+
+  function greetingText() {
+    const name = Store.settings.trainerName || 'David Orihuela';
+    return `${greeting()}, ${name.split(' ')[0]}.`;
   }
 
   function clientOptions(includeId) {
@@ -384,7 +392,7 @@
       <div class="page-header">
         <div>
           ${dateLine}
-          <h1 class="display">${greeting()}, ${esc(firstName)}.</h1>
+          <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
           <p>${soon ? `${plural(soon, 'cliente tiene', 'clientes tienen')} que pagar en los próximos ${Store.REMIND_DAYS} días` : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.</p>
         </div>
       </div>
@@ -939,6 +947,6 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, notifyDue,
+    saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, notifyDue, greeting, greetingText,
   };
 })();

@@ -128,4 +128,17 @@
   applyTheme();
   render();
   Views.notifyDue();
+
+  /* Mantiene el saludo al día si la app se queda abierta o se vuelve a ella más tarde. */
+  function refreshGreeting() {
+    const el = document.querySelector('[data-greeting]');
+    if (!el) return;
+    const busy = document.getElementById('modal').open || document.querySelector('.pay-form');
+    if (el.dataset.day !== U.today() && !busy) { render(); Views.notifyDue(); return; }
+    const text = Views.greetingText();
+    if (el.textContent !== text) el.textContent = text;
+  }
+  setInterval(refreshGreeting, 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGreeting(); });
+  window.addEventListener('focus', refreshGreeting);
 })();
