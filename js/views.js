@@ -866,13 +866,16 @@
   }
 
   const per1g = (f, k) => (num(f[k]) || 0) / 100;
+  const kcalPer1g = (f) => (num(f.kcal) || 0) / 100;
 
   /** Proteína en polvo (suero, isolate, caseína…): siempre va aparte, como añadido; nunca es una opción equivalente. */
   const isProteinPowder = (f) => /prote[ií]na .*(suero|polvo)|whey|isolate|case[ií]na/i.test(f.name || '');
 
   /** Macro que «aporta» cada alimento: el del bloque del que se eligió o, si no, el que más kcal da. */
   function roleOf(item, food) {
-    if (isProteinPowder(food) || Store.blocksForFood(item.foodId).some((b) => b.id === 'blk-proteina-polvo')) return 'extra';
+    const blocks = Store.blocksForFood(item.foodId);
+    if (isProteinPowder(food) || blocks.some((b) => b.id === 'blk-proteina-polvo')) return 'extra';
+    if (blocks.some((b) => b.id === 'blk-verdura') || food.category === 'Verduras y hortalizas') return 'veg';
     // El bloque con el que se eligió; si el alimento ya no está en él (bloques reorganizados), el bloque en el que esté ahora.
     let b = item.blockId && Store.get('foodBlocks', item.blockId);
     if (!b || !(b.foodIds || []).includes(item.foodId)) b = Store.blocksForFood(item.foodId)[0];
@@ -881,9 +884,9 @@
     return MACRO_KEYS.reduce((a, k) => (kc[k] > kc[a] ? k : a), 'protein');
   }
 
-  const ROLE_LABEL = { protein: 'Proteína', carbs: 'Hidratos', fat: 'Grasa', extra: 'Añadido' };
+  const ROLE_LABEL = { protein: 'Proteína', carbs: 'Hidratos', fat: 'Grasa', veg: 'Verdura', extra: 'Añadido' };
   /** Redondeo de las cantidades: grasas de 5 en 5; proteínas e hidratos de 10 en 10. */
-  const stepOf = (role) => (role === 'protein' || role === 'carbs' ? 10 : 5);
+  const stepOf = (role) => (role === 'protein' || role === 'carbs' || role === 'veg' ? 10 : 5);
 
   /**
    * Agrupa los alimentos de una comida por el macro que aportan. Los alimentos de un mismo
@@ -892,21 +895,20 @@
   function mealGroups(meal) {
     const rows = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
     rows.forEach((r) => { r.role = roleOf(r.it, r.f); });
-    return MACRO_KEYS.concat('extra').map((k) => ({ key: k, rows: rows.filter((r) => r.role === k) })).filter((g) => g.rows.length);
+    return MACRO_KEYS.concat('veg', 'extra').map((k) => ({ key: k, rows: rows.filter((r) => r.role === k) })).filter((g) => g.rows.length);
   }
 
   /**
    * Opción de referencia de un grupo: la fijada a mano o, si no, la primera. Las demás opciones
    * aportan lo mismo de su macro principal; para el resto de macros se cuenta la de referencia.
    */
-  const refRow = (g) => g.rows.find((r) => r.it.locked && per1g(r.f, g.key) > 0) || g.rows[0];
+  const refRow = (g) => g.rows.find((r) => r.it.locked && (g.key === 'veg' ? kcalPer1g(r.f) : per1g(r.f, g.key)) > 0) || g.rows[0];
   function rowAmount(r, key) {
     return (Number(r.it.grams) || 0) * (key === 'kcal' ? (num(r.f.kcal) || 0) / 100 : per1g(r.f, key));
   }
 
   /** Cómo se calculan las equivalencias entre opciones: por calorías (por defecto) o por el macro del bloque. */
   const equivBy = () => (Store.data.settings.equivBy === 'macro' ? 'macro' : 'kcal');
-  const kcalPer1g = (f) => (num(f.kcal) || 0) / 100;
   const roundStep = (g, step) => {
     const raw = Math.min(1500, Math.max(0, Number(g) || 0));
     return raw > 0 ? Math.max(step, Math.round(raw / step) * step) : 0;
@@ -924,8 +926,15 @@
     // La proteína en polvo es un añadido: no se ajusta (30 g por defecto) y se descuenta de lo que deben cubrir los demás.
     const extras = (all.find((g) => g.key === 'extra') || { rows: [] }).rows;
     extras.forEach((r) => { if (!(Number(r.it.grams) > 0)) r.it.grams = 30; });
-    const extraAmount = (k) => extras.reduce((n, r) => n + rowAmount(r, k), 0);
-    const groups = all.filter((g) => g.key !== 'extra');
+    // La verdura tampoco se ajusta por macros: 150 g por defecto (o lo que pongas) y sus opciones con las mismas kcal.
+    const veg = all.find((g) => g.key === 'veg');
+    if (veg) {
+      const ref = refRow(veg);
+      if (!(Number(ref.it.grams) > 0)) ref.it.grams = 150;
+      for (const r of veg.rows) if (r !== ref && !r.it.locked && kcalPer1g(r.f) > 0) r.it.grams = roundStep(rowAmount(ref, 'kcal') / kcalPer1g(r.f), 10);
+    }
+    const extraAmount = (k) => extras.reduce((n, r) => n + rowAmount(r, k), veg ? rowAmount(refRow(veg), k) : 0);
+    const groups = all.filter((g) => g.key !== 'extra' && g.key !== 'veg');
     groups.forEach((g) => g.rows.forEach((r) => { if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; }));
     for (let iter = 0; iter < 40; iter++) {
       for (const g of groups) {
@@ -2019,7 +2028,7 @@
     fat: { label: 'grasa', short: 'G' },
     kcal: { label: 'kcal', short: 'kcal' },
   };
-  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Otros'];
+  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Verduras', 'Otros'];
   const unitOf = (f) => (/ml/.test(f.portion || '') ? 'ml' : 'g');
 
   /** Gramos de un alimento que aportan la cantidad de referencia del bloque, con sus macros. */

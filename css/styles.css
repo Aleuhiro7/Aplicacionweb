@@ -993,6 +993,7 @@ button.diet-row:hover { color: var(--primary); }
 .meal-group.m-carbs .dot { color: var(--m-carbs); }
 .meal-group.m-fat .dot { color: var(--m-fat); }
 .meal-group.m-extra .dot { color: var(--warning); }
+.meal-group.m-veg .dot { color: var(--success); }
 .meal-group.m-extra { border-top: 1px dashed var(--border); padding-top: 12px; }
 .lock-spacer { width: 34px; flex-shrink: 0; }
 .meal-group .meal-items { margin: 6px 0 0; }
