@@ -192,42 +192,28 @@
     return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
   }
 
-  const FOLLOWUP_DAY = 15; // días después de cada pago en que toca el seguimiento
+  const FOLLOWUP_DAY = 15; // días después del inicio de cada mes (contado desde el alta) en que toca el seguimiento
   const REVIEW_NOTICE = 2; // días de antelación para avisar
   const REVIEW_TYPES = { seguimiento: 'Seguimiento', mensual: 'Revisión mensual' };
 
-  function paidDates(clientId) {
-    return [...new Set(data.payments.filter((p) => p.clientId === clientId && p.status === 'pagado').map((p) => p.date))].sort();
-  }
-
   /**
-   * Calendario de revisiones a partir de los pagos: tras cada pago, a los 15 días un
-   * seguimiento y al mes una revisión mensual. Si paga antes de que lleguen, se
-   * empieza el ciclo del nuevo pago (la revisión mensual se mantiene si paga ese mismo día o después).
-   * Tras el último pago, el ciclo se repite cada mes. Devuelve las que caen hasta `until`.
+   * Calendario de revisiones desde la fecha de alta del cliente: cada mes,
+   * a los 15 días un seguimiento y al cumplir el mes una revisión mensual.
+   * Devuelve las que caen hasta `until`.
    */
   function reviewSchedule(client, until) {
-    const pays = paidDates(client.id);
+    const start = client.startDate;
     const list = [];
-    pays.forEach((p, i) => {
-      const next = pays[i + 1];
-      if (next) {
-        const seguimiento = U.addDays(p, FOLLOWUP_DAY);
-        if (seguimiento < next && seguimiento <= until) list.push({ type: 'seguimiento', date: seguimiento });
-        const mensual = U.addMonths(p, 1);
-        if (mensual <= next && mensual <= until) list.push({ type: 'mensual', date: mensual });
-        return;
-      }
-      for (let k = 0; k < 1200; k++) {
-        const seguimiento = U.addDays(U.addMonths(p, k), FOLLOWUP_DAY);
-        if (seguimiento > until) break;
-        list.push({ type: 'seguimiento', date: seguimiento });
-        const mensual = U.addMonths(p, k + 1);
-        if (mensual > until) break;
-        list.push({ type: 'mensual', date: mensual });
-      }
-    });
-    return list.sort((a, b) => a.date.localeCompare(b.date));
+    if (!start) return list;
+    for (let k = 0; k < 1200; k++) {
+      const seguimiento = U.addDays(U.addMonths(start, k), FOLLOWUP_DAY);
+      if (seguimiento > until) break;
+      list.push({ type: 'seguimiento', date: seguimiento });
+      const mensual = U.addMonths(start, k + 1);
+      if (mensual > until) break;
+      list.push({ type: 'mensual', date: mensual });
+    }
+    return list;
   }
 
   function reviewDone(clientId, cp) {

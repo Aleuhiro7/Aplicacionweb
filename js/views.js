@@ -90,7 +90,7 @@
       { name: 'birthDate', label: 'Fecha de nacimiento', type: 'date' },
       { name: 'gender', label: 'Sexo', type: 'select', options: ['', 'Mujer', 'Hombre', 'Otro'].map((o) => ({ value: o, label: o || '—' })) },
       { type: 'section', label: 'Asesoría' },
-      { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today() },
+      { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', default: today(), hint: `Te avisaré ${Store.REMIND_DAYS} días antes.` },
@@ -822,7 +822,7 @@
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
-        <div class="card stat"><div class="stat-label">${ri ? esc(ri.label) : 'Próxima revisión'}</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? 'Se programa al registrar un pago' : 'Solo para clientes activos') : ri.status === 'atrasada' ? `Pendiente desde hace ${plural(-ri.days, 'día', 'días')}` : ri.days === 0 ? 'Hoy' : ri.days === 1 ? 'Mañana' : `En ${ri.days} días`}</div>${ri && ri.status !== 'al-dia' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Hecho</button>` : ''}</div>
+        <div class="card stat"><div class="stat-label">${ri ? esc(ri.label) : 'Próxima revisión'}</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? 'Añade su fecha de alta en Editar' : 'Solo para clientes activos') : ri.status === 'atrasada' ? `Pendiente desde hace ${plural(-ri.days, 'día', 'días')}` : ri.days === 0 ? 'Hoy' : ri.days === 1 ? 'Mañana' : `En ${ri.days} días`}</div>${ri && ri.status !== 'al-dia' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Hecho</button>` : ''}</div>
       </div>
       <div class="grid-2">
         <section class="card">
