@@ -37,6 +37,11 @@
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (q === '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?' ? '¿Cuánta agua bebes al día? ¿Consumes alcohol?' : q));
     }
     seedLibrary(base);
+    // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
+    if (!base.settings.ibericoRemoved) {
+      base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));
+      base.settings.ibericoRemoved = true;
+    }
     seedFoods(base);
     seedBlocks(base);
     // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
