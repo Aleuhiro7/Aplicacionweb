@@ -1203,14 +1203,12 @@
       </form>
     </div>
     ${dietSendable(d) ? `<div class="diet-sec diet-send">
-      <div class="card-header"><h2>Enviar al cliente</h2></div>
-      <p class="muted" style="margin:0 0 12px">Se envía la dieta completa por WhatsApp: las comidas con sus cantidades y opciones, y tus indicaciones.</p>
+      <div class="card-header"><h2>PDF para el cliente</h2></div>
+      <p class="muted" style="margin:0 0 12px">Una portada, una página por comida y las indicaciones al final. Descárgalo y mándaselo.</p>
       <div class="actions">
-        <a class="btn wa-btn" href="${dietWaLink(c, d)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
-        <button class="btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
+        <button class="btn primary" data-action="diet-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
         <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
       </div>
-      ${U.waLink(c.phone) ? '' : `<p class="muted" style="font-size:.85rem;margin:10px 0 0">${esc(c.name.split(' ')[0])} no tiene teléfono en su ficha: WhatsApp te dejará elegir el chat.</p>`}
     </div>` : ''}
     ${has ? `<div class="diet-sec diet-delete">
       <button class="btn danger" data-action="diet-delete" data-client="${c.id}">${U.icon('trash')}Eliminar toda la dieta</button>
@@ -1240,37 +1238,64 @@
     return lines.join('\n');
   }
 
-  /** Hoja de la dieta para imprimir o guardar como PDF (diseño en claro, tamaño A4). */
+  /**
+   * Hoja de la dieta para imprimir o guardar como PDF (A4, en claro): portada, una página por
+   * comida (centrada) y, si hay, una página de indicaciones.
+   */
   function dietSheet(c, d) {
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
-    const coach = (Store.settings.trainerName || 'David Orihuela').trim();
-    return `<article class="ds">
-      <header class="ds-head">
-        <div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Coach</small></span></div>
-        <div class="ds-date">${esc(fmtDate(today()))}</div>
-      </header>
-      <section class="ds-hero">
-        <span class="ds-kicker">Plan de alimentación</span>
-        <h1>${esc(c.name)}</h1>
-        <p>${plural(meals.length, 'comida', 'comidas')} al día${anyOptions ? ' · elige una opción en cada grupo' : ''}</p>
-      </section>
-      <div class="ds-meals">${meals.map((m, i) => `
-        <section class="ds-meal">
-          <header><span class="ds-num">${i + 1}</span><h2>${esc(m.name)}</h2></header>
-          ${mealGroups(m).map((g) => {
+    const notes = (d.text || '').trim();
+    const total = 1 + meals.length + (notes ? 1 : 0);
+    const brand = '<div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Coach</small></span></div>';
+    const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
+    const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
+    const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';
+    const cover = `<section class="ds-page ds-cover">
+        <div class="ds-cover-in">
+          ${brand}
+          <div class="ds-cover-main">
+            <span class="ds-kicker">Plan de alimentación</span>
+            <h1>${esc(c.name)}</h1>
+            <span class="ds-rule"></span>
+            <p>${esc(fmtDate(today()))}</p>
+          </div>
+          <ol class="ds-index">${meals.map((m, i) => `<li><span>${i + 1}</span>${esc(m.name)}</li>`).join('')}${notes ? `<li><span>${meals.length + 1}</span>Indicaciones</li>` : ''}</ol>
+          ${anyOptions ? `<p class="ds-cover-note">${optNote}</p>` : '<p class="ds-cover-note"></p>'}
+        </div>
+      </section>`;
+    const mealPage = (m, i) => {
+      const groups = mealGroups(m);
+      return `<section class="ds-page">
+        ${top}
+        <div class="ds-main">
+          <span class="ds-kicker">Comida ${i + 1} de ${meals.length}</span>
+          <h2 class="ds-title">${esc(m.name)}</h2>
+          <span class="ds-rule"></span>
+          <div class="ds-groups">${groups.map((g) => {
             const many = g.key !== 'extra' && g.rows.length > 1;
             return `<div class="ds-group ds-${g.key}">
-              <div class="ds-glabel"><i></i>${ROLE_LABEL[g.key]}${many ? '<span>elige una</span>' : ''}</div>
-              <ul>${g.rows.map((r, j) => `${many && j ? '<li class="ds-or">o bien</li>' : ''}<li><b>${fmtNum(Number(r.it.grams) || 0, 0)} ${unitOf(r.f)}</b><span>${esc(r.f.name)}</span></li>`).join('')}</ul>
+              <div class="ds-glabel"><i></i><b>${ROLE_LABEL[g.key]}</b>${many ? `<em>${g.rows.length} opciones · elige una</em>` : g.key === 'extra' ? '<em>además</em>' : ''}</div>
+              ${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}</span></div>`).join('')}
             </div>`;
           }).join('')}
-          ${m.vegFree ? '<div class="ds-veg">🥗 Puedes añadir hasta <b>150 g de verdura</b> (la que quieras)</div>' : ''}
-        </section>`).join('')}
-      </div>
-      ${(d.text || '').trim() ? `<section class="ds-notes"><h2>Indicaciones</h2><p>${esc(d.text.trim()).replace(/\n/g, '<br>')}</p></section>` : ''}
-      <footer class="ds-foot">${anyOptions ? 'Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes. · ' : ''}${esc(coach)} · Asesoría online</footer>
-    </article>`;
+          ${m.vegFree ? '<div class="ds-veg"><span>🥗</span><div><b>Verdura libre</b>Puedes añadir hasta 150 g de verdura, la que quieras.</div></div>' : ''}
+          </div>
+        </div>
+        ${foot(i + 2, groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '')}
+      </section>`;
+    };
+    const notesPage = notes ? `<section class="ds-page">
+        ${top}
+        <div class="ds-main">
+          <span class="ds-kicker">Para tener en cuenta</span>
+          <h2 class="ds-title">Indicaciones</h2>
+          <span class="ds-rule"></span>
+          <div class="ds-notes">${esc(notes).replace(/\n/g, '<br>')}</div>
+        </div>
+        ${foot(total, 'David Orihuela · Coach')}
+      </section>` : '';
+    return `<article class="ds">${cover}${meals.map(mealPage).join('')}${notesPage}</article>`;
   }
 
   /** Abre el diálogo de impresión con la hoja de la dieta (desde ahí se guarda como PDF). */
@@ -1289,9 +1314,6 @@
     setTimeout(() => window.print(), 50);
   }
 
-  function dietWaLink(c, d) {
-    return `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(dietText(c, d))}`;
-  }
 
   async function copyText(text, msg) {
     try {

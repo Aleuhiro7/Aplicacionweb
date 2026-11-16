@@ -1025,44 +1025,62 @@ button.diet-row:hover { color: var(--primary); }
 /* ---------- Hoja de la dieta para imprimir / PDF ---------- */
 #print-root { display: none; }
 @media print {
-  @page { size: A4; margin: 12mm; }
-  body.printing { background: #fff !important; }
+  @page { size: A4; margin: 0; }
+  html, body.printing { background: #fff !important; margin: 0; padding: 0; }
   body.printing > *:not(#print-root) { display: none !important; }
   body.printing #print-root { display: block; }
 }
 .ds {
-  --ds-navy: #0b1b33; --ds-teal: #0f766e; --ds-teal-soft: #e6f4f2; --ds-ink: #1f2937; --ds-muted: #6b7280; --ds-line: #e5e7eb;
+  --ds-navy: #0b1b33; --ds-teal: #0f766e; --ds-mint: #5eead4; --ds-soft: #f1f7f6; --ds-ink: #1f2937; --ds-muted: #6b7280; --ds-line: #e5e7eb;
   --ds-p: #2563eb; --ds-c: #0d9488; --ds-f: #7c3aed; --ds-x: #d97706;
-  color: var(--ds-ink); font: 400 10.5pt/1.45 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: var(--ds-ink); font: 400 11pt/1.45 'Plus Jakarta Sans', system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.ds-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 2px solid var(--ds-teal); }
+.ds-page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 16mm 20mm 14mm; display: flex; flex-direction: column; overflow: hidden; break-after: page; page-break-after: always; background: #fff; position: relative; }
+.ds-page:last-child { break-after: auto; page-break-after: auto; }
 .ds-brand { display: flex; align-items: center; gap: 10px; }
-.ds-brand strong { display: block; font: 700 13pt 'Barlow Semi Condensed', sans-serif; color: var(--ds-navy); line-height: 1.1; }
-.ds-brand small { color: var(--ds-teal); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 7.5pt; }
-.ds-logo { width: 34px; height: 34px; border-radius: 9px; background: var(--ds-navy); color: #5eead4; display: grid; place-items: center; font: 700 12pt 'Barlow Semi Condensed', sans-serif; font-style: italic; }
-.ds-date { color: var(--ds-muted); font-size: 9pt; }
-.ds-hero { margin: 16px 0 14px; padding: 16px 20px; border-radius: 14px; background: var(--ds-navy); color: #fff; }
-.ds-kicker { color: #5eead4; font-size: 8pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.ds-hero h1 { margin: 2px 0 2px; font: 700 24pt/1.1 'Barlow Semi Condensed', sans-serif; color: #fff; }
-.ds-hero p { margin: 0; color: #cbd5e1; font-size: 9.5pt; }
-.ds-meals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ds-meal { break-inside: avoid; page-break-inside: avoid; border: 1px solid var(--ds-line); border-radius: 12px; padding: 12px 14px; background: #fff; }
-.ds-meal > header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--ds-line); }
-.ds-meal h2 { margin: 0; font: 700 13pt 'Barlow Semi Condensed', sans-serif; color: var(--ds-navy); }
-.ds-num { width: 22px; height: 22px; border-radius: 7px; background: var(--ds-teal-soft); color: var(--ds-teal); display: grid; place-items: center; font-weight: 800; font-size: 9pt; }
-.ds-group + .ds-group { margin-top: 7px; }
-.ds-glabel { display: flex; align-items: center; gap: 6px; font-size: 7.5pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ds-muted); }
-.ds-glabel i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.ds-glabel span { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; font-style: italic; }
-.ds-protein .ds-glabel i { background: var(--ds-p); } .ds-carbs .ds-glabel i { background: var(--ds-c); }
-.ds-fat .ds-glabel i { background: var(--ds-f); } .ds-extra .ds-glabel i, .ds-veg .ds-glabel i { background: var(--ds-x); }
-.ds-group ul { list-style: none; margin: 3px 0 0; padding: 0; }
-.ds-group li { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
-.ds-group li b { min-width: 52px; text-align: right; color: var(--ds-navy); font-weight: 800; }
-.ds-group li.ds-or { padding: 0 0 0 60px; color: var(--ds-teal); font-size: 8.5pt; font-weight: 700; font-style: italic; line-height: 1.1; }
-.ds-veg { margin-top: 9px; padding: 6px 10px; border-radius: 8px; background: #ecfdf5; color: #166534; font-size: 9pt; }
-.ds-notes { break-inside: avoid; margin-top: 12px; padding: 12px 16px; border-left: 4px solid var(--ds-teal); background: var(--ds-teal-soft); border-radius: 0 12px 12px 0; }
-.ds-notes h2 { margin: 0 0 4px; font: 700 13pt 'Barlow Semi Condensed', sans-serif; color: var(--ds-navy); }
-.ds-notes p { margin: 0; }
-.ds-foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--ds-line); color: var(--ds-muted); font-size: 8pt; text-align: center; }
+.ds-brand strong { display: block; font: 700 13pt/1.1 'Barlow Semi Condensed', sans-serif; color: var(--ds-navy); }
+.ds-brand small { color: var(--ds-teal); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 7pt; }
+.ds-logo { width: 34px; height: 34px; border-radius: 10px; background: var(--ds-navy); color: var(--ds-mint); display: grid; place-items: center; font: italic 700 12pt 'Barlow Semi Condensed', sans-serif; }
+.ds-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--ds-line); }
+.ds-client { color: var(--ds-muted); font-size: 9.5pt; font-weight: 600; }
+.ds-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8mm 0; }
+.ds-kicker { color: var(--ds-teal); font-size: 8.5pt; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.ds-title { margin: 4px 0 0; font: 700 40pt/1.05 'Barlow Semi Condensed', sans-serif; color: var(--ds-navy); }
+.ds-rule { display: block; width: 46px; height: 4px; border-radius: 4px; background: var(--ds-teal); margin: 12px auto 22px; }
+.ds-groups { width: 100%; max-width: 140mm; display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.ds-group { border: 1px solid var(--ds-line); border-radius: 14px; padding: 14px 20px 12px; background: #fff; box-shadow: 0 1px 0 rgba(15, 23, 42, .03); position: relative; overflow: hidden; }
+.ds-group::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--ds-accent, var(--ds-teal)); }
+.ds-protein { --ds-accent: var(--ds-p); } .ds-carbs { --ds-accent: var(--ds-c); } .ds-fat { --ds-accent: var(--ds-f); } .ds-extra { --ds-accent: var(--ds-x); }
+.ds-glabel { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; color: var(--ds-muted); }
+.ds-glabel i { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-accent); }
+.ds-glabel b { color: var(--ds-navy); font-weight: 800; }
+.ds-glabel em { margin-left: auto; font-style: normal; font-weight: 600; letter-spacing: .02em; text-transform: none; color: var(--ds-accent); font-size: 8.5pt; }
+.ds-item { display: flex; align-items: center; gap: 14px; padding: 5px 0; }
+.ds-g { min-width: 74px; text-align: center; padding: 4px 8px; border-radius: 9px; background: var(--ds-soft); color: var(--ds-navy); font: 700 17pt/1 'Barlow Semi Condensed', sans-serif; }
+.ds-g small { font-size: 9pt; margin-left: 2px; color: var(--ds-muted); font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
+.ds-name { font-size: 13pt; font-weight: 500; }
+.ds-or { display: flex; align-items: center; gap: 10px; padding: 1px 0; color: var(--ds-accent); font-size: 10pt; font-weight: 700; font-style: italic; }
+.ds-or::before, .ds-or::after { content: ''; height: 1px; flex: 1; background: var(--ds-line); }
+.ds-or::before { flex: 0 0 74px; background: none; }
+.ds-veg { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 14px; background: #ecfdf5; color: #166534; font-size: 11pt; }
+.ds-veg > span { font-size: 18pt; }
+.ds-veg b { display: block; font-size: 12pt; }
+.ds-notes { max-width: 140mm; width: 100%; text-align: left; padding: 18px 22px; border-radius: 14px; background: var(--ds-soft); border-left: 4px solid var(--ds-teal); font-size: 12.5pt; line-height: 1.7; }
+.ds-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-top: 10px; border-top: 1px solid var(--ds-line); color: var(--ds-muted); font-size: 8pt; }
+.ds-page-n { font-weight: 700; color: var(--ds-teal); white-space: nowrap; }
+/* Portada */
+.ds-cover { background: var(--ds-navy); color: #fff; padding: 0; }
+.ds-cover-in { flex: 1; display: flex; flex-direction: column; padding: 22mm 22mm 18mm; background: radial-gradient(120mm 120mm at 100% 0%, rgba(94, 234, 212, .18), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(15, 118, 110, .35), transparent 70%); }
+.ds-cover .ds-brand strong { color: #fff; }
+.ds-cover .ds-brand small { color: var(--ds-mint); }
+.ds-cover .ds-logo { background: var(--ds-mint); color: var(--ds-navy); }
+.ds-cover-main { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.ds-cover .ds-kicker { color: var(--ds-mint); font-size: 10pt; }
+.ds-cover h1 { margin: 8px 0 0; font: 700 48pt/1 'Barlow Semi Condensed', sans-serif; color: #fff; }
+.ds-cover .ds-rule { margin: 18px 0 12px; width: 64px; background: var(--ds-mint); }
+.ds-cover-main p { margin: 0; color: #cbd5e1; font-size: 11pt; }
+.ds-index { list-style: none; margin: 0 0 14mm; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+.ds-index li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); font-weight: 600; }
+.ds-index span { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(94, 234, 212, .18); color: var(--ds-mint); font-size: 9pt; font-weight: 800; }
+.ds-cover-note { margin: 0; color: #94a3b8; font-size: 8.5pt; }
