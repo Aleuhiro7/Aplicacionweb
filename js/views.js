@@ -94,6 +94,7 @@
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', default: today(), hint: `Te avisaré ${Store.REMIND_DAYS} días antes.` },
+      { name: 'lastReview', label: 'Última revisión', type: 'date', hint: `La siguiente será ${Store.REVIEW_EVERY} días después. Si la dejas vacía, se cuenta desde la fecha de alta.` },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -297,6 +298,56 @@
    * Resumen
    * ======================================================= */
 
+  /* =========================================================
+   * Revisiones (cada 15 días)
+   * ======================================================= */
+
+  const REVIEW_STATUS = {
+    atrasada: { label: 'Atrasada', badge: 'danger' },
+    hoy: { label: 'Hoy', badge: 'warning' },
+    pronto: { label: 'Pronto', badge: 'warning' },
+    'al-dia': { label: 'Al día', badge: 'success' },
+  };
+
+  function reviewText(ri) {
+    if (!ri) return '';
+    const date = U.fmtDateShort(ri.date);
+    if (ri.status === 'atrasada') return `Revisión atrasada ${plural(-ri.days, 'día', 'días')} (${date})`;
+    if (ri.status === 'hoy') return 'Le toca revisión hoy';
+    if (ri.status === 'pronto') return `Revisión ${ri.days === 1 ? 'mañana' : `en ${ri.days} días`} (${date})`;
+    return `Próxima revisión: ${date}`;
+  }
+
+  /** Fila de aviso de revisión: el nombre abre WhatsApp y la casilla marca la revisión como hecha. */
+  function reviewItem(c, ri) {
+    const wa = U.waLink(c.phone);
+    const name = wa
+      ? `<a class="title wa-link" href="${wa}" target="_blank" rel="noopener" title="Abrir WhatsApp con ${esc(c.name)}">${U.icon('message')}${esc(c.name)}</a>`
+      : `<a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>`;
+    return `<li class="task review">
+      <button class="task-check" data-action="complete-review" data-client="${c.id}" role="checkbox" aria-checked="false" aria-label="Marcar revisión de ${esc(c.name)} como hecha" title="Marcar revisión como hecha"></button>
+      ${avatar(c)}
+      <div class="grow">
+        ${name}
+        <div class="meta"><span>${esc(reviewText(ri))}</span>${wa ? '' : `<a href="#/clientes/${c.id}" data-action="edit-client" data-id="${c.id}">Añade su teléfono para abrir WhatsApp</a>`}</div>
+      </div>
+      ${badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge)}
+    </li>`;
+  }
+
+  function completeReview(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    const prev = c.lastReview || '';
+    const rec = Store.add('reviews', { clientId, date: today() });
+    Store.update('clients', clientId, { lastReview: today() });
+    App.render();
+    UI.toast(`Revisión de ${c.name.split(' ')[0]} hecha · la próxima el ${U.fmtDateShort(U.addDays(today(), Store.REVIEW_EVERY))}`, {
+      label: 'Deshacer',
+      onClick: () => { Store.remove('reviews', rec.id); Store.update('clients', clientId, { lastReview: prev }); App.render(); },
+    });
+  }
+
   /** «a, b y c» */
   function joinList(parts) {
     const p = parts.filter(Boolean);
@@ -487,7 +538,11 @@
     }
     pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
     const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
-    return pay.concat(progress, tasks);
+    const reviews = Store.clients()
+      .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
+      .filter((x) => x.ri && x.ri.status !== 'al-dia')
+      .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
+    return pay.concat(reviews, progress, tasks);
   }
 
   function incomeChart() {
@@ -544,6 +599,7 @@
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
     const otherAlerts = alerts.filter((a) => a.kind === 'progreso');
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
+    const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
 
     /* Avisos: primero las tarjetas con algo pendiente; las que están al día, en una sola línea al final. */
     const section = (id, title, n, link, list, okText) => ({
@@ -561,6 +617,9 @@
       section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
         `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
         `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`),
+      section('revisiones', 'Revisiones', reviewAlerts.length, '',
+        `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
+        `Ninguna revisión en los próximos ${Store.REVIEW_NOTICE} días`),
       section('atencion', 'Pesos pendientes', otherAlerts.length, '',
         `<ul class="list">${otherAlerts.map((a) => `
           <li>
@@ -579,9 +638,9 @@
         <div>
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
-          <p>${payAlerts.length || otherAlerts.length || taskAlerts.length
-            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
-            : 'Todo al día: no tienes pagos, pesos ni tareas pendientes.'}</p>
+          <p>${payAlerts.length || reviewAlerts.length || otherAlerts.length || taskAlerts.length
+            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'revisión', 'revisiones') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
+            : 'Todo al día: no tienes pagos, revisiones, pesos ni tareas pendientes.'}</p>
         </div>
       </div>
 
@@ -624,7 +683,7 @@
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Último peso</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Próxima revisión</th><th class="hide-sm">Último peso</th></tr></thead>
       <tbody>${list.map((c) => {
         const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
@@ -634,6 +693,7 @@
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
           <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
+          <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? `${esc(U.fmtDateShort(ri.date))} ${ri.status !== 'al-dia' ? badge(REVIEW_STATUS[ri.status].label, REVIEW_STATUS[ri.status].badge) : ''}` : '<span class="muted">—</span>'; })()}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -687,7 +747,7 @@
             ${sub ? `<p>${esc(sub)}</p>` : ''}
           </div>
           <div class="actions">
-            ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
+            ${U.waLink(c.phone) ? `<a class="btn" href="${U.waLink(c.phone)}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
             ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${U.icon('mail')}Email</a>` : ''}
             <button class="btn" data-action="edit-client" data-id="${c.id}">${U.icon('edit')}Editar</button>
             <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
@@ -747,6 +807,7 @@
     const t = today();
     const di = Store.dueInfo(c);
     const lastPay = Store.paymentsFor(c.id).find((p) => p.status === 'pagado');
+    const ri = Store.reviewInfo(c);
     const totalPaid = Store.paymentsFor(c.id).filter((p) => p.status === 'pagado').reduce((s, p) => s + Number(p.amount || 0), 0);
     const all = Store.measurementsFor(c.id);
     const ms = all.filter((m) => m.weight !== '' && m.weight !== undefined);
@@ -761,7 +822,7 @@
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
-        <div class="card stat"><div class="stat-label">Cliente desde</div><div class="stat-value" style="font-size:1.8rem">${c.startDate ? esc(U.fmtDateShort(c.startDate)) : '—'}</div><div class="stat-sub">${months !== null ? `${plural(months, 'mes', 'meses')} · ` : ''}${money(totalPaid)} cobrado</div></div>
+        <div class="card stat"><div class="stat-label">Próxima revisión</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${ri ? `${esc(reviewText(ri).replace(/ \(.*\)$/, ''))}` : 'Solo para clientes activos'}</div>${ri ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Revisión hecha</button>` : ''}</div>
       </div>
       <div class="grid-2">
         <section class="card">
@@ -996,17 +1057,17 @@
     const t = today();
     // due = días hasta el próximo pago (negativo = vencido)
     const people = [
-      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', gain: false, rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, due: 15, lastM: 3 },
-      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', gain: true, rate: 80, height: 180, w: 78, fat: 18, months: 4, due: -4, lastM: 6 },
-      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', gain: false, rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, due: 3, lastM: 20 },
-      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', gain: false, rate: 60, height: 176, w: 74, fat: 15, months: 2, due: 25, lastM: 2 },
-      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', gain: false, rate: 60, height: 170, w: 63, fat: 24, months: 4, due: -20, status: 'pausa', lastM: 40 },
+      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', gain: false, rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, due: 15, review: 13, lastM: 3 },
+      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', gain: true, rate: 80, height: 180, w: 78, fat: 18, months: 4, due: -4, review: 17, lastM: 6 },
+      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', gain: false, rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, due: 3, review: 5, lastM: 20 },
+      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', gain: false, rate: 60, height: 176, w: 74, fat: 15, months: 2, due: 25, review: 15, lastM: 2 },
+      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', gain: false, rate: 60, height: 170, w: 63, fat: 24, months: 4, due: -20, review: 30, status: 'pausa', lastM: 40 },
     ];
     people.forEach((p) => {
       const nextDue = U.addDays(t, p.due);
       const c = Store.add('clients', {
         name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender,
-        rate: p.rate, nextDue, height: p.height, health: p.health || '', notes: '', startDate: U.addMonths(nextDue, -p.months), status: p.status || 'activo',
+        rate: p.rate, nextDue, lastReview: U.addDays(t, -(p.review ?? 5)), height: p.height, health: p.health || '', notes: '', startDate: U.addMonths(nextDue, -p.months), status: p.status || 'activo',
       });
       // Un pago al mes hasta la fecha del próximo pago
       for (let i = p.months; i >= 1; i--) {
@@ -1047,12 +1108,12 @@
     try {
       if (!canNotify() || Notification.permission !== 'granted') return;
       if (!force && localStorage.getItem(NOTIFY_KEY) === today()) return;
-      const due = computeAlerts().filter((a) => a.kind === 'pago');
+      const due = computeAlerts().filter((a) => a.kind === 'pago' || a.kind === 'revision');
       if (!due.length && !force) return;
       const body = due.length
-        ? due.slice(0, 5).map((a) => `${a.c.name}: ${dueText(a.di)}`).join('\n')
+        ? due.slice(0, 6).map((a) => `${a.c.name}: ${a.kind === 'pago' ? dueText(a.di) : reviewText(a.ri)}`).join('\n')
         : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`;
-      new Notification(due.length ? `${plural(due.length, 'pago', 'pagos')} próximos o vencidos` : 'Avisos activados', { body, tag: 'pagos' });
+      new Notification(due.length ? `${plural(due.length, 'aviso', 'avisos')} de pagos y revisiones` : 'Avisos activados', { body, tag: 'pagos' });
       localStorage.setItem(NOTIFY_KEY, today());
     } catch (e) { /* sin notificaciones disponibles */ }
   }
@@ -1080,7 +1141,7 @@
     'new-client': () => openClientForm(),
     alerts: () => {
       const kinds = computeAlerts().map((a) => a.kind);
-      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('progreso') ? 'atencion' : 'tareas-pendientes';
+      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('revision') ? 'revisiones' : kinds.includes('progreso') ? 'atencion' : 'tareas-pendientes';
       const go = () => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
       else { location.hash = '#/panel'; setTimeout(go, 60); }
@@ -1110,6 +1171,7 @@
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'open-client-tab': (d) => { state.clientTab = d.value; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'toggle-task': (d) => toggleTask(d.id),
+    'complete-review': (d) => completeReview(d.client),
     'edit-task': (d) => editTask(d.id),
     'toggle-done-list': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showDone = det.open; },
     'open-photo': (d) => openPhoto(d.id),

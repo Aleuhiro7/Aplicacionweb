@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews'];
 
   function emptyData() {
     return {
@@ -13,6 +13,7 @@
       payments: [],
       tasks: [], // tareas pendientes del entrenador por cliente
       photos: [], // solo datos de cada foto; la imagen va aparte (ver photos.js)
+      reviews: [], // historial de revisiones hechas
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -113,7 +114,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['measurements', 'payments', 'tasks', 'photos']) {
+      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -191,6 +192,31 @@
     return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
   }
 
+  const REVIEW_EVERY = 15; // días entre revisiones
+  const REVIEW_NOTICE = 2; // días de antelación para avisar
+
+  /**
+   * Próxima revisión de un cliente activo: 15 días después de la última
+   * (o de la fecha de alta si aún no ha tenido ninguna).
+   * Estado: 'atrasada', 'hoy', 'pronto' (en los próximos 2 días) o 'al-dia'.
+   */
+  function reviewInfo(client) {
+    if (!client || (client.status || 'activo') !== 'activo') return null;
+    const base = client.lastReview || client.startDate || (client.createdAt || '').slice(0, 10);
+    if (!base) return null;
+    const date = U.addDays(base, REVIEW_EVERY);
+    const days = U.daysBetween(today(), date);
+    let status = 'al-dia';
+    if (days < 0) status = 'atrasada';
+    else if (days === 0) status = 'hoy';
+    else if (days <= REVIEW_NOTICE) status = 'pronto';
+    return { status, days, date, last: client.lastReview || '' };
+  }
+
+  function reviewsFor(clientId) {
+    return data.reviews.filter((r) => r.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
+  }
+
   /** Tareas de un cliente: primero las pendientes (por fecha límite), luego las hechas. */
   function tasksFor(clientId) {
     return data.tasks
@@ -251,7 +277,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor,
+    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, REVIEW_EVERY, REVIEW_NOTICE,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

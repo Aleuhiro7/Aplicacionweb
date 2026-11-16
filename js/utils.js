@@ -113,6 +113,16 @@
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   }
 
+  /** Enlace para abrir el chat de WhatsApp con un teléfono (añade +34 a los móviles españoles sin prefijo). */
+  function waLink(phone) {
+    let digits = String(phone || '').replace(/[^\d+]/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('+')) digits = digits.slice(1);
+    else if (digits.startsWith('00')) digits = digits.slice(2);
+    else if (digits.length === 9 && /^[6789]/.test(digits)) digits = '34' + digits;
+    return digits.length >= 8 ? `https://wa.me/${digits}` : '';
+  }
+
   function initials(name) {
     return (name || '?')
       .trim()
@@ -181,6 +191,6 @@
     icon,
     pad, toISODate, parseDate, today, addDays, addMonths, startOfWeek, daysBetween, age,
     fmtDate, fmtDateShort, fmtWeekday, fmtWeekdayShort, relativeDay, fmtMoney, fmtNum,
-    esc, uid, initials, avatar,
+    esc, uid, initials, avatar, waLink,
   };
 })();

@@ -731,3 +731,12 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .ok-text { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
 .ok-text .ico { color: var(--success); width: 18px; height: 18px; }
 .pay-line .meta, .alerts-stack .list .meta { white-space: normal; }
+
+/* ---------- Revisiones ---------- */
+.task.review { align-items: center; }
+.task.review .avatar { width: 36px; height: 36px; font-size: .8rem; }
+.wa-link { display: inline-flex; align-items: center; gap: 6px; color: var(--text); text-decoration: none; }
+.wa-link .ico { color: #25d366; width: 18px; height: 18px; }
+.wa-link:hover { color: #25d366; text-decoration: underline; }
+.review-done { margin-top: 10px; }
+#revisiones.has-items { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--warning); }
