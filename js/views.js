@@ -776,7 +776,12 @@
       .filter((x) => x.ri && x.ri.status !== 'al-dia')
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
     const plans = Store.clients().map((c) => ({ c, gaps: Store.planGaps(c), kind: 'plan' })).filter((x) => x.gaps);
-    return pay.concat(reviews, plans, tasks);
+    // Cuestionarios respondidos por enlace que aún no se han marcado como revisados.
+    const answers = Store.clients()
+      .filter((c) => c.questionnaire && c.questionnaire.answeredAt && c.questionnaire.linkToken && !c.questionnaire.reviewedAt)
+      .sort((a, b) => b.questionnaire.answeredAt.localeCompare(a.questionnaire.answeredAt))
+      .map((c) => ({ c, kind: 'cuestionario' }));
+    return pay.concat(answers, reviews, plans, tasks);
   }
 
   function incomeChart() {
@@ -834,6 +839,7 @@
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
+    const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
     const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
     const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
     const planItem = (c, tab, text, label) => `
@@ -859,6 +865,21 @@
           </section>`,
     });
     const alertSections = [
+      section('cuestionarios', 'Cuestionarios respondidos', answerAlerts.length, '',
+        `<ul class="list task-list">${answerAlerts.map((a) => `
+          <li class="task review">
+            <button class="task-check" data-action="review-questionnaire" data-client="${a.c.id}" role="checkbox" aria-checked="false" aria-label="Marcar el cuestionario de ${esc(a.c.name)} como revisado" title="Marcar como revisado"></button>
+            ${avatar(a.c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${a.c.id}" data-action="open-answers" data-client="${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a>
+              <div class="meta"><span>Respondió el ${esc(fmtDate(a.c.questionnaire.answeredAt))} · ${plural((a.c.questionnaire.items || []).filter((x) => x.a).length, 'respuesta', 'respuestas')}</span></div>
+            </div>
+            <div class="review-actions">
+              ${badge('Nuevo', 'success')}
+              <button class="btn sm primary" data-action="open-answers" data-client="${a.c.id}">${U.icon('file')}Ver respuestas</button>
+            </div>
+          </li>`).join('')}</ul>`,
+        'No hay cuestionarios nuevos'),
       section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
         `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
         `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`),
@@ -1502,7 +1523,8 @@
     const text = `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para preparar tu plan necesito conocerte un poco mejor. Rellena este cuestionario, son solo unos minutos:\n${url}\n¡Muchas gracias!`;
     const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
     if (win) win.location.href = wa; else window.open(wa, '_blank');
-    Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, { sentAt: today(), linkToken: token, via: 'enlace' }) });
+    const fresh = reuse ? prev : { items: [], answeredAt: '', reviewedAt: '' };
+    Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, fresh, { sentAt: today(), linkToken: token, via: 'enlace' }) });
     App.render();
     UI.toast('Enlace preparado en WhatsApp: las respuestas llegarán solas a su ficha');
   }
@@ -1524,7 +1546,7 @@
         const qs = Array.isArray(doc.questions) ? doc.questions : questions();
         const items = qs.map((q, i) => ({ q, a: (doc.answers[i] || '').trim() }));
         const answeredAt = doc.answeredAt && doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
-        Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { items, answeredAt }) });
+        Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { items, answeredAt, reviewedAt: '' }) });
         found++;
         UI.toast(`${c.name.split(' ')[0]} ha respondido el cuestionario`);
       }
@@ -1578,7 +1600,7 @@
         const items = qs.map((q, i) => ({ q, a: (v[`q${i}`] || '').trim() }));
         const answered = items.some((x) => x.a);
         const prev = c.questionnaire || {};
-        Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, { items, answeredAt: answered ? (prev.answeredAt || today()) : '' }) });
+        Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, { items, answeredAt: answered ? (prev.answeredAt || today()) : '', reviewedAt: answered ? (prev.reviewedAt || today()) : '' }) });
         UI.toast(answered ? 'Respuestas guardadas' : 'Cuestionario sin respuestas');
         App.render();
       },
@@ -1588,8 +1610,9 @@
   function questionnaireCard(c) {
     const q = c.questionnaire || {};
     const answered = (q.items || []).filter((x) => x.a);
+    const isNew = answered.length && q.linkToken && !q.reviewedAt;
     const status = answered.length
-      ? badge('Respondido', 'success')
+      ? (isNew ? badge('Nuevo · sin revisar', 'warning') : badge('Respondido', 'success'))
       : q.sentAt ? badge('Pendiente de respuesta', 'info') : badge('Sin enviar', 'warning');
     const meta = [q.sentAt ? `${q.linkToken ? 'Enlace enviado' : 'Enviado'} el ${fmtDate(q.sentAt)}` : '', q.answeredAt ? `respondido el ${fmtDate(q.answeredAt)}` : (q.linkToken ? 'las respuestas aparecerán aquí cuando lo rellene' : '')].filter(Boolean).join(' · ');
     return `<section class="card questionnaire-card">
@@ -1599,6 +1622,7 @@
         <button class="btn wa-btn" data-action="send-questionnaire-link" data-client="${c.id}">${U.icon('message')}${q.linkToken && !answered.length ? 'Reenviar enlace por WhatsApp' : 'Enviar enlace por WhatsApp'}</button>
         ${q.linkToken && !answered.length ? `<button class="btn" data-action="check-questionnaire" data-client="${c.id}">${U.icon('download')}Comprobar respuestas</button>` : ''}
         <button class="btn" data-action="questionnaire-answers" data-client="${c.id}">${U.icon('edit')}${answered.length ? 'Editar respuestas' : 'Apuntar a mano'}</button>
+        ${isNew ? `<button class="btn primary" data-action="review-questionnaire" data-client="${c.id}">${U.icon('check')}Marcar como revisado</button>` : ''}
       </div>
       <p class="q-alt"><button class="link-btn" data-action="send-questionnaire" data-client="${c.id}">o enviar las preguntas como texto en WhatsApp</button></p>
       ${answered.length ? `<details class="q-answers"${state.showAnswers ? ' open' : ''}>
@@ -1868,6 +1892,20 @@
     'enable-notifications': () => enableNotifications(),
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
+    'open-answers': (d) => {
+      state.clientTab = 'resumen';
+      state.keepTab = true;
+      state.showAnswers = true;
+      location.hash = `#/clientes/${d.client}`;
+      setTimeout(() => document.querySelector('.questionnaire-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    },
+    'review-questionnaire': (d) => {
+      const c = Store.get('clients', d.client);
+      if (!c || !c.questionnaire) return;
+      Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { reviewedAt: today() }) });
+      App.render();
+      UI.toast(`Cuestionario de ${c.name.split(' ')[0]} revisado`, { label: 'Deshacer', onClick: () => { const cur = Store.get('clients', c.id); Store.update('clients', c.id, { questionnaire: Object.assign({}, cur.questionnaire, { reviewedAt: '' }) }); App.render(); } });
+    },
     'check-questionnaire': (d) => checkQuestionnaireLinks(d.client, true),
     'questionnaire-answers': (d) => questionnaireForm(d.client),
     'toggle-answers': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showAnswers = det.open; },
