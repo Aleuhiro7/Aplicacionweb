@@ -8,6 +8,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, onSnapshot, setDoc, serverTimestamp,
+  getDoc, deleteDoc,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -38,6 +39,7 @@ const esc = (s) => U.esc(s == null ? '' : String(s));
 function syncedKey(uid) { return 'entrenapro:synced:' + uid; }
 
 function setStatus(status, error) {
+  if (status === 'on' && state.status !== 'on' && window.Photos) setTimeout(() => window.Photos.uploadPending(), 0);
   state.status = status;
   state.error = error || '';
   const btn = document.querySelector('.sync-btn');
@@ -106,6 +108,34 @@ onAuthStateChanged(auth, (user) => {
   });
 });
 
+/* ---------- Fotos: cada imagen va en su propio documento (users/{uid}/photos/{id}) ---------- */
+async function uploadPhoto(id, dataUrl, clientId) {
+  if (!state.user) return false;
+  try {
+    await setDoc(doc(db, 'users', state.user.uid, 'photos', id), { data: dataUrl, clientId, updatedAt: serverTimestamp() });
+    return true;
+  } catch (e) {
+    console.error('No se pudo subir la foto', e);
+    return false;
+  }
+}
+
+async function downloadPhoto(id) {
+  if (!state.user) return null;
+  try {
+    const snap = await getDoc(doc(db, 'users', state.user.uid, 'photos', id));
+    return snap.exists() ? snap.data().data : null;
+  } catch (e) {
+    console.error('No se pudo descargar la foto', e);
+    return null;
+  }
+}
+
+async function deletePhoto(id) {
+  if (!state.user) return;
+  try { await deleteDoc(doc(db, 'users', state.user.uid, 'photos', id)); } catch (e) { console.error(e); }
+}
+
 async function signIn() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -153,6 +183,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto };
 setStatus(state.status);
 App.render();

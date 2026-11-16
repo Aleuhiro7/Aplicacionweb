@@ -14,7 +14,8 @@
   function render() {
     const { section, id } = parseRoute();
     const routeKey = section + '/' + (id || '');
-    if (routeKey !== lastRoute && section === 'clientes' && id) Views.state.clientTab = 'resumen';
+    if (routeKey !== lastRoute && section === 'clientes' && id && !Views.state.keepTab) Views.state.clientTab = 'resumen';
+    Views.state.keepTab = false;
 
     let html;
     switch (section) {
@@ -25,6 +26,7 @@
     }
     const scroll = routeKey === lastRoute ? window.scrollY : 0;
     main.innerHTML = html;
+    if (window.Photos) Photos.hydrate(main);
     window.scrollTo(0, scroll);
     if (routeKey !== lastRoute) main.focus({ preventScroll: true });
     lastRoute = routeKey;
@@ -72,6 +74,7 @@
     const row = e.target.closest('[data-href]');
     if (row && e.target === row) location.hash = row.dataset.href;
     if (e.target.matches('label[for="import-file"]')) document.getElementById('import-file').click();
+    if (e.target.matches('label[for="photo-input"]')) document.getElementById('photo-input').click();
   });
 
   main.addEventListener('change', (e) => {
@@ -79,6 +82,8 @@
     if (el.dataset.actionChange) {
       const fn = Views.actions[el.dataset.actionChange];
       if (fn) fn(el.dataset, el);
+    } else if (el.id === 'photo-input') {
+      Views.uploadPhotos(el);
     } else if (el.id === 'import-file') {
       Views.importFile(el.files[0]);
       el.value = '';
@@ -90,6 +95,11 @@
   });
 
   main.addEventListener('submit', (e) => {
+    if (e.target.classList.contains('task-form')) {
+      e.preventDefault();
+      Views.submitTaskForm(e.target);
+      return;
+    }
     if (e.target.classList.contains('pay-form')) {
       e.preventDefault();
       Views.submitPayForm(e.target);

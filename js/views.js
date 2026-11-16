@@ -131,6 +131,7 @@
       message: `Se eliminará a <strong>${esc(c.name)}</strong> junto con todo su historial de peso y pagos. Esta acción no se puede deshacer.<br><br>Si solo ha dejado la asesoría, puedes marcarlo como <em>Baja</em> o <em>En pausa</em>.`,
     });
     if (!ok) return;
+    await Photos.removeForClient(id);
     Store.remove('clients', id);
     UI.toast('Cliente eliminado');
     location.hash = '#/clientes';
@@ -296,6 +297,180 @@
    * Resumen
    * ======================================================= */
 
+  /** «a, b y c» */
+  function joinList(parts) {
+    const p = parts.filter(Boolean);
+    return p.length <= 1 ? p.join('') : `${p.slice(0, -1).join(', ')} y ${p[p.length - 1]}`;
+  }
+
+  /* =========================================================
+   * Tareas pendientes
+   * ======================================================= */
+
+  function taskDue(task) {
+    if (!task.dueDate || task.done) return '';
+    const days = U.daysBetween(today(), task.dueDate);
+    if (days < 0) return badge(`Vencida · ${U.fmtDateShort(task.dueDate)}`, 'danger');
+    if (days === 0) return badge('Para hoy', 'warning');
+    if (days === 1) return badge('Para mañana', 'warning');
+    return badge(`Para el ${U.fmtDateShort(task.dueDate)}`, 'info');
+  }
+
+  /** Una tarea con su casilla para marcarla como hecha. */
+  function taskItem(task, { showClient = false } = {}) {
+    const c = Store.get('clients', task.clientId);
+    const meta = [
+      showClient && c ? `<a href="#/clientes/${c.id}" data-action="open-client-tab" data-client="${c.id}" data-value="tareas">${esc(c.name)}</a>` : '',
+      task.done ? `Hecha el ${esc(U.fmtDateShort((task.doneAt || '').slice(0, 10) || today()))}` : `Apuntada el ${esc(U.fmtDateShort((task.createdAt || '').slice(0, 10) || today()))}`,
+    ].filter(Boolean).join(' · ');
+    return `<li class="task${task.done ? ' done' : ''}">
+      <button class="task-check" data-action="toggle-task" data-id="${task.id}" role="checkbox" aria-checked="${!!task.done}" aria-label="${task.done ? 'Marcar como pendiente' : 'Marcar como hecha'}">${task.done ? U.icon('check') : ''}</button>
+      <div class="grow">
+        <div class="task-text">${esc(task.text)}</div>
+        <div class="meta">${meta} ${taskDue(task)}</div>
+      </div>
+      <button class="icon-btn" data-action="edit-task" data-id="${task.id}" aria-label="Editar tarea">${U.icon('edit')}</button>
+    </li>`;
+  }
+
+  function clientTasks(c) {
+    const list = Store.tasksFor(c.id);
+    const pending = list.filter((t) => !t.done);
+    const done = list.filter((t) => t.done);
+    return `<section class="card">
+      <div class="card-header"><h2>Tareas pendientes ${pending.length ? `<span class="count">${pending.length}</span>` : ''}</h2></div>
+      <form class="task-form" data-client="${c.id}">
+        <textarea name="text" rows="2" placeholder="Escribe una tarea o anotación para ${esc(c.name.split(' ')[0])}…" aria-label="Nueva tarea" required></textarea>
+        <div class="task-form-row">
+          <label class="task-date"><span>Para el (opcional)</span><input type="date" name="dueDate"></label>
+          <button type="submit" class="btn primary">${U.icon('plus')}Añadir tarea</button>
+        </div>
+      </form>
+      ${pending.length ? `<ul class="list task-list">${pending.map((t) => taskItem(t)).join('')}</ul>` : empty('done', 'No hay tareas pendientes. Las que apuntes aquí aparecerán también en el resumen.')}
+    </section>
+    ${done.length ? `<section class="card">
+      <details class="done-tasks"${state.showDone ? ' open' : ''}>
+        <summary data-action="toggle-done-list"><h2>Hechas (${done.length})</h2></summary>
+        <ul class="list task-list">${done.map((t) => taskItem(t)).join('')}</ul>
+      </details>
+    </section>` : ''}`;
+  }
+
+  function submitTaskForm(form) {
+    const text = form.elements.text.value.trim();
+    if (!text) { form.elements.text.focus(); return; }
+    Store.add('tasks', { clientId: form.dataset.client, text, dueDate: form.elements.dueDate.value || '', done: false });
+    UI.toast('Tarea apuntada');
+    App.render();
+    document.querySelector('.task-form textarea')?.focus();
+  }
+
+  function toggleTask(id) {
+    const task = Store.get('tasks', id);
+    if (!task) return;
+    const done = !task.done;
+    Store.update('tasks', id, { done, doneAt: done ? new Date().toISOString() : '' });
+    App.render();
+    if (done) {
+      UI.toast('Tarea hecha', { label: 'Deshacer', onClick: () => { Store.update('tasks', id, { done: false, doneAt: '' }); App.render(); } });
+    }
+  }
+
+  function editTask(id) {
+    const task = Store.get('tasks', id);
+    if (!task) return;
+    UI.form({
+      title: 'Editar tarea',
+      fields: [
+        { name: 'text', label: 'Tarea', type: 'textarea', required: true },
+        { name: 'dueDate', label: 'Para el (opcional)', type: 'date' },
+      ],
+      values: task,
+      onDelete: async () => {
+        const ok = await UI.confirm({ title: 'Eliminar tarea', message: '¿Seguro que quieres eliminar esta tarea?' });
+        if (!ok) return;
+        Store.remove('tasks', id);
+        UI.toast('Tarea eliminada');
+        App.render();
+      },
+      onSubmit: (v) => { Store.update('tasks', id, v); UI.toast('Tarea actualizada'); App.render(); },
+    });
+  }
+
+  /* =========================================================
+   * Fotos
+   * ======================================================= */
+
+  function clientPhotos(c) {
+    const photos = Store.photosFor(c.id);
+    const groups = [];
+    for (const p of photos) {
+      const g = groups[groups.length - 1];
+      if (g && g.date === p.date) g.items.push(p);
+      else groups.push({ date: p.date, items: [p] });
+    }
+    return `<section class="card">
+      <div class="card-header"><h2>Fotos ${photos.length ? `<span class="muted" style="font:500 1rem 'Plus Jakarta Sans',sans-serif">${photos.length}</span>` : ''}</h2></div>
+      <div class="photo-upload">
+        <label class="btn primary" for="photo-input" tabindex="0">${U.icon('upload')}Subir fotos</label>
+        <input type="file" id="photo-input" data-client="${c.id}" accept="image/*" multiple hidden>
+        <label class="task-date"><span>Fecha de las fotos</span><input type="date" id="photo-date" value="${today()}"></label>
+      </div>
+      ${groups.length ? groups.map((g) => `
+        <h3 class="photo-date">${esc(fmtDate(g.date))}</h3>
+        <div class="photo-grid">${g.items.map((p) => `
+          <button class="photo" data-action="open-photo" data-id="${p.id}" aria-label="Ver foto del ${esc(fmtDate(p.date))}">
+            <img data-photo="${p.id}" alt="Foto de ${esc(c.name)} del ${esc(fmtDate(p.date))}">
+          </button>`).join('')}</div>`).join('') : empty('upload', 'Todavía no hay fotos. Sube las fotos de progreso de este cliente: puedes elegirlas de la galería o hacerlas con la cámara.')}
+    </section>`;
+  }
+
+  async function uploadPhotos(input) {
+    const files = [...(input.files || [])];
+    if (!files.length) return;
+    const clientId = input.dataset.client;
+    const date = document.getElementById('photo-date')?.value || today();
+    UI.toast(files.length === 1 ? 'Subiendo foto…' : `Subiendo ${files.length} fotos…`);
+    try {
+      const n = await Photos.addFiles(clientId, files, date);
+      UI.toast(n === 1 ? 'Foto guardada' : `${n} fotos guardadas`);
+    } catch (e) {
+      UI.toast(e.message || 'No se pudo guardar la foto');
+    }
+    App.render();
+  }
+
+  async function openPhoto(id) {
+    const meta = Store.get('photos', id);
+    if (!meta) return;
+    const list = Store.photosFor(meta.clientId);
+    const i = list.findIndex((p) => p.id === id);
+    const prev = list[i + 1];
+    const next = list[i - 1];
+    const dataUrl = await Photos.src(id);
+    UI.openModal({
+      title: `Foto del ${fmtDate(meta.date)}`,
+      body: `<div class="photo-view">
+        ${dataUrl ? `<img src="${dataUrl}" alt="Foto del ${esc(fmtDate(meta.date))}">` : '<div class="empty">No se ha podido cargar esta foto en este dispositivo.</div>'}
+        ${prev ? `<button type="button" class="photo-nav prev" data-photo-nav="${prev.id}" aria-label="Foto anterior">${U.icon('left')}</button>` : ''}
+        ${next ? `<button type="button" class="photo-nav next" data-photo-nav="${next.id}" aria-label="Foto siguiente">${U.icon('right')}</button>` : ''}
+      </div>`,
+      footer: `<button type="button" class="btn danger" id="photo-delete" style="margin-right:auto">${U.icon('trash')}Eliminar</button>
+        ${dataUrl ? `<a class="btn" href="${dataUrl}" download="foto-${meta.date}.jpg">${U.icon('download')}Descargar</a>` : ''}
+        <button type="button" class="btn primary" data-close>Cerrar</button>`,
+      onOpen: (dlg) => {
+        dlg.querySelectorAll('[data-photo-nav]').forEach((b) => { b.onclick = () => openPhoto(b.dataset.photoNav); });
+        document.getElementById('photo-delete').onclick = async () => {
+          const ok = await UI.confirm({ title: 'Eliminar foto', message: '¿Seguro que quieres eliminar esta foto? No se puede deshacer.' });
+          if (!ok) return;
+          await Photos.remove(id);
+          UI.toast('Foto eliminada');
+          App.render();
+        };
+      },
+    });
+  }
+
   /** Avisos: pagos vencidos o que vencen en los próximos días y clientes sin actualizar su progreso. */
   function computeAlerts() {
     const t = today();
@@ -311,7 +486,8 @@
       }
     }
     pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
-    return pay.concat(progress);
+    const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
+    return pay.concat(progress, tasks);
   }
 
   function incomeChart() {
@@ -366,16 +542,17 @@
     const alerts = computeAlerts();
 
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
-    const otherAlerts = alerts.filter((a) => a.kind !== 'pago');
+    const otherAlerts = alerts.filter((a) => a.kind === 'progreso');
+    const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
 
     return `
       <div class="page-header">
         <div>
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
-          <p>${payAlerts.length || otherAlerts.length
-            ? `Tienes ${[payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : ''].filter(Boolean).join(' y ')}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
-            : 'Todo al día: no tienes pagos ni pesos pendientes.'}</p>
+          <p>${payAlerts.length || otherAlerts.length || taskAlerts.length
+            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
+            : 'Todo al día: no tienes pagos, pesos ni tareas pendientes.'}</p>
         </div>
       </div>
 
@@ -392,6 +569,10 @@
               <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
               <button class="btn primary sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
             </li>`).join('')}</ul>` : empty('done', `Todos tus clientes han registrado su peso en los últimos ${STALE_DAYS} días.`)}
+        </section>
+        <section class="card alert-card${taskAlerts.length ? ' has-items' : ''}" id="tareas-pendientes">
+          <div class="card-header"><h2>Tareas pendientes ${taskAlerts.length ? `<span class="count">${taskAlerts.length}</span>` : ''}</h2></div>
+          ${taskAlerts.length ? `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>` : empty('done', 'No tienes tareas pendientes. Puedes apuntarlas en la pestaña «Tareas» de cada cliente.')}
         </section>
       </div>
 
@@ -469,7 +650,8 @@
     if (!c) {
       return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
-    const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
+    const pendingCount = Store.tasksFor(c.id).filter((t) => !t.done).length;
+    const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
     const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
@@ -477,6 +659,8 @@
     switch (state.clientTab) {
       case 'progreso': body = clientProgress(c); break;
       case 'pagos': body = clientPayments(c); break;
+      case 'fotos': body = clientPhotos(c); break;
+      case 'tareas': body = clientTasks(c); break;
       default: body = clientSummary(c);
     }
     return `
@@ -835,6 +1019,7 @@
     const ok = await UI.confirm({ title: 'Borrar todos los datos', message: 'Se eliminarán <strong>todos</strong> los clientes, registros de peso y pagos. Te recomendamos exportar una copia antes. ¿Continuar?', confirmLabel: 'Borrar todo' });
     if (!ok) return;
     Store.reset();
+    await Photos.clearAll();
     UI.toast('Datos borrados');
     App.render();
   }
@@ -880,7 +1065,8 @@
   const actions = {
     'new-client': () => openClientForm(),
     alerts: () => {
-      const target = computeAlerts().some((a) => a.kind === 'pago') ? 'proximos-pagos' : 'atencion';
+      const kinds = computeAlerts().map((a) => a.kind);
+      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('progreso') ? 'atencion' : 'tareas-pendientes';
       const go = () => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
       else { location.hash = '#/panel'; setTimeout(go, 60); }
@@ -908,6 +1094,11 @@
     },
     'mark-paid': (d) => markPaid(d.id),
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
+    'open-client-tab': (d) => { state.clientTab = d.value; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
+    'toggle-task': (d) => toggleTask(d.id),
+    'edit-task': (d) => editTask(d.id),
+    'toggle-done-list': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showDone = det.open; },
+    'open-photo': (d) => openPhoto(d.id),
     'client-filter': (d) => { state.clientFilter = d.value; App.render(); },
     'pay-filter': (d) => { state.payFilter = d.value; App.render(); },
     export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
@@ -925,6 +1116,6 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, notifyDue, greeting, greetingText,
+    saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

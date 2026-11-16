@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos'];
 
   function emptyData() {
     return {
@@ -11,6 +11,8 @@
       clients: [],
       measurements: [],
       payments: [],
+      tasks: [], // tareas pendientes del entrenador por cliente
+      photos: [], // solo datos de cada foto; la imagen va aparte (ver photos.js)
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -111,7 +113,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['measurements', 'payments']) {
+      for (const c of ['measurements', 'payments', 'tasks', 'photos']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -189,6 +191,23 @@
     return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
   }
 
+  /** Tareas de un cliente: primero las pendientes (por fecha límite), luego las hechas. */
+  function tasksFor(clientId) {
+    return data.tasks
+      .filter((t) => t.clientId === clientId)
+      .sort((a, b) => (a.done - b.done) || (a.done ? (b.doneAt || '').localeCompare(a.doneAt || '') : (a.dueDate || '9999').localeCompare(b.dueDate || '9999') || (a.createdAt || '').localeCompare(b.createdAt || '')));
+  }
+
+  function pendingTasks() {
+    return data.tasks
+      .filter((t) => !t.done && data.clients.some((c) => c.id === t.clientId))
+      .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999') || (a.createdAt || '').localeCompare(b.createdAt || ''));
+  }
+
+  function photosFor(clientId) {
+    return data.photos.filter((p) => p.clientId === clientId).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+  }
+
   function lastMeasurement(clientId) {
     const list = measurementsFor(clientId);
     return list[list.length - 1] || null;
@@ -232,6 +251,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
+    tasksFor, pendingTasks, photosFor,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },
