@@ -1202,11 +1202,61 @@
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
     </div>
+    ${dietSendable(d) ? `<div class="diet-sec diet-send">
+      <div class="card-header"><h2>Enviar al cliente</h2></div>
+      <p class="muted" style="margin:0 0 12px">Se envía la dieta completa por WhatsApp: las comidas con sus cantidades y opciones, y tus indicaciones.</p>
+      <div class="actions">
+        <a class="btn wa-btn" href="${dietWaLink(c, d)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
+        <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
+      </div>
+      ${U.waLink(c.phone) ? '' : `<p class="muted" style="font-size:.85rem;margin:10px 0 0">${esc(c.name.split(' ')[0])} no tiene teléfono en su ficha: WhatsApp te dejará elegir el chat.</p>`}
+    </div>` : ''}
     ${has ? `<div class="diet-sec diet-delete">
       <button class="btn danger" data-action="diet-delete" data-client="${c.id}">${U.icon('trash')}Eliminar toda la dieta</button>
       <span class="muted">Borra los objetivos, las comidas y las indicaciones.</span>
     </div>` : ''}
     </section>`;
+  }
+
+  const dietSendable = (d) => !!d && ((d.meals || []).some((m) => (m.items || []).length || m.vegFree) || !!(d.text || '').trim());
+
+  /** Texto de la dieta para WhatsApp (con *negritas* y _cursivas_ de WhatsApp). */
+  function dietText(c, d) {
+    const fmtG = (g) => fmtNum(Number(g) || 0, 0);
+    const lines = [`*Dieta — ${c.name}*`];
+    const day = dayTargets(d);
+    if (day) lines.push(`Objetivo diario: ${fmtNum(day.kcal, 0)} kcal · Proteínas ${fmtNum(day.protein, 0)} g · Hidratos ${fmtNum(day.carbs, 0)} g · Grasas ${fmtNum(day.fat, 0)} g`);
+    const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
+    meals.forEach((m) => {
+      lines.push('', `*${m.name}*`);
+      for (const g of mealGroups(m)) {
+        const many = g.key !== 'extra' && g.rows.length > 1;
+        lines.push(`_${ROLE_LABEL[g.key]}${many ? ' (elige una opción)' : ''}:_`);
+        g.rows.forEach((r, i) => lines.push(`${many && i ? '   o ' : '• '}${fmtG(r.it.grams)} ${unitOf(r.f)} de ${r.f.name}`));
+      }
+      if (m.vegFree) lines.push('🥗 Puedes añadir hasta 150 g de verdura (la que quieras)');
+    });
+    if ((d.text || '').trim()) lines.push('', '*Indicaciones*', d.text.trim());
+    if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
+    return lines.join('\n');
+  }
+
+  function dietWaLink(c, d) {
+    return `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(dietText(c, d))}`;
+  }
+
+  async function copyText(text, msg) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (err) { /* sin portapapeles */ }
+      ta.remove();
+    }
+    UI.toast(msg);
   }
 
   /** Borra la dieta completa del cliente (objetivos, comidas e indicaciones), con opción de deshacer. */
@@ -2728,6 +2778,7 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
+    'diet-copy': (d) => { const c = Store.get('clients', d.client); const dt = Store.dietFor(d.client); if (c && dt) copyText(dietText(c, dt), 'Dieta copiada: pégala donde quieras'); },
     'equiv-by': (d) => setEquivBy(d.value),
     'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },
     'meal-count-apply': (d) => applyMealCount(d.client),
