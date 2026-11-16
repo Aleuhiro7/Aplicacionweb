@@ -16,6 +16,7 @@
     const routeKey = section + '/' + (id || '');
     if (routeKey !== lastRoute && section === 'clientes' && id && !Views.state.keepTab) Views.state.clientTab = 'resumen';
     Views.state.keepTab = false;
+    if (section !== 'biblioteca') Views.state.pick = null; // salir de la biblioteca cancela la elección de ejercicio
 
     let html;
     switch (section) {

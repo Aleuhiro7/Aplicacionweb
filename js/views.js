@@ -38,6 +38,7 @@
     clientTab: 'resumen',
     payFilter: 'todos',
     libSearch: '',
+    pick: null, // { client, day } cuando se elige un ejercicio para una rutina
     libGroup: 'todos',
     openPay: null, // cliente con el desplegable de pago abierto
   };
@@ -597,7 +598,7 @@
     UI.form({
       title: ex ? 'Editar ejercicio' : `Añadir ejercicio · ${day.name}`,
       fields: [
-        { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Escribe para buscar en la biblioteca…', datalist: Store.library().map((x) => x.name) },
+        { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Ej.: Sentadilla, Press banca, Remo con mancuerna…' },
         { name: 'sets', label: 'Series', placeholder: 'Ej.: 4' },
         { name: 'reps', label: 'Repeticiones', placeholder: 'Ej.: 8-10, 12, 30 s' },
         { name: 'load', label: 'Carga', placeholder: 'Ej.: 60 kg, RPE 8, peso corporal' },
@@ -1219,7 +1220,18 @@
     const groups = libraryGroups();
     if (state.libGroup !== 'todos' && !groups.includes(state.libGroup)) state.libGroup = 'todos';
     const chip = (v, l) => `<button class="chip${state.libGroup === v ? ' active' : ''}" data-action="lib-group" data-value="${esc(v)}">${esc(l)}</button>`;
+    const pick = pickContext();
     return `
+      ${pick ? `<div class="pick-banner">
+        <div class="grow">
+          <div class="pick-title">${U.icon('plus')}Elige un ejercicio para <strong>${esc(pick.day.name)}</strong></div>
+          <div class="muted">Rutina de ${esc(pick.client.name)} · toca un ejercicio para verlo y añadirlo</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm" data-action="pick-manual">${U.icon('edit')}No está en la biblioteca</button>
+          <button class="btn sm" data-action="pick-cancel">Cancelar</button>
+        </div>
+      </div>` : ''}
       <div class="page-header">
         <div><h1 class="display">Biblioteca de ejercicios</h1><p>${plural(Store.data.library.length, 'ejercicio', 'ejercicios')}</p></div>
         <button class="btn primary pill" data-action="lib-new">${U.icon('plus')}Ejercicio</button>
@@ -1291,9 +1303,60 @@
         </dl>
         ${ex.video ? `<p style="margin-top:14px"><a href="${esc(ex.video)}" target="_blank" rel="noopener">${U.icon('right')} Ver vídeo</a></p>` : ''}
       </div>`,
-      footer: `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button><button type="button" class="btn primary" data-close>Cerrar</button>`,
-      onOpen: () => { document.getElementById('lib-edit').onclick = () => libraryForm(id); },
+      footer: (() => {
+        const pick = pickContext();
+        return `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>` + (pick
+          ? `<button type="button" class="btn" data-close>Volver</button><button type="button" class="btn primary" id="lib-pick">${U.icon('plus')}Añadir a ${esc(pick.day.name)}</button>`
+          : `<button type="button" class="btn primary" data-close>Cerrar</button>`);
+      })(),
+      onOpen: () => {
+        document.getElementById('lib-edit').onclick = () => libraryForm(id);
+        const add = document.getElementById('lib-pick');
+        if (add) add.onclick = () => { UI.closeModal(); addFromLibrary(id); };
+      },
     });
+  }
+
+  /* ---------- Elegir ejercicio de la biblioteca para una rutina ---------- */
+
+  /** Cliente, rutina y día para los que se está eligiendo ejercicio (o null). */
+  function pickContext() {
+    const p = state.pick;
+    if (!p) return null;
+    const client = Store.get('clients', p.client);
+    const routine = Store.routineFor(p.client);
+    const day = routine && findDay(routine, p.day);
+    return client && day ? { client, routine, day } : null;
+  }
+
+  function startPick(clientId, dayId) {
+    state.pick = { client: clientId, day: dayId };
+    state.libSearch = '';
+    location.hash = '#/biblioteca';
+  }
+
+  function backToRoutine(clientId) {
+    state.pick = null;
+    state.clientTab = 'rutina';
+    state.keepTab = true;
+    location.hash = `#/clientes/${clientId}`;
+  }
+
+  /** Añade el ejercicio de la biblioteca al día elegido (con sus series, repeticiones, descanso y notas). */
+  function addFromLibrary(libId) {
+    const pick = pickContext();
+    const lib = Store.get('library', libId);
+    if (!pick || !lib) return;
+    const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
+    const ex = { id: U.uid(), libraryId: lib.id, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes };
+    (pick.day.exercises = pick.day.exercises || []).push(ex);
+    saveRoutine(pick.routine);
+    const { client, day } = pick;
+    backToRoutine(client.id);
+    setTimeout(() => UI.toast(`«${lib.name}» añadido a ${day.name}`, {
+      label: 'Editar',
+      onClick: () => { const r = Store.routineFor(client.id); const d = r && findDay(r, day.id); const e = d && d.exercises.find((x) => x.id === ex.id); if (e) exerciseForm(client, r, d, e); },
+    }), 50);
   }
 
   /* =========================================================
@@ -1523,7 +1586,9 @@
     'day-add': (d) => dayForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'day-edit': (d) => { const r = Store.routineFor(d.client); dayForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
     'day-move': (d) => { const r = Store.routineFor(d.client); moveItem(r.days, d.day, Number(d.dir)); saveRoutine(r); },
-    'ex-add': (d) => { const r = Store.routineFor(d.client); exerciseForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
+    'ex-add': (d) => startPick(d.client, d.day),
+    'pick-cancel': () => { const p = state.pick; if (p) backToRoutine(p.client); },
+    'pick-manual': () => { const p = pickContext(); if (!p) return; const { client, routine, day } = p; backToRoutine(client.id); setTimeout(() => exerciseForm(client, routine, day), 50); },
     'ex-edit': (d) => { const r = Store.routineFor(d.client); const day = findDay(r, d.day); exerciseForm(Store.get('clients', d.client), r, day, day.exercises.find((x) => x.id === d.ex)); },
     'ex-move': (d) => { const r = Store.routineFor(d.client); moveItem(findDay(r, d.day).exercises, d.ex, Number(d.dir)); saveRoutine(r); },
     'complete-review': (d) => completeReview(d.client),

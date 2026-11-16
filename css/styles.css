@@ -809,3 +809,16 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .topbar .btn.pill .ico { width: 16px; height: 16px; }
 @media (max-width: 760px) { .topbar .btn.pill { padding: 6px 12px; font-size: .82rem; } }
 @media (max-width: 400px) { .topbar .btn.pill { padding: 6px 9px; } }
+
+/* ---------- Elegir ejercicio para la rutina ---------- */
+.pick-banner {
+  position: sticky; top: 72px; z-index: 10;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin: -6px 0 18px; padding: 14px 18px; border-radius: 14px;
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface)); border: 1px solid var(--primary);
+  box-shadow: var(--shadow-lg);
+}
+.pick-title { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.pick-title .ico { color: var(--primary); }
+.pick-banner .muted { font-size: .85rem; margin-top: 2px; }
+@media (max-width: 760px) { .pick-banner { top: 62px; } .pick-banner .actions { width: 100%; } .pick-banner .actions .btn { flex: 1; justify-content: center; } }
