@@ -1,4 +1,4 @@
-# EntrenaPro · Gestión de clientes para entrenadores personales
+# David Orihuela Coach · Gestión de clientes
 
 Aplicación web para llevar el día a día de un entrenador personal: clientes, agenda de sesiones, progreso físico y cobros.
 

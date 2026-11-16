@@ -383,7 +383,7 @@
   function renderPanel() {
     const t = today();
     const d = Store.data;
-    const name = Store.settings.trainerName;
+    const name = Store.settings.trainerName || 'David Orihuela';
     const firstName = name ? name.split(' ')[0] : '';
     const dateLine = `<p class="eyebrow">${esc(fmtDate(t))}</p>`;
 
@@ -964,7 +964,7 @@
       state.week = n === 0 ? U.startOfWeek(today()) : U.addDays(state.week, n * 7);
       App.render();
     },
-    export: () => { download(`entrenapro-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
+    export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
     'reset-data': () => resetData(),

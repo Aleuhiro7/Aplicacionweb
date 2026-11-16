@@ -38,13 +38,10 @@
     });
   }
 
-  /** Marca (nombre e iniciales del entrenador), título y punto de avisos. */
+  /** Título de la pestaña y punto de avisos. */
   function updateChrome() {
-    const name = Store.settings.trainerName || 'EntrenaPro';
-    document.getElementById('brand-title').textContent = name;
-    document.getElementById('brand-logo').textContent = U.initials(name);
     const labels = { panel: 'Panel', clientes: 'Clientes', agenda: 'Agenda', pagos: 'Pagos', ajustes: 'Ajustes' };
-    document.title = `${labels[parseRoute().section] || 'Panel'} · ${name}`;
+    document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Coach`;
     document.getElementById('alert-dot').hidden = !Views.computeAlerts().length;
   }
 
