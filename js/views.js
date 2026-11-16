@@ -321,8 +321,8 @@
     const c = Store.get('clients', task.clientId);
     const meta = [
       showClient && c ? `<a href="#/clientes/${c.id}" data-action="open-client-tab" data-client="${c.id}" data-value="tareas">${esc(c.name)}</a>` : '',
-      task.done ? `Hecha el ${esc(U.fmtDateShort((task.doneAt || '').slice(0, 10) || today()))}` : `Apuntada el ${esc(U.fmtDateShort((task.createdAt || '').slice(0, 10) || today()))}`,
-    ].filter(Boolean).join(' · ');
+      `<span>${task.done ? `Hecha el ${esc(U.fmtDateShort((task.doneAt || '').slice(0, 10) || today()))}` : `Apuntada el ${esc(U.fmtDateShort((task.createdAt || '').slice(0, 10) || today()))}`}</span>`,
+    ].filter(Boolean).join('');
     return `<li class="task${task.done ? ' done' : ''}">
       <button class="task-check" data-action="toggle-task" data-id="${task.id}" role="checkbox" aria-checked="${!!task.done}" aria-label="${task.done ? 'Marcar como pendiente' : 'Marcar como hecha'}">${task.done ? U.icon('check') : ''}</button>
       <div class="grow">
@@ -545,6 +545,35 @@
     const otherAlerts = alerts.filter((a) => a.kind === 'progreso');
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
 
+    /* Avisos: primero las tarjetas con algo pendiente; las que están al día, en una sola línea al final. */
+    const section = (id, title, n, link, list, okText) => ({
+      n,
+      html: n
+        ? `<section class="card alert-card has-items" id="${id}">
+            <div class="card-header"><h2>${title} <span class="count">${n}</span></h2>${link}</div>
+            ${list}
+          </section>`
+        : `<section class="card alert-card alert-ok" id="${id}">
+            <h2>${title}</h2><span class="ok-text">${U.icon('done')}${esc(okText)}</span>
+          </section>`,
+    });
+    const alertSections = [
+      section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
+        `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
+        `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`),
+      section('atencion', 'Pesos pendientes', otherAlerts.length, '',
+        `<ul class="list">${otherAlerts.map((a) => `
+          <li>
+            ${avatar(a.c)}
+            <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
+            <button class="btn primary sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
+          </li>`).join('')}</ul>`,
+        'Todos han registrado su peso'),
+      section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
+        `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,
+        'Sin tareas pendientes'),
+    ].sort((x, y) => (y.n > 0) - (x.n > 0)); // las que tienen avisos, arriba (sin cambiar su orden)
+
     return `
       <div class="page-header">
         <div>
@@ -556,24 +585,8 @@
         </div>
       </div>
 
-      <div class="grid-2 alerts-grid">
-        <section class="card alert-card${payAlerts.length ? ' has-items' : ''}" id="proximos-pagos">
-          <div class="card-header"><h2>Pagos pendientes ${payAlerts.length ? `<span class="count">${payAlerts.length}</span>` : ''}</h2><a href="#/pagos" class="btn sm">Ver todos</a></div>
-          ${payAlerts.length ? `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>` : empty('done', `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`)}
-        </section>
-        <section class="card alert-card${otherAlerts.length ? ' has-items' : ''}" id="atencion">
-          <div class="card-header"><h2>Pesos pendientes ${otherAlerts.length ? `<span class="count">${otherAlerts.length}</span>` : ''}</h2></div>
-          ${otherAlerts.length ? `<ul class="list">${otherAlerts.map((a) => `
-            <li>
-              ${avatar(a.c)}
-              <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-              <button class="btn primary sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
-            </li>`).join('')}</ul>` : empty('done', `Todos tus clientes han registrado su peso en los últimos ${STALE_DAYS} días.`)}
-        </section>
-        <section class="card alert-card${taskAlerts.length ? ' has-items' : ''}" id="tareas-pendientes">
-          <div class="card-header"><h2>Tareas pendientes ${taskAlerts.length ? `<span class="count">${taskAlerts.length}</span>` : ''}</h2></div>
-          ${taskAlerts.length ? `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>` : empty('done', 'No tienes tareas pendientes. Puedes apuntarlas en la pestaña «Tareas» de cada cliente.')}
-        </section>
+      <div class="alerts-stack">
+        ${alertSections.map((x) => x.html).join('')}
       </div>
 
       <h2 class="section-title">Este mes</h2>
