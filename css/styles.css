@@ -895,11 +895,12 @@ body.q-page { min-height: 100vh; }
 .block-card summary .grow { flex: 1; min-width: 0; }
 
 /* ---------- Objetivos de la dieta ---------- */
-:root { --m-carbs: #f0507a; --m-protein: #4f7cf7; --m-fat: #f5b52a; }
+/* Colores de los macros: los mismos tonos de la app (turquesa, azul y violeta suaves). */
+:root { --m-carbs: var(--primary); --m-protein: var(--info); --m-fat: var(--violet); }
 .diet-goals { padding-bottom: 14px; }
 .kcal-goal { appearance: none; width: 100%; display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .kcal-goal:hover { border-color: var(--primary); }
-.kcal-icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, #f97362 18%, transparent); color: #f97362; flex-shrink: 0; }
+.kcal-icon { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
 .kcal-icon .ico { width: 26px; height: 26px; }
 .kcal-label { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .kcal-value { display: block; font: 700 2rem/1.1 "Barlow Semi Condensed", sans-serif; }
@@ -918,7 +919,7 @@ body.q-page { min-height: 100vh; }
 .donut-seg.m-carbs { stroke: var(--m-carbs); }
 .donut-seg.m-protein { stroke: var(--m-protein); }
 .donut-seg.m-fat { stroke: var(--m-fat); }
-.donut-label { fill: #fff; font: 700 13px "Plus Jakarta Sans", sans-serif; }
+.donut-label { fill: var(--bg); font: 800 13px "Plus Jakarta Sans", sans-serif; }
 .donut-legend { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-size: .88rem; margin-bottom: 8px; }
 .donut-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .donut-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -930,7 +931,7 @@ body.q-page { min-height: 100vh; }
 .diet-row + .diet-row { border-top: 1px solid var(--border); }
 button.diet-row { cursor: pointer; }
 button.diet-row:hover { color: var(--primary); }
-.diet-row .accent { color: #f97362; font-weight: 600; }
+.diet-row .accent { color: var(--primary); font-weight: 600; }
 .macro-edit label { font-weight: 700; }
 .macro-edit.m-carbs label { color: var(--m-carbs); } .macro-edit.m-protein label { color: var(--m-protein); } .macro-edit.m-fat label { color: var(--m-fat); }
 .me-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
