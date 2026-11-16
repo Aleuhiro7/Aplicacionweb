@@ -309,13 +309,21 @@
  * Cada bloque tiene un macronutriente de referencia y una cantidad (p. ej. 25 g de proteína);
  * la app calcula los gramos de cada alimento que aportan esa cantidad. Pesos en crudo.
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
+/* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
+ * actualizan también en los datos ya guardados de cada dispositivo. */
+window.FOOD_BLOCKS_VERSION = 2;
+window.FOOD_BLOCKS_CHANGES = {
+  2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
+};
+
 window.FOOD_BLOCKS_DEFAULT = [
-  { id: 'blk-aves', family: 'Proteínas', name: 'Aves magras', macro: 'protein', amount: 25,
-    foods: ['Pechuga de pollo (cruda)', 'Pechuga de pavo (cruda)', 'Fiambre de pechuga de pavo', 'Fiambre de pechuga de pollo'] },
   { id: 'blk-carnes-magras', family: 'Proteínas', name: 'Carnes magras', macro: 'protein', amount: 25,
-    foods: ['Ternera magra (cruda)', 'Solomillo de cerdo (crudo)', 'Lomo de cerdo (crudo)', 'Conejo (crudo)', 'Muslo de pollo sin piel (crudo)', 'Jamón cocido extra', 'Lomo embuchado'] },
+    foods: ['Pechuga de pollo (cruda)', 'Pechuga de pavo (cruda)', 'Muslo de pollo sin piel (crudo)', 'Ternera magra (cruda)', 'Solomillo de cerdo (crudo)', 'Lomo de cerdo (crudo)', 'Conejo (crudo)'] },
   { id: 'blk-carnes-grasas', family: 'Proteínas', name: 'Carnes con más grasa', macro: 'protein', amount: 25,
-    foods: ['Carne picada de vacuno (cruda)', 'Hamburguesa de vacuno (cruda)', 'Hamburguesa de pollo (cruda)', 'Cordero pierna (crudo)', 'Pollo entero con piel (crudo)', 'Jamón serrano', 'Jamón ibérico'] },
+    foods: ['Carne picada de vacuno (cruda)', 'Hamburguesa de vacuno (cruda)', 'Hamburguesa de pollo (cruda)', 'Cordero pierna (crudo)', 'Pollo entero con piel (crudo)'] },
+  { id: 'blk-embutidos', family: 'Proteínas', name: 'Embutidos y fiambres', macro: 'protein', amount: 15,
+    notes: 'Se toman en raciones más pequeñas: 15 g de proteína ≈ 50 g de jamón serrano.',
+    foods: ['Jamón serrano', 'Jamón ibérico', 'Fiambre de pechuga de pavo', 'Fiambre de pechuga de pollo', 'Lomo embuchado', 'Jamón cocido extra'] },
   { id: 'blk-pescado-blanco', family: 'Proteínas', name: 'Pescado blanco y marisco', macro: 'protein', amount: 25,
     foods: ['Merluza (cruda)', 'Bacalao fresco (crudo)', 'Bacalao desalado (crudo)', 'Lubina (cruda)', 'Atún al natural (lata, escurrido)', 'Gambas peladas congeladas (crudas)', 'Langostinos / gambas cocidos', 'Calamar (crudo)', 'Sepia (cruda)', 'Pulpo (crudo)', 'Mejillones (crudos)'] },
   { id: 'blk-pescado-azul', family: 'Proteínas', name: 'Pescado azul y semigraso', macro: 'protein', amount: 25,

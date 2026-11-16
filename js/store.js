@@ -97,14 +97,32 @@
   /** Carga una sola vez los bloques de equivalencia de serie (después se pueden editar). */
   function seedBlocks(d) {
     const defaults = window.FOOD_BLOCKS_DEFAULT || [];
-    if (!defaults.length || d.settings.blocksSeeded) return;
+    const version = window.FOOD_BLOCKS_VERSION || 1;
+    if (!defaults.length) return;
     const idByName = new Map(d.foods.map((f) => [f.name, f.id]));
-    const have = new Set(d.foodBlocks.map((b) => b.id));
-    for (const b of defaults) {
-      if (have.has(b.id)) continue;
-      d.foodBlocks.push({ id: b.id, family: b.family, name: b.name, macro: b.macro, amount: b.amount, notes: b.notes || '', foodIds: b.foods.map((n) => idByName.get(n)).filter(Boolean) });
+    const fromDefault = (b) => ({ id: b.id, family: b.family, name: b.name, macro: b.macro, amount: b.amount, notes: b.notes || '', foodIds: b.foods.map((n) => idByName.get(n)).filter(Boolean) });
+    const byId = new Map(defaults.map((b) => [b.id, b]));
+    if (!d.settings.blocksSeeded) {
+      const have = new Set(d.foodBlocks.map((b) => b.id));
+      for (const b of defaults) if (!have.has(b.id)) d.foodBlocks.push(fromDefault(b));
+      d.settings.blocksSeeded = true;
+      d.settings.blocksVersion = version;
+    } else if ((d.settings.blocksVersion || 1) < version) {
+      // Cambios en los bloques de serie desde la versión guardada.
+      for (let v = (d.settings.blocksVersion || 1) + 1; v <= version; v++) {
+        const ch = (window.FOOD_BLOCKS_CHANGES || {})[v] || {};
+        d.foodBlocks = d.foodBlocks.filter((b) => !(ch.remove || []).includes(b.id));
+        for (const id of ch.replace || []) {
+          const i = d.foodBlocks.findIndex((b) => b.id === id);
+          if (i >= 0 && byId.has(id)) d.foodBlocks[i] = fromDefault(byId.get(id));
+        }
+        for (const id of ch.add || []) if (byId.has(id) && !d.foodBlocks.some((b) => b.id === id)) d.foodBlocks.push(fromDefault(byId.get(id)));
+      }
+      d.settings.blocksVersion = version;
     }
-    d.settings.blocksSeeded = true;
+    // Los bloques de serie se muestran en su orden; los creados a mano, al final.
+    const order = new Map(defaults.map((b, i) => [b.id, i]));
+    d.foodBlocks = d.foodBlocks.map((b, i) => [b, i]).sort((x, y) => (order.has(x[0].id) ? order.get(x[0].id) : 1e6 + x[1]) - (order.has(y[0].id) ? order.get(y[0].id) : 1e6 + y[1])).map((x) => x[0]);
   }
 
   function seedLibrary(d) {
