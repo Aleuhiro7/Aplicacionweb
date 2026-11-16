@@ -1,15 +1,14 @@
 # David Orihuela Coach · Gestión de clientes
 
-Aplicación web para llevar el día a día de un entrenador personal: clientes, agenda de sesiones, progreso físico y cobros.
+Aplicación web para gestionar los clientes de asesoría online: cuotas mensuales, progreso físico y cobros.
 
 ## Funcionalidades
 
-- **Panel**: sesiones de hoy y de los próximos 7 días, ingresos del mes, cobros pendientes y avisos (bonos a punto de agotarse, clientes sin sesiones programadas).
-- **Clientes**: ficha con datos de contacto, objetivo, nivel, tarifa, lesiones/patologías (destacadas en un aviso) y notas. Búsqueda, filtros activo/inactivo y accesos directos a WhatsApp y email.
-- **Agenda semanal**: programa sesiones (con repetición semanal), márcalas como completadas, canceladas o «no asistió», y recibe un aviso si se solapan.
-- **Progreso**: registra peso, % de grasa y perímetros; gráfico de evolución, diferencias respecto a la primera medición e IMC.
-- **Pagos**: cobros pagados o pendientes, **bonos de sesiones** (descuento automático de las sesiones consumidas) y, opcionalmente, un cobro pendiente automático al completar cada sesión.
-- **Ajustes**: moneda, tarifa y duración por defecto, tema claro/oscuro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
+- **Resumen**: cobrado en el mes frente a lo previsto, lo que falta por cobrar (y lo vencido), clientes activos y en pausa, altas del mes, gráfico de ingresos de los últimos 6 meses, estado de las cuotas del mes y avisos (cuotas vencidas, clientes sin actualizar su progreso en 14 días).
+- **Clientes**: ficha con contacto, objetivo, cuota mensual y día de cobro, lesiones/patologías (destacadas en un aviso) y notas. Estados activo / en pausa / baja, búsqueda y accesos directos a WhatsApp y email.
+- **Progreso**: registra peso, % de grasa y perímetros en cada revisión; gráfico de evolución, diferencias respecto a la primera medición e IMC.
+- **Pagos**: cobra la cuota del mes con un clic (importe y concepto ya rellenados), registra otros pagos y marca pendientes como cobrados.
+- **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
 ## Cómo usarla
 

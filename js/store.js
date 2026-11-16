@@ -3,16 +3,15 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'sessions', 'measurements', 'payments'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments'];
 
   function emptyData() {
     return {
       version: 1,
       clients: [],
-      sessions: [],
       measurements: [],
       payments: [],
-      settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 35, defaultDuration: 60, theme: 'dark' },
+      settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
 
@@ -66,7 +65,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['sessions', 'measurements', 'payments']) {
+      for (const c of ['measurements', 'payments']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -85,10 +84,6 @@
     return data.clients.slice().sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 
-  function sessionsFor(clientId) {
-    return data.sessions.filter((s) => s.clientId === clientId).sort(byDateTime);
-  }
-
   function measurementsFor(clientId) {
     return data.measurements.filter((m) => m.clientId === clientId).sort(byDateTime);
   }
@@ -97,43 +92,65 @@
     return data.payments.filter((p) => p.clientId === clientId).sort(byDateTime).reverse();
   }
 
-  function sessionsBetween(fromISO, toISO) {
-    return data.sessions.filter((s) => s.date >= fromISO && s.date <= toISO).sort(byDateTime);
-  }
-
-  function nextSession(clientId) {
-    const t = today();
-    return data.sessions
-      .filter((s) => s.clientId === clientId && s.status === 'programada' && s.date >= t)
-      .sort(byDateTime)[0] || null;
-  }
-
-  function lastCompletedSession(clientId) {
-    const list = data.sessions
-      .filter((s) => s.clientId === clientId && s.status === 'completada')
-      .sort(byDateTime);
-    return list[list.length - 1] || null;
+  /** Primer y último día (YYYY-MM-DD) del mes de la fecha dada. */
+  function monthRange(iso) {
+    const d = U.parseDate(iso);
+    return {
+      from: U.toISODate(new Date(d.getFullYear(), d.getMonth(), 1)),
+      to: U.toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+    };
   }
 
   /**
-   * Bonos: sesiones compradas (suma de "sesiones incluidas" en pagos) menos
-   * sesiones consumidas (completadas o no asistidas). null si el cliente no usa bonos.
+   * Estado de la cuota mensual de un cliente en el mes de `iso` (por defecto, hoy).
+   * Devuelve null si el cliente no está activo o no tiene cuota.
    */
-  function packBalance(clientId) {
-    const bought = data.payments
-      .filter((p) => p.clientId === clientId && Number(p.sessionsIncluded) > 0)
-      .reduce((sum, p) => sum + Number(p.sessionsIncluded), 0);
-    if (!bought) return null;
-    const used = data.sessions.filter(
-      (s) => s.clientId === clientId && (s.status === 'completada' || s.status === 'no-asistio')
-    ).length;
-    return { bought, used, remaining: bought - used };
+  function feeStatus(client, iso) {
+    const ref = iso || today();
+    if (!client || (client.status || 'activo') !== 'activo' || !(Number(client.rate) > 0)) return null;
+    const { from, to } = monthRange(ref);
+    const paid = data.payments
+      .filter((p) => p.clientId === client.id && p.status === 'pagado' && p.date >= from && p.date <= to)
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const lastDay = Number(to.slice(8));
+    const day = Math.min(lastDay, Math.max(1, Number(client.billingDay) || 1));
+    const dueDate = from.slice(0, 8) + U.pad(day);
+    let status = 'pendiente';
+    if (paid > 0) status = 'pagado';
+    else if (ref > dueDate) status = 'vencido';
+    return { status, amount: Number(client.rate), paid, dueDate };
+  }
+
+  /**
+   * Lo que falta por cobrar: cuotas de este mes sin pagar (si no hay ya un pago
+   * pendiente registrado para ese cliente este mes) y pagos marcados como pendientes.
+   */
+  function receivables(clientId) {
+    const t = today();
+    const { from, to } = monthRange(t);
+    const pending = data.payments.filter((p) => p.status === 'pendiente');
+    const items = [];
+    for (const c of data.clients) {
+      if (clientId && c.id !== clientId) continue;
+      const fs = feeStatus(c, t);
+      if (!fs || fs.status === 'pagado') continue;
+      const hasRecord = pending.some((p) => p.clientId === c.id && p.date >= from && p.date <= to);
+      if (!hasRecord) items.push({ clientId: c.id, amount: fs.amount, overdue: fs.status === 'vencido', fee: true, date: fs.dueDate });
+    }
+    for (const p of pending) {
+      if (clientId && p.clientId !== clientId) continue;
+      items.push({ clientId: p.clientId, amount: Number(p.amount) || 0, overdue: p.date < t, payment: p, date: p.date });
+    }
+    return items;
   }
 
   function pendingAmount(clientId) {
-    return data.payments
-      .filter((p) => p.status === 'pendiente' && (!clientId || p.clientId === clientId))
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    return receivables(clientId).reduce((sum, r) => sum + r.amount, 0);
+  }
+
+  function lastMeasurement(clientId) {
+    const list = measurementsFor(clientId);
+    return list[list.length - 1] || null;
   }
 
   function paidBetween(fromISO, toISO) {
@@ -173,8 +190,8 @@
 
   window.Store = {
     load, save, add, update, remove, get, reset, exportJSON, importJSON,
-    clients, sessionsFor, measurementsFor, paymentsFor, sessionsBetween, nextSession,
-    lastCompletedSession, packBalance, pendingAmount, paidBetween, clientName,
+    clients, measurementsFor, paymentsFor, monthRange, feeStatus, receivables, pendingAmount,
+    lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },
     get storageOk() { return storageOk; },

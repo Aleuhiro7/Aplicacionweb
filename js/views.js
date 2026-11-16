@@ -1,4 +1,4 @@
-/* Vistas de la aplicación y acciones del usuario. */
+/* Vistas de la aplicación y acciones del usuario (asesorías online). */
 (function () {
   'use strict';
 
@@ -6,16 +6,18 @@
   const money = (n) => fmtMoney(n, Store.settings.currency);
 
   /* ---------- Catálogos ---------- */
-  const SESSION_STATUS = {
-    programada: { label: 'Programada', badge: 'info' },
-    completada: { label: 'Completada', badge: 'success' },
-    cancelada: { label: 'Cancelada', badge: '' },
-    'no-asistio': { label: 'No asistió', badge: 'danger' },
+  const CLIENT_STATUS = {
+    activo: { label: 'Activo', badge: 'success' },
+    pausa: { label: 'En pausa', badge: 'warning' },
+    inactivo: { label: 'Baja', badge: '' },
   };
-  const SESSION_TYPES = ['Entrenamiento personal', 'Evaluación', 'Seguimiento', 'Online', 'Grupal'];
-  const GOALS = ['Pérdida de grasa', 'Ganancia muscular', 'Fuerza', 'Resistencia', 'Salud general', 'Rehabilitación', 'Rendimiento deportivo'];
-  const LEVELS = ['Principiante', 'Intermedio', 'Avanzado'];
-  const PAY_METHODS = ['Efectivo', 'Transferencia', 'Tarjeta', 'Bizum', 'Otro'];
+  const FEE_STATUS = {
+    pagado: { label: 'Pagado', badge: 'success' },
+    pendiente: { label: 'Pendiente', badge: 'info' },
+    vencido: { label: 'Vencido', badge: 'danger' },
+  };
+  const GOALS = ['Pérdida de grasa', 'Ganancia muscular', 'Recomposición corporal', 'Fuerza', 'Resistencia', 'Salud general', 'Rendimiento deportivo'];
+  const PAY_METHODS = ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'];
   const CURRENCIES = [
     { value: 'EUR', label: 'Euro (€)' },
     { value: 'USD', label: 'Dólar estadounidense ($)' },
@@ -35,6 +37,9 @@
     { key: 'arm', label: 'Brazo', unit: 'cm' },
     { key: 'thigh', label: 'Muslo', unit: 'cm' },
   ];
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const monthName = (iso) => MONTHS[U.parseDate(iso).getMonth()];
+  const STALE_DAYS = 14; // días sin actualizar progreso para avisar
 
   /* Estado de la interfaz (no se guarda). */
   const state = {
@@ -42,28 +47,25 @@
     clientFilter: 'activo',
     clientTab: 'resumen',
     metric: 'weight',
-    week: U.startOfWeek(today()),
     payFilter: 'todos',
   };
 
   const badge = (text, kind) => `<span class="badge ${kind || ''}">${esc(text)}</span>`;
-  const statusBadge = (s) => badge(SESSION_STATUS[s.status]?.label || s.status, SESSION_STATUS[s.status]?.badge);
+  const clientStatus = (c) => (CLIENT_STATUS[c.status] ? c.status : 'activo');
+  const statusBadge = (c) => badge(CLIENT_STATUS[clientStatus(c)].label, CLIENT_STATUS[clientStatus(c)].badge);
+  const feeBadge = (fs) => (fs ? badge(FEE_STATUS[fs.status].label, FEE_STATUS[fs.status].badge) : '<span class="muted">—</span>');
   const payBadge = (p) => (p.status === 'pagado' ? badge('Pagado', 'success') : badge('Pendiente', 'warning'));
   const empty = (icon, text, extra = '') => `<div class="empty"><span class="empty-icon">${U.icon(icon)}</span><div>${text}</div>${extra}</div>`;
-  const endTime = (s) => {
-    const [h, m] = (s.time || '00:00').split(':').map(Number);
-    const total = h * 60 + m + (Number(s.duration) || 60);
-    return `${U.pad(Math.floor(total / 60) % 24)}:${U.pad(total % 60)}`;
-  };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   function greeting() {
     const h = new Date().getHours();
     return h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
   }
 
-  function clientOptions(includeInactiveId) {
+  function clientOptions(includeId) {
     return Store.clients()
-      .filter((c) => c.status !== 'inactivo' || c.id === includeInactiveId)
+      .filter((c) => c.status !== 'inactivo' || c.id === includeId)
       .map((c) => ({ value: c.id, label: c.name }));
   }
 
@@ -76,19 +78,19 @@
       { type: 'section', label: 'Datos personales' },
       { name: 'name', label: 'Nombre completo', required: true, full: true },
       { name: 'email', label: 'Email', type: 'email' },
-      { name: 'phone', label: 'Teléfono', type: 'tel' },
+      { name: 'phone', label: 'Teléfono / WhatsApp', type: 'tel' },
       { name: 'birthDate', label: 'Fecha de nacimiento', type: 'date' },
       { name: 'gender', label: 'Sexo', type: 'select', options: ['', 'Mujer', 'Hombre', 'Otro'].map((o) => ({ value: o, label: o || '—' })) },
+      { type: 'section', label: 'Asesoría' },
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today() },
-      { name: 'status', label: 'Estado', type: 'select', options: [{ value: 'activo', label: 'Activo' }, { value: 'inactivo', label: 'Inactivo' }], default: 'activo' },
-      { type: 'section', label: 'Entrenamiento' },
+      { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
+      { name: 'rate', label: `Cuota mensual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate },
+      { name: 'billingDay', label: 'Día de cobro', type: 'number', min: 1, max: 31, step: 1, default: Number(today().slice(8)), hint: 'Día del mes en que vence la cuota.' },
       { name: 'goal', label: 'Objetivo principal', type: 'select', options: GOALS, placeholder: 'Selecciona…' },
-      { name: 'level', label: 'Nivel', type: 'select', options: LEVELS, placeholder: 'Selecciona…' },
-      { name: 'rate', label: `Tarifa por sesión (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
-      { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Preferencias, disponibilidad, motivación…' },
+      { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Horarios, material disponible, preferencias, motivación…' },
     ];
   }
 
@@ -104,14 +106,12 @@
         if (existing) {
           Store.update('clients', id, v);
           UI.toast('Cliente actualizado');
-        } else {
-          const c = Store.add('clients', v);
-          UI.toast('Cliente creado');
-          state.clientTab = 'resumen';
-          location.hash = `#/clientes/${c.id}`;
+          App.render();
           return;
         }
-        App.render();
+        const c = Store.add('clients', v);
+        UI.toast('Cliente creado');
+        location.hash = `#/clientes/${c.id}`;
       },
     });
   }
@@ -121,105 +121,12 @@
     if (!c) return;
     const ok = await UI.confirm({
       title: 'Eliminar cliente',
-      message: `Se eliminará a <strong>${esc(c.name)}</strong> junto con todas sus sesiones, mediciones y pagos. Esta acción no se puede deshacer.<br><br>Si solo ha dejado de entrenar, puedes marcarlo como <em>inactivo</em>.`,
+      message: `Se eliminará a <strong>${esc(c.name)}</strong> junto con todas sus mediciones y pagos. Esta acción no se puede deshacer.<br><br>Si solo ha dejado la asesoría, puedes marcarlo como <em>Baja</em> o <em>En pausa</em>.`,
     });
     if (!ok) return;
     Store.remove('clients', id);
     UI.toast('Cliente eliminado');
     location.hash = '#/clientes';
-    App.render();
-  }
-
-  function sessionFields(isNew, clientId) {
-    const fields = [
-      { name: 'clientId', label: 'Cliente', type: 'select', required: true, options: clientOptions(clientId), placeholder: 'Selecciona un cliente…', full: true },
-      { name: 'date', label: 'Fecha', type: 'date', required: true, default: today() },
-      { name: 'time', label: 'Hora', type: 'time', required: true, default: '09:00' },
-      { name: 'duration', label: 'Duración (min)', type: 'number', min: 5, step: 5, default: Store.settings.defaultDuration || 60 },
-      { name: 'type', label: 'Tipo', type: 'select', options: SESSION_TYPES, default: SESSION_TYPES[0] },
-      { name: 'location', label: 'Lugar', placeholder: 'Gimnasio, domicilio, parque…' },
-      { name: 'status', label: 'Estado', type: 'select', options: Object.entries(SESSION_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'programada' },
-    ];
-    if (isNew) {
-      fields.push({ name: 'repeat', label: 'Repetir cada semana', type: 'number', min: 1, max: 52, step: 1, default: 1, hint: 'Número de semanas (1 = solo esta sesión).' });
-    }
-    fields.push({ name: 'notes', label: 'Plan / notas de la sesión', type: 'textarea', placeholder: 'Ejercicios, series, cargas, sensaciones…' });
-    return fields;
-  }
-
-  function findOverlap(s, ignoreId) {
-    const start = s.time;
-    const end = endTime(s);
-    return Store.data.sessions.find(
-      (o) => o.id !== ignoreId && o.date === s.date && o.status !== 'cancelada' && o.time < end && endTime(o) > start
-    );
-  }
-
-  function openSessionForm(id, preset = {}) {
-    const existing = id ? Store.get('sessions', id) : null;
-    if (!existing && !Store.data.clients.some((c) => c.status !== 'inactivo')) {
-      UI.toast('Primero crea un cliente activo');
-      return;
-    }
-    UI.form({
-      title: existing ? 'Editar sesión' : 'Nueva sesión',
-      fields: sessionFields(!existing, existing?.clientId || preset.clientId),
-      values: existing || preset,
-      submitLabel: existing ? 'Guardar cambios' : 'Programar',
-      onDelete: existing ? () => deleteRecord('sessions', id, 'la sesión') : null,
-      onSubmit: (v) => {
-        const repeat = Math.max(1, Math.min(52, Number(v.repeat) || 1));
-        delete v.repeat;
-        const prevStatus = existing?.status;
-        let overlap;
-        if (existing) {
-          Store.update('sessions', id, v);
-          overlap = findOverlap(v, id);
-          if (v.status === 'completada' && prevStatus !== 'completada') autoCharge(Store.get('sessions', id));
-          UI.toast('Sesión actualizada');
-        } else {
-          for (let i = 0; i < repeat; i++) {
-            const s = Object.assign({}, v, { date: U.addDays(v.date, i * 7) });
-            overlap = overlap || findOverlap(s);
-            const created = Store.add('sessions', s);
-            if (created.status === 'completada') autoCharge(created);
-          }
-          UI.toast(repeat > 1 ? `${repeat} sesiones programadas` : 'Sesión programada');
-        }
-        if (overlap) {
-          setTimeout(() => UI.toast(`Atención: se solapa con la sesión de ${Store.clientName(overlap.clientId)} (${overlap.time})`), 2700);
-        }
-        App.render();
-      },
-    });
-  }
-
-  /** Si está activado en ajustes, crea un cobro pendiente al completar una sesión. */
-  function autoCharge(session) {
-    if (!session || !Store.settings.autoCharge) return;
-    const client = Store.get('clients', session.clientId);
-    if (!client || !(Number(client.rate) > 0)) return;
-    const pack = Store.packBalance(client.id);
-    if (pack && pack.remaining >= 0) return; // la sesión se descuenta del bono
-    if (Store.data.payments.some((p) => p.sessionId === session.id)) return;
-    Store.add('payments', {
-      clientId: client.id,
-      sessionId: session.id,
-      date: session.date,
-      amount: Number(client.rate),
-      concept: `Sesión ${U.fmtDateShort(session.date)}`,
-      method: '',
-      status: 'pendiente',
-      sessionsIncluded: '',
-    });
-  }
-
-  function setSessionStatus(id, status) {
-    const s = Store.get('sessions', id);
-    if (!s) return;
-    Store.update('sessions', id, { status });
-    if (status === 'completada') autoCharge(s);
-    UI.toast(`Sesión marcada como ${SESSION_STATUS[status].label.toLowerCase()}`);
     App.render();
   }
 
@@ -234,7 +141,7 @@
       { name: 'chest', label: 'Pecho', type: 'number', step: '0.1', min: 0 },
       { name: 'arm', label: 'Brazo', type: 'number', step: '0.1', min: 0 },
       { name: 'thigh', label: 'Muslo', type: 'number', step: '0.1', min: 0 },
-      { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Test de fuerza, sensaciones, fotos…' },
+      { name: 'notes', label: 'Notas de la revisión', type: 'textarea', placeholder: 'Sensaciones, adherencia, cambios en el plan…' },
     ];
   }
 
@@ -261,10 +168,9 @@
       { name: 'clientId', label: 'Cliente', type: 'select', required: true, options: clientOptions(clientId), placeholder: 'Selecciona un cliente…', full: true },
       { name: 'date', label: 'Fecha', type: 'date', required: true, default: today() },
       { name: 'amount', label: `Importe (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, required: true },
-      { name: 'concept', label: 'Concepto', placeholder: 'Sesión, bono 10 sesiones, mensualidad…', default: 'Sesión' },
+      { name: 'concept', label: 'Concepto', placeholder: 'Cuota mensual, plan trimestral…', default: `Cuota de ${monthName(today())}` },
       { name: 'method', label: 'Método de pago', type: 'select', options: PAY_METHODS, placeholder: '—' },
       { name: 'status', label: 'Estado', type: 'select', options: [{ value: 'pagado', label: 'Pagado' }, { value: 'pendiente', label: 'Pendiente' }], default: 'pagado' },
-      { name: 'sessionsIncluded', label: 'Sesiones incluidas (bono)', type: 'number', min: 0, step: 1, hint: 'Si es un bono, indica cuántas sesiones incluye para llevar la cuenta.' },
       { name: 'notes', label: 'Notas', type: 'textarea' },
     ];
   }
@@ -291,6 +197,13 @@
     });
   }
 
+  /** Abre el registro de pago con la cuota del mes ya rellenada. */
+  function payFee(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    openPaymentForm(null, { clientId, amount: Number(c.rate) || '', concept: `Cuota de ${monthName(today())}` });
+  }
+
   async function deleteRecord(collection, id, label) {
     const ok = await UI.confirm({ title: 'Confirmar eliminación', message: `¿Seguro que quieres eliminar ${label}?` });
     if (!ok) return;
@@ -300,62 +213,33 @@
   }
 
   /* =========================================================
-   * Fragmentos reutilizables
+   * Resumen
    * ======================================================= */
 
-  function sessionItem(s, { showDate = false, showClient = true } = {}) {
-    const client = Store.get('clients', s.clientId);
-    const when = showDate ? `${U.relativeDay(s.date)} · ` : '';
-    const who = showClient && client
-      ? `<a href="#/clientes/${client.id}" class="title" style="color:inherit;text-decoration:none">${esc(client.name)}</a>`
-      : `<span class="title">${esc(s.type || 'Sesión')}</span>`;
-    const quick = s.status === 'programada'
-      ? `<button class="btn sm" data-action="session-status" data-id="${s.id}" data-status="completada" title="Marcar como completada">${U.icon('check')}Hecha</button>`
-      : statusBadge(s);
-    return `<li class="session-row ${s.status}">
-      <span class="time-badge">${esc(s.time || '--:--')}</span>
-      <div class="grow">
-        ${who}
-        <div class="meta">${when}${esc(s.duration || 60)} min${showClient && s.type ? ' · ' + esc(s.type) : ''}${s.location ? ' · ' + esc(s.location) : ''}</div>
-      </div>
-      ${quick}
-      <button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar sesión" title="Editar">${U.icon('edit')}</button>
-    </li>`;
-  }
-
-  /* =========================================================
-   * Panel
-   * ======================================================= */
-
-  /** Avisos: bonos casi agotados y clientes activos sin sesiones próximas. */
+  /** Avisos: cuotas vencidas y clientes activos sin actualizar su progreso. */
   function computeAlerts() {
     const t = today();
     const alerts = [];
-    for (const c of Store.data.clients.filter((x) => x.status !== 'inactivo')) {
-      const pack = Store.packBalance(c.id);
-      if (pack && pack.remaining <= 1) {
-        alerts.push({ c, text: pack.remaining < 0 ? `Bono agotado (${-pack.remaining} sesión/es sin cubrir)` : pack.remaining === 0 ? 'Bono agotado' : 'Queda 1 sesión del bono', kind: 'warning' });
+    for (const c of Store.clients().filter((x) => clientStatus(x) === 'activo')) {
+      const fs = Store.feeStatus(c);
+      if (fs && fs.status === 'vencido') {
+        alerts.push({ c, text: `Cuota de ${monthName(t)} vencida (${money(fs.amount)})`, action: 'pay-fee', label: 'Cobrar' });
       }
-      const last = Store.lastCompletedSession(c.id);
-      if (!Store.nextSession(c.id)) {
-        const days = last ? U.daysBetween(last.date, t) : null;
-        if (days === null || days >= 14) {
-          alerts.push({ c, text: last ? `Sin sesiones desde hace ${days} días` : 'Sin sesiones programadas', kind: 'info' });
-        }
+      const last = Store.lastMeasurement(c.id);
+      const days = last ? U.daysBetween(last.date, t) : null;
+      if (days === null || days >= STALE_DAYS) {
+        alerts.push({ c, text: last ? `Sin actualizar progreso desde hace ${days} días` : 'Sin mediciones todavía', action: 'new-measurement', label: 'Medición' });
       }
     }
     return alerts;
   }
-
-  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
   function incomeChart() {
     const now = U.parseDate(today());
     const items = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const from = U.toISODate(d);
-      const to = U.toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+      const { from, to } = Store.monthRange(U.toISODate(d));
       items.push({ label: MONTHS[d.getMonth()].slice(0, 3), value: Store.paidBetween(from, to), current: i === 0 });
     }
     const max = Math.max(...items.map((x) => x.value));
@@ -368,28 +252,16 @@
       </div>`).join('')}</div>`;
   }
 
-  function levelBreakdown(active) {
-    const rows = LEVELS.map((l, i) => ({ n: i + 1, label: l, count: active.filter((c) => c.level === l).length }));
-    const none = active.filter((c) => !LEVELS.includes(c.level)).length;
-    if (none) rows.push({ n: null, label: 'Sin nivel asignado', count: none });
-    const max = Math.max(1, ...rows.map((r) => r.count));
-    return rows.map((r) => `
-      <div class="level-row">
-        <div class="level-name">${r.n ? `<strong>Nivel ${r.n}</strong> ` : ''}${esc(r.label)}</div>
-        <div class="level-bar"><div class="progress"><span style="width:${(r.count / max) * 100}%"></span></div><strong>${r.count}</strong></div>
-      </div>`).join('');
-  }
-
   function renderPanel() {
     const t = today();
     const d = Store.data;
     const name = Store.settings.trainerName || 'David Orihuela';
-    const firstName = name ? name.split(' ')[0] : '';
+    const firstName = name.split(' ')[0];
     const dateLine = `<p class="eyebrow">${esc(fmtDate(t))}</p>`;
 
     if (!d.clients.length) {
       return `
-        <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido${firstName ? ', ' + esc(firstName) : ''}!</h1><p>Tu centro de control como entrenador personal.</p></div></div>
+        <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido, ${esc(firstName)}!</h1><p>Tu centro de control de asesorías online.</p></div></div>
         <div class="card">
           ${empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
             `<div class="actions" style="justify-content:center;margin-top:16px">
@@ -399,79 +271,65 @@
         </div>`;
     }
 
-    const weekStart = U.startOfWeek(t);
-    const weekSessions = Store.sessionsBetween(weekStart, U.addDays(weekStart, 6)).filter((s) => s.status !== 'cancelada');
-    const monthStart = t.slice(0, 8) + '01';
-    const monthEnd = t.slice(0, 8) + '31';
-    const income = Store.paidBetween(monthStart, monthEnd);
-    const pendingPays = d.payments.filter((p) => p.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
-    const pendingMonth = pendingPays.filter((p) => p.date >= monthStart && p.date <= monthEnd).reduce((s, p) => s + Number(p.amount || 0), 0);
-    const pending = Store.pendingAmount();
-    const pendingClients = new Set(pendingPays.map((p) => p.clientId)).size;
-    const overdue = pendingPays.filter((p) => p.date < t).length;
-    const active = d.clients.filter((c) => c.status !== 'inactivo');
-
-    const todays = Store.sessionsBetween(t, t).filter((s) => s.status !== 'cancelada');
-    const upcoming = Store.sessionsBetween(U.addDays(t, 1), U.addDays(t, 7)).filter((s) => s.status === 'programada');
-    const nowTime = `${U.pad(new Date().getHours())}:${U.pad(new Date().getMinutes())}`;
-    const nextToday = todays.find((x) => x.status === 'programada' && x.time >= nowTime);
+    const { from, to } = Store.monthRange(t);
+    const month = monthName(t);
+    const income = Store.paidBetween(from, to);
+    const rec = Store.receivables();
+    const pending = rec.reduce((s, r) => s + r.amount, 0);
+    const pendingMonth = rec.filter((r) => r.date >= from && r.date <= to).reduce((s, r) => s + r.amount, 0);
+    const pendingClients = new Set(rec.map((r) => r.clientId)).size;
+    const overdue = rec.filter((r) => r.overdue).length;
+    const active = d.clients.filter((c) => clientStatus(c) === 'activo');
+    const paused = d.clients.filter((c) => clientStatus(c) === 'pausa').length;
+    const newThisMonth = d.clients.filter((c) => c.startDate >= from && c.startDate <= to).length;
     const alerts = computeAlerts();
-    const monthName = MONTHS[U.parseDate(t).getMonth()];
+
+    const order = ['vencido', 'pendiente', 'pagado'];
+    const fees = active
+      .map((c) => ({ c, fs: Store.feeStatus(c) }))
+      .filter((x) => x.fs)
+      .sort((a, b) => order.indexOf(a.fs.status) - order.indexOf(b.fs.status) || a.fs.dueDate.localeCompare(b.fs.dueDate));
+    const paidCount = fees.filter((x) => x.fs.status === 'pagado').length;
 
     return `
       <div class="page-header">
         <div>
           ${dateLine}
-          <h1 class="display">${greeting()}${firstName ? ', ' + esc(firstName) : ''}.</h1>
-          <p>${todays.length ? `Hoy tienes ${todays.length} ${todays.length === 1 ? 'sesión' : 'sesiones'}${nextToday ? ` · la próxima a las ${esc(nextToday.time)} con ${esc(Store.clientName(nextToday.clientId))}` : ''}.` : 'Hoy no tienes sesiones programadas.'}</p>
+          <h1 class="display">${greeting()}, ${esc(firstName)}.</h1>
+          <p>${fees.length ? `${paidCount} de ${plural(fees.length, 'cuota cobrada', 'cuotas cobradas')} este mes${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.` : 'Añade la cuota mensual de tus clientes para controlar los cobros.'}</p>
         </div>
       </div>
 
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Cobrado en ${monthName}</div><div class="stat-value">${money(income)}</div><div class="stat-sub">de ${money(income + pendingMonth)} previstos</div></div>
-        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${pendingClients} ${pendingClients === 1 ? 'cliente' : 'clientes'} · ${overdue} ${overdue === 1 ? 'vencido' : 'vencidos'}</div></div>
-        <div class="card stat"><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${d.clients.length - active.length} ${d.clients.length - active.length === 1 ? 'inactivo' : 'inactivos'}</div></div>
-        <div class="card stat"><div class="stat-label">Sesiones hoy</div><div class="stat-value">${todays.length}</div><div class="stat-sub">${weekSessions.length} esta semana</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${month}</div><div class="stat-value">${money(income)}</div><div class="stat-sub">de ${money(income + pendingMonth)} previstos</div></div>
+        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${plural(pendingClients, 'cliente', 'clientes')} · ${plural(overdue, 'vencido', 'vencidos')}</div></div>
+        <div class="card stat"><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${paused} en pausa</div></div>
+        <div class="card stat"><div class="stat-label">Altas en ${month}</div><div class="stat-value">${newThisMonth}</div><div class="stat-sub">${plural(d.clients.length, 'cliente', 'clientes')} en total</div></div>
       </div>
 
-      <div class="grid-main">
-        <section class="card">
-          <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
-          ${incomeChart()}
-        </section>
-        <section class="card">
-          <div class="card-header"><h2>Clientes por nivel</h2></div>
-          ${levelBreakdown(active)}
-        </section>
-      </div>
+      <section class="card chart-card">
+        <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
+        ${incomeChart()}
+      </section>
 
       <div class="grid-2">
         <section class="card">
-          <div class="card-header"><h2>Hoy</h2><button class="btn sm" data-action="new-session" data-date="${t}">${U.icon('plus')}Añadir</button></div>
-          ${todays.length ? `<ul class="list">${todays.map((s) => sessionItem(s)).join('')}</ul>` : empty('sun', 'No tienes sesiones hoy.')}
-        </section>
-        <section class="card">
-          <div class="card-header"><h2>Próximos 7 días</h2><a href="#/agenda" class="btn sm">Ver agenda</a></div>
-          ${upcoming.length ? `<ul class="list">${upcoming.slice(0, 8).map((s) => sessionItem(s, { showDate: true })).join('')}</ul>${upcoming.length > 8 ? `<p class="muted">y ${upcoming.length - 8} más…</p>` : ''}` : empty('calendar', 'Nada programado esta semana.')}
-        </section>
-        <section class="card">
-          <div class="card-header"><h2>Cobros pendientes</h2><a href="#/pagos" class="btn sm">Ver pagos</a></div>
-          ${pendingPays.length ? `<ul class="list">${pendingPays.slice(0, 6).map((p) => `
+          <div class="card-header"><h2>Cuotas de ${month}</h2><a href="#/pagos" class="btn sm">Ver pagos</a></div>
+          ${fees.length ? `<ul class="list">${fees.map(({ c, fs }) => `
             <li>
-              <div class="grow"><div class="title">${esc(Store.clientName(p.clientId))}</div><div class="meta">${esc(p.concept || 'Pago')} · ${fmtDate(p.date)}</div></div>
-              <strong>${money(p.amount)}</strong>
-              <button class="btn sm" data-action="mark-paid" data-id="${p.id}">Cobrado</button>
-            </li>`).join('')}</ul>` : empty('done', 'Todo cobrado.')}
+              ${avatar(c)}
+              <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${money(fs.amount)} · ${fs.status === 'pagado' ? 'cobrada' : 'vence el ' + esc(U.fmtDateShort(fs.dueDate))}</div></div>
+              ${feeBadge(fs)}
+              ${fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">Cobrar</button>` : ''}
+            </li>`).join('')}</ul>` : empty('wallet', 'Ningún cliente activo tiene cuota mensual.')}
         </section>
         <section class="card" id="atencion">
           <div class="card-header"><h2>Requieren atención</h2></div>
-          ${alerts.length ? `<ul class="list">${alerts.slice(0, 8).map((a) => `
+          ${alerts.length ? `<ul class="list">${alerts.slice(0, 10).map((a) => `
             <li>
               ${avatar(a.c)}
               <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-              ${a.kind === 'warning'
-                ? `<button class="btn sm" data-action="new-payment" data-client="${a.c.id}">Renovar</button>`
-                : `<button class="btn sm" data-action="new-session" data-client="${a.c.id}">Programar</button>`}
+              <button class="btn sm" data-action="${a.action}" data-client="${a.c.id}">${esc(a.label)}</button>
             </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes están al día.')}
         </section>
       </div>`;
@@ -484,7 +342,7 @@
   function filteredClients() {
     const q = state.clientSearch.toLowerCase();
     return Store.clients().filter((c) => {
-      if (state.clientFilter !== 'todos' && (c.status || 'activo') !== state.clientFilter) return false;
+      if (state.clientFilter !== 'todos' && clientStatus(c) !== state.clientFilter) return false;
       if (!q) return true;
       return [c.name, c.email, c.phone, c.goal].some((f) => (f || '').toLowerCase().includes(q));
     });
@@ -497,37 +355,36 @@
         ? empty('search', 'Ningún cliente coincide con la búsqueda.')
         : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
+    const monthLabel = monthName(today()).replace(/^./, (m) => m.toUpperCase());
     return `<div class="table-wrap"><table>
-      <thead><tr><th>Cliente</th><th class="hide-sm">Objetivo</th><th class="hide-sm">Teléfono</th><th>Próxima sesión</th><th class="hide-sm">Bono</th><th class="num">Pendiente</th></tr></thead>
+      <thead><tr><th>Cliente</th><th class="hide-sm">Objetivo</th><th class="hide-sm">Teléfono</th><th class="num">Cuota</th><th>${esc(monthLabel)}</th><th class="hide-sm">Última medición</th></tr></thead>
       <tbody>${list.map((c) => {
-        const next = Store.nextSession(c.id);
-        const pack = Store.packBalance(c.id);
-        const pend = Store.pendingAmount(c.id);
+        const fs = Store.feeStatus(c);
+        const last = Store.lastMeasurement(c.id);
         return `<tr class="clickable" data-href="#/clientes/${c.id}" tabindex="0">
-          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${c.status === 'inactivo' ? badge('Inactivo') : `<span class="muted" style="font-size:.8rem">${esc(c.level || '')}</span>`}</div></div></td>
+          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</div></div></td>
           <td class="hide-sm">${esc(c.goal || '—')}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
-          <td>${next ? `${esc(U.relativeDay(next.date))} <span class="muted">${esc(next.time)}</span>` : '<span class="muted">—</span>'}</td>
-          <td class="hide-sm">${pack ? badge(`${pack.remaining} restantes`, pack.remaining <= 1 ? 'warning' : 'primary') : '<span class="muted">—</span>'}</td>
-          <td class="num">${pend ? `<strong style="color:var(--warning)">${money(pend)}</strong>` : '<span class="muted">—</span>'}</td>
+          <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
+          <td>${feeBadge(fs)}</td>
+          <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
   }
 
   function renderClients() {
-    const counts = { activo: 0, inactivo: 0 };
-    Store.data.clients.forEach((c) => counts[c.status === 'inactivo' ? 'inactivo' : 'activo']++);
+    const counts = { activo: 0, pausa: 0, inactivo: 0 };
+    Store.data.clients.forEach((c) => counts[clientStatus(c)]++);
     const seg = (v, label) => `<button data-action="client-filter" data-value="${v}" class="${state.clientFilter === v ? 'active' : ''}">${label}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Clientes</h1><p>${Store.data.clients.length} en total</p></div>
-        <button class="btn primary" data-action="new-client">${U.icon('plus')}Nuevo cliente</button>
+        <div><h1 class="display">Clientes</h1><p>${plural(Store.data.clients.length, 'cliente', 'clientes')} en total</p></div>
       </div>
       <div class="card">
         <div class="toolbar">
           <input type="search" class="search" id="client-search" placeholder="Buscar por nombre, email, teléfono u objetivo…" value="${esc(state.clientSearch)}" aria-label="Buscar clientes">
           <div class="segmented" role="group" aria-label="Filtrar por estado">
-            ${seg('activo', `Activos (${counts.activo})`)}${seg('inactivo', `Inactivos (${counts.inactivo})`)}${seg('todos', 'Todos')}
+            ${seg('activo', `Activos (${counts.activo})`)}${seg('pausa', `En pausa (${counts.pausa})`)}${seg('inactivo', `Bajas (${counts.inactivo})`)}${seg('todos', 'Todos')}
           </div>
         </div>
         <div id="clients-table">${clientsTable()}</div>
@@ -539,12 +396,12 @@
     if (!c) {
       return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
-    const tabs = [['resumen', 'Resumen'], ['sesiones', 'Sesiones'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
+    const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
+    if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
-    const sub = [c.goal, c.level, ageVal !== null ? `${ageVal} años` : null].filter(Boolean).join(' · ');
-    let body = '';
+    const sub = [c.goal, ageVal !== null ? `${ageVal} años` : null].filter(Boolean).join(' · ');
+    let body;
     switch (state.clientTab) {
-      case 'sesiones': body = clientSessions(c); break;
       case 'progreso': body = clientProgress(c); break;
       case 'pagos': body = clientPayments(c); break;
       default: body = clientSummary(c);
@@ -556,14 +413,14 @@
         <div class="profile-head">
           ${avatar(c, 'lg')}
           <div class="grow">
-            <h1>${esc(c.name)} ${c.status === 'inactivo' ? badge('Inactivo') : ''}</h1>
+            <h1>${esc(c.name)} ${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</h1>
             <p>${esc(sub || 'Sin objetivo definido')}</p>
           </div>
           <div class="actions">
             ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
             ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${U.icon('mail')}Email</a>` : ''}
             <button class="btn" data-action="edit-client" data-id="${c.id}">${U.icon('edit')}Editar</button>
-            <button class="btn primary" data-action="new-session" data-client="${c.id}">${U.icon('plus')}Sesión</button>
+            <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button>
           </div>
         </div>
         ${c.health ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
@@ -575,38 +432,37 @@
   }
 
   function clientSummary(c) {
-    const sessions = Store.sessionsFor(c.id);
-    const done = sessions.filter((s) => s.status === 'completada');
-    const noShow = sessions.filter((s) => s.status === 'no-asistio').length;
-    const last = done[done.length - 1];
-    const next = Store.nextSession(c.id);
-    const pack = Store.packBalance(c.id);
+    const t = today();
+    const fs = Store.feeStatus(c);
     const pend = Store.pendingAmount(c.id);
     const totalPaid = Store.paymentsFor(c.id).filter((p) => p.status === 'pagado').reduce((s, p) => s + Number(p.amount || 0), 0);
-    const ms = Store.measurementsFor(c.id).filter((m) => m.weight !== '' && m.weight !== undefined);
+    const all = Store.measurementsFor(c.id);
+    const lastAny = all[all.length - 1];
+    const ms = all.filter((m) => m.weight !== '' && m.weight !== undefined);
     const weightDelta = ms.length >= 2 ? Number(ms[ms.length - 1].weight) - Number(ms[0].weight) : null;
     const lastM = ms[ms.length - 1];
     const imc = lastM && c.height ? Number(lastM.weight) / Math.pow(Number(c.height) / 100, 2) : null;
+    const months = c.startDate ? Math.max(0, Math.floor(U.daysBetween(c.startDate, t) / 30.44)) : null;
     const row = (k, v) => (v ? `<dt>${k}</dt><dd>${v}</dd>` : '');
 
     return `
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Sesiones completadas</div><div class="stat-value">${done.length}</div><div class="stat-sub">${noShow} ausencias</div></div>
-        <div class="card stat"><div class="stat-label">Próxima sesión</div><div class="stat-value" style="font-size:1.2rem">${next ? esc(U.relativeDay(next.date)) + ' ' + esc(next.time) : '—'}</div><div class="stat-sub">${last ? 'Última: ' + fmtDate(last.date) : 'Sin sesiones previas'}</div></div>
-        <div class="card stat"><div class="stat-label">Bono</div><div class="stat-value">${pack ? pack.remaining : '—'}</div><div class="stat-sub">${pack ? `${pack.used} de ${pack.bought} usadas` : 'Pago por sesión'}</div></div>
-        <div class="card stat"><div class="stat-label">Pendiente</div><div class="stat-value">${money(pend)}</div><div class="stat-sub">${money(totalPaid)} cobrado en total</div></div>
+        <div class="card stat"><div class="stat-label">Cuota mensual</div><div class="stat-value">${c.rate ? money(c.rate) : '—'}</div><div class="stat-sub">${c.billingDay ? `Cobro el día ${esc(c.billingDay)}` : 'Sin día de cobro'}</div></div>
+        <div class="card stat"><div class="stat-label">Cuota de ${monthName(t)}</div><div class="stat-value" style="font-size:1.8rem">${fs ? esc(FEE_STATUS[fs.status].label) : '—'}</div><div class="stat-sub">${pend ? `${money(pend)} por cobrar` : 'Nada pendiente'}</div></div>
+        <div class="card stat"><div class="stat-label">Última medición</div><div class="stat-value" style="font-size:1.8rem">${lastAny ? esc(U.fmtDateShort(lastAny.date)) : '—'}</div><div class="stat-sub">${lastAny ? `hace ${plural(U.daysBetween(lastAny.date, t), 'día', 'días')}` : 'Sin mediciones'}</div></div>
+        <div class="card stat"><div class="stat-label">Cliente desde</div><div class="stat-value" style="font-size:1.8rem">${c.startDate ? esc(U.fmtDateShort(c.startDate)) : '—'}</div><div class="stat-sub">${months !== null ? `${plural(months, 'mes', 'meses')} · ` : ''}${money(totalPaid)} cobrado</div></div>
       </div>
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Datos</h2></div>
           <dl class="dl">
+            ${row('Estado', statusBadge(c))}
             ${row('Email', c.email ? esc(c.email) : '')}
             ${row('Teléfono', c.phone ? esc(c.phone) : '')}
             ${row('Nacimiento', c.birthDate ? fmtDate(c.birthDate) : '')}
             ${row('Sexo', esc(c.gender || ''))}
             ${row('Altura', c.height ? fmtNum(c.height) + ' cm' : '')}
             ${row('Alta', c.startDate ? fmtDate(c.startDate) : '')}
-            ${row('Tarifa', c.rate ? money(c.rate) + ' / sesión' : '')}
             ${row('Notas', esc(c.notes || ''))}
           </dl>
         </section>
@@ -620,25 +476,6 @@
           ${ms.length >= 2 ? `<div class="mt">${UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg', height: 180 })}</div>` : ''}
         </section>
       </div>`;
-  }
-
-  function clientSessions(c) {
-    const sessions = Store.sessionsFor(c.id).reverse();
-    const statusSelect = (s) => `<select data-action-change="session-status" data-id="${s.id}" aria-label="Estado" style="width:auto;padding:4px 8px">
-      ${Object.entries(SESSION_STATUS).map(([v, o]) => `<option value="${v}" ${s.status === v ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
-    return `<section class="card">
-      <div class="card-header"><h2>Sesiones (${sessions.length})</h2><button class="btn primary sm" data-action="new-session" data-client="${c.id}">${U.icon('plus')}Sesión</button></div>
-      ${sessions.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Fecha</th><th>Hora</th><th class="hide-sm">Tipo</th><th>Estado</th><th class="hide-sm">Notas</th><th></th></tr></thead>
-        <tbody>${sessions.map((s) => `<tr>
-          <td>${fmtDate(s.date)}</td>
-          <td>${esc(s.time)}</td>
-          <td class="hide-sm">${esc(s.type || '—')}</td>
-          <td>${statusSelect(s)}</td>
-          <td class="hide-sm muted" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.notes || '')}</td>
-          <td class="actions-cell"><button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar">${U.icon('edit')}</button></td>
-        </tr>`).join('')}</tbody></table></div>` : empty('calendar', 'Sin sesiones registradas.')}
-    </section>`;
   }
 
   function clientProgress(c) {
@@ -682,7 +519,7 @@
       <tbody>${list.map((p) => `<tr>
         <td>${fmtDate(p.date)}</td>
         ${showClient ? `<td><a href="#/clientes/${p.clientId}" style="color:inherit">${esc(Store.clientName(p.clientId))}</a></td>` : ''}
-        <td>${esc(p.concept || '—')}${Number(p.sessionsIncluded) > 0 ? ' ' + badge(`${p.sessionsIncluded} ses.`, 'primary') : ''}</td>
+        <td>${esc(p.concept || '—')}</td>
         <td class="hide-sm">${esc(p.method || '—')}</td>
         <td class="num"><strong>${money(p.amount)}</strong></td>
         <td>${payBadge(p)}</td>
@@ -695,53 +532,16 @@
 
   function clientPayments(c) {
     const list = Store.paymentsFor(c.id);
+    const fs = Store.feeStatus(c);
     return `<section class="card">
-      <div class="card-header"><h2>Pagos (${list.length})</h2><button class="btn primary sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Pago</button></div>
+      <div class="card-header"><h2>Pagos (${list.length})</h2>
+        <div class="actions">
+          ${fs && fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">Cobrar cuota de ${monthName(today())}</button>` : ''}
+          <button class="btn primary sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Pago</button>
+        </div>
+      </div>
       ${paymentsTable(list, { showClient: false })}
     </section>`;
-  }
-
-  /* =========================================================
-   * Agenda
-   * ======================================================= */
-
-  function renderAgenda() {
-    const start = state.week;
-    const end = U.addDays(start, 6);
-    const t = today();
-    const sessions = Store.sessionsBetween(start, end);
-    const label = `${U.fmtDateShort(start)} – ${fmtDate(end)}`;
-    const active = sessions.filter((s) => s.status !== 'cancelada');
-    const hours = active.reduce((sum, s) => sum + (Number(s.duration) || 60), 0) / 60;
-
-    let days = '';
-    for (let i = 0; i < 7; i++) {
-      const day = U.addDays(start, i);
-      const list = sessions.filter((s) => s.date === day);
-      days += `<div class="day-group">
-        <h3 class="day-title ${day === t ? 'today' : ''}"><span class="capitalize">${esc(U.fmtWeekday(day))}</span>${day === t ? badge('Hoy', 'primary') : ''}
-          <button class="icon-btn" style="margin-left:auto;width:28px;height:28px" data-action="new-session" data-date="${day}" aria-label="Añadir sesión el ${esc(U.fmtWeekday(day))}" title="Añadir sesión">${U.icon('plus')}</button>
-        </h3>
-        ${list.length ? `<ul class="list">${list.map((s) => sessionItem(s)).join('')}</ul>` : '<div class="muted" style="font-size:.85rem;padding:2px 0 8px">Sin sesiones</div>'}
-      </div>`;
-    }
-
-    return `
-      <div class="page-header">
-        <div><h1 class="display">Agenda</h1><p>${active.length} sesiones · ${fmtNum(hours)} h de entrenamiento</p></div>
-        <button class="btn primary" data-action="new-session">${U.icon('plus')}Nueva sesión</button>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div class="week-nav">
-            <button class="btn sm" data-action="week" data-value="-1" aria-label="Semana anterior">${U.icon('left')}</button>
-            <span class="week-label">${esc(label)}</span>
-            <button class="btn sm" data-action="week" data-value="1" aria-label="Semana siguiente">${U.icon('right')}</button>
-          </div>
-          <button class="btn sm" data-action="week" data-value="0">Esta semana</button>
-        </div>
-        ${days}
-      </div>`;
   }
 
   /* =========================================================
@@ -752,20 +552,24 @@
     const t = today();
     const all = Store.data.payments.slice().sort((a, b) => b.date.localeCompare(a.date));
     const list = state.payFilter === 'todos' ? all : all.filter((p) => p.status === state.payFilter);
-    const month = Store.paidBetween(t.slice(0, 8) + '01', t.slice(0, 8) + '31');
-    const prevMonthStart = (() => { const d = U.parseDate(t); d.setDate(1); d.setMonth(d.getMonth() - 1); return U.toISODate(d); })();
-    const prevMonth = Store.paidBetween(prevMonthStart, prevMonthStart.slice(0, 8) + '31');
+    const { from, to } = Store.monthRange(t);
+    const month = Store.paidBetween(from, to);
+    const prevStart = U.parseDate(from);
+    prevStart.setMonth(prevStart.getMonth() - 1);
+    const prev = Store.monthRange(U.toISODate(prevStart));
+    const prevMonth = Store.paidBetween(prev.from, prev.to);
     const year = Store.paidBetween(t.slice(0, 4) + '-01-01', t.slice(0, 4) + '-12-31');
+    const rec = Store.receivables();
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Pagos</h1><p>Cobros, bonos y pagos pendientes</p></div>
-        <button class="btn primary" data-action="new-payment">${U.icon('plus')}Registrar pago</button>
+        <div><h1 class="display">Pagos</h1><p>Cuotas cobradas y pendientes</p></div>
+        <button class="btn primary pill" data-action="new-payment">${U.icon('plus')}Registrar pago</button>
       </div>
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Cobrado este mes</div><div class="stat-value">${money(month)}</div><div class="stat-sub">Mes anterior: ${money(prevMonth)}</div></div>
-        <div class="card stat"><div class="stat-label">Pendiente de cobro</div><div class="stat-value">${money(Store.pendingAmount())}</div><div class="stat-sub">${all.filter((p) => p.status === 'pendiente').length} pagos</div></div>
-        <div class="card stat"><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${monthName(t)}</div><div class="stat-value">${money(month)}</div><div class="stat-sub">${monthName(prev.from)}: ${money(prevMonth)}</div></div>
+        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(rec.reduce((s, r) => s + r.amount, 0))}</div><div class="stat-sub">${plural(rec.filter((r) => r.overdue).length, 'vencido', 'vencidos')}</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div><div class="stat-sub">desde enero</div></div>
       </div>
       <div class="card">
         <div class="toolbar"><div class="segmented" role="group" aria-label="Filtrar pagos">${seg('todos', 'Todos')}${seg('pendiente', 'Pendientes')}${seg('pagado', 'Pagados')}</div></div>
@@ -786,14 +590,11 @@
         <section class="card">
           <div class="card-header"><h2>Preferencias</h2></div>
           <form id="settings-form" class="form-grid">
-            <div class="field full"><label for="s-trainerName">Tu nombre</label><input id="s-trainerName" name="trainerName" value="${esc(s.trainerName)}" placeholder="Para el saludo del panel"></div>
+            <div class="field full"><label for="s-trainerName">Tu nombre</label><input id="s-trainerName" name="trainerName" value="${esc(s.trainerName)}" placeholder="Para el saludo del resumen"></div>
             <div class="field"><label for="s-currency">Moneda</label><select id="s-currency" name="currency">${CURRENCIES.map((c) => `<option value="${c.value}" ${s.currency === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}</select></div>
             <div class="field"><label for="s-theme">Tema</label><select id="s-theme" name="theme">
-              ${[['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']].map(([v, l]) => `<option value="${v}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-            <div class="field"><label for="s-defaultRate">Tarifa por defecto</label><input id="s-defaultRate" name="defaultRate" type="number" step="0.01" min="0" value="${esc(s.defaultRate)}"></div>
-            <div class="field"><label for="s-defaultDuration">Duración por defecto (min)</label><input id="s-defaultDuration" name="defaultDuration" type="number" step="5" min="5" value="${esc(s.defaultDuration)}"></div>
-            <div class="field check full"><label><input type="checkbox" name="autoCharge" ${s.autoCharge ? 'checked' : ''}> Al completar una sesión, crear un cobro pendiente con la tarifa del cliente</label>
-              <div class="hint">No se aplica a clientes con bono activo: esas sesiones se descuentan del bono.</div></div>
+              ${[['dark', 'Oscuro'], ['light', 'Claro'], ['auto', 'Automático']].map(([v, l]) => `<option value="${v}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+            <div class="field full"><label for="s-defaultRate">Cuota mensual por defecto</label><input id="s-defaultRate" name="defaultRate" type="number" step="0.01" min="0" value="${esc(s.defaultRate)}"></div>
             <div class="full"><button type="submit" class="btn primary">Guardar preferencias</button></div>
           </form>
         </section>
@@ -801,7 +602,7 @@
           <div class="card-header"><h2>Tus datos</h2></div>
           <p class="muted" style="margin-top:0">Los datos se guardan <strong>solo en este navegador</strong>. Exporta una copia de seguridad con regularidad para no perderlos y para pasarlos a otro dispositivo.</p>
           ${Store.storageOk ? '' : `<div class="alert">${U.icon('alert')}<div>El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div></div>`}
-          <p>${d.clients.length} clientes · ${d.sessions.length} sesiones · ${d.measurements.length} mediciones · ${d.payments.length} pagos</p>
+          <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'medición', 'mediciones')} · ${plural(d.payments.length, 'pago', 'pagos')}</p>
           <div class="actions">
             <button class="btn primary" data-action="export">${U.icon('download')} Exportar copia</button>
             <label class="btn" for="import-file" tabindex="0">${U.icon('upload')} Importar copia</label>
@@ -824,8 +625,6 @@
       currency: fd.get('currency'),
       theme: fd.get('theme'),
       defaultRate: Number(fd.get('defaultRate')) || 0,
-      defaultDuration: Number(fd.get('defaultDuration')) || 60,
-      autoCharge: fd.get('autoCharge') === 'on',
     });
     Store.save();
     App.applyTheme();
@@ -846,9 +645,11 @@
   }
 
   function exportCSV() {
-    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['goal', 'Objetivo'], ['level', 'Nivel'], ['status', 'Estado'], ['rate', 'Tarifa'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
+    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['goal', 'Objetivo'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [cols.map((c) => q(c[1])).join(';')].concat(Store.clients().map((c) => cols.map(([k]) => q(c[k])).join(';')));
+    const rows = [cols.map((c) => q(c[1])).join(';')].concat(
+      Store.clients().map((c) => cols.map(([k]) => q(k === 'status' ? CLIENT_STATUS[clientStatus(c)].label : c[k])).join(';'))
+    );
     download(`clientes-${today()}.csv`, '﻿' + rows.join('\r\n'), 'text/csv;charset=utf-8');
   }
 
@@ -878,45 +679,40 @@
       if (!ok) return;
     }
     const t = today();
+    const tDay = Number(t.slice(8));
     const people = [
-      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', goal: 'Pérdida de grasa', level: 'Intermedio', rate: 35, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, pack: 16, days: [0, 3], time: '08:00' },
-      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', goal: 'Ganancia muscular', level: 'Avanzado', rate: 40, height: 180, w: 78, fat: 18, days: [1, 4], time: '18:30' },
-      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', goal: 'Salud general', level: 'Principiante', rate: 30, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, pack: 8, days: [2], time: '10:00' },
-      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', goal: 'Rendimiento deportivo', level: 'Intermedio', rate: 35, height: 176, w: 74, fat: 15, days: [0, 2, 4], time: '19:30' },
-      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', goal: 'Fuerza', level: 'Intermedio', rate: 35, height: 170, w: 63, fat: 24, days: [], time: '12:00', inactive: true },
+      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', goal: 'Pérdida de grasa', rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, billingDay: 1, paidNow: true, lastM: 3 },
+      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', goal: 'Ganancia muscular', rate: 80, height: 180, w: 78, fat: 18, months: 4, billingDay: Math.max(1, tDay - 4), paidNow: false, lastM: 6 },
+      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', goal: 'Salud general', rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, billingDay: Math.min(28, tDay + 6), paidNow: false, lastM: 20 },
+      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', goal: 'Rendimiento deportivo', rate: 60, height: 176, w: 74, fat: 15, months: 2, billingDay: 1, paidNow: true, lastM: 2 },
+      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', goal: 'Fuerza', rate: 60, height: 170, w: 63, fat: 24, months: 4, billingDay: 10, status: 'pausa', lastM: 40 },
     ];
-    const weekStart = U.startOfWeek(t);
-    people.forEach((p, idx) => {
+    const now = U.parseDate(t);
+    people.forEach((p) => {
+      const start = U.toISODate(new Date(now.getFullYear(), now.getMonth() - p.months, Math.min(28, p.billingDay)));
       const c = Store.add('clients', {
-        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender, goal: p.goal, level: p.level,
-        rate: p.rate, height: p.height, health: p.health || '', notes: '', startDate: U.addDays(t, -56), status: p.inactive ? 'inactivo' : 'activo',
+        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender, goal: p.goal,
+        rate: p.rate, billingDay: p.billingDay, height: p.height, health: p.health || '', notes: '', startDate: start, status: p.status || 'activo',
       });
-      // Sesiones: 6 semanas atrás + 2 semanas adelante
-      for (let w = -6; w <= 1; w++) {
-        for (const d of p.days) {
-          const date = U.addDays(weekStart, w * 7 + d);
-          const past = date < t;
-          const status = past ? ((w * 7 + d + idx) % 9 === 0 ? 'no-asistio' : 'completada') : 'programada';
-          Store.add('sessions', { clientId: c.id, date, time: p.time, duration: 60, type: w === -6 ? 'Evaluación' : 'Entrenamiento personal', location: 'Gimnasio', status, notes: past ? 'Sesión de fuerza: sentadilla, press, remo.' : '' });
-        }
+      // Cuotas cobradas de los meses anteriores (y la de este mes si procede)
+      for (let i = p.months; i >= 0; i--) {
+        if (i === 0 && !p.paidNow) continue;
+        if (p.status === 'pausa' && i < 2) continue;
+        const d = new Date(now.getFullYear(), now.getMonth() - i, Math.min(28, p.billingDay));
+        const date = U.toISODate(d) > t ? t : U.toISODate(d);
+        Store.add('payments', { clientId: c.id, date, amount: p.rate, concept: `Cuota de ${MONTHS[d.getMonth()]}`, method: i % 2 ? 'Bizum' : 'Transferencia', status: 'pagado' });
       }
-      // Mediciones cada 2 semanas
-      for (let i = 0; i < 4; i++) {
-        const trend = p.goal === 'Ganancia muscular' ? 0.6 : -0.9;
+      // Revisiones cada 2 semanas
+      const total = Math.max(2, Math.floor((p.months * 30 - p.lastM) / 14) + 1);
+      for (let i = 0; i < total; i++) {
+        const trend = p.goal === 'Ganancia muscular' ? 0.4 : -0.6;
         Store.add('measurements', {
-          clientId: c.id, date: U.addDays(t, -56 + i * 14 + 1),
+          clientId: c.id, date: U.addDays(t, -p.lastM - (total - 1 - i) * 14),
           weight: Math.round((p.w + trend * i + (i % 2 ? 0.2 : 0)) * 10) / 10,
-          bodyFat: Math.round((p.fat - 0.7 * i) * 10) / 10,
-          waist: Math.round((p.w + 8 - 1.1 * i) * 10) / 10,
+          bodyFat: Math.round((p.fat - 0.5 * i) * 10) / 10,
+          waist: Math.round((p.w + 8 - 0.8 * i) * 10) / 10,
           hip: '', chest: '', arm: '', thigh: '', notes: '',
         });
-      }
-      // Pagos
-      if (p.pack) {
-        Store.add('payments', { clientId: c.id, date: U.addDays(t, -50), amount: p.rate * p.pack * 0.9, concept: `Bono ${p.pack} sesiones`, method: 'Transferencia', status: 'pagado', sessionsIncluded: p.pack });
-      } else if (!p.inactive) {
-        Store.add('payments', { clientId: c.id, date: U.addDays(t, -35), amount: p.rate * 4 * p.days.length, concept: 'Mensualidad', method: 'Tarjeta', status: 'pagado', sessionsIncluded: '' });
-        Store.add('payments', { clientId: c.id, date: U.addDays(t, -5), amount: p.rate * 4 * p.days.length, concept: 'Mensualidad', method: '', status: 'pendiente', sessionsIncluded: '' });
       }
     });
     UI.toast('Datos de ejemplo cargados');
@@ -924,7 +720,7 @@
   }
 
   async function resetData() {
-    const ok = await UI.confirm({ title: 'Borrar todos los datos', message: 'Se eliminarán <strong>todos</strong> los clientes, sesiones, mediciones y pagos. Te recomendamos exportar una copia antes. ¿Continuar?', confirmLabel: 'Borrar todo' });
+    const ok = await UI.confirm({ title: 'Borrar todos los datos', message: 'Se eliminarán <strong>todos</strong> los clientes, mediciones y pagos. Te recomendamos exportar una copia antes. ¿Continuar?', confirmLabel: 'Borrar todo' });
     if (!ok) return;
     Store.reset();
     UI.toast('Datos borrados');
@@ -943,13 +739,11 @@
       else { location.hash = '#/panel'; setTimeout(go, 60); }
     },
     'edit-client': (d) => openClientForm(d.id),
-    'new-session': (d) => openSessionForm(null, Object.assign({}, d.client ? { clientId: d.client } : {}, d.date ? { date: d.date } : {})),
-    'edit-session': (d) => openSessionForm(d.id),
-    'session-status': (d, el) => setSessionStatus(d.id, d.status || el.value),
     'new-measurement': (d) => openMeasurementForm(null, d.client),
     'edit-measurement': (d) => openMeasurementForm(d.id),
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),
     'edit-payment': (d) => openPaymentForm(d.id),
+    'pay-fee': (d) => payFee(d.client),
     'mark-paid': (d) => {
       Store.update('payments', d.id, { status: 'pagado', paidAt: today() });
       UI.toast('Pago marcado como cobrado');
@@ -959,11 +753,6 @@
     'client-filter': (d) => { state.clientFilter = d.value; App.render(); },
     metric: (d) => { state.metric = d.value; App.render(); },
     'pay-filter': (d) => { state.payFilter = d.value; App.render(); },
-    week: (d) => {
-      const n = Number(d.value);
-      state.week = n === 0 ? U.startOfWeek(today()) : U.addDays(state.week, n * 7);
-      App.render();
-    },
     export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
@@ -977,7 +766,7 @@
   }
 
   window.Views = {
-    state, actions, renderPanel, renderClients, renderClient, renderAgenda, renderPayments, renderSettings,
+    state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
     saveSettings, importFile, onClientSearch, computeAlerts,
   };
 })();
