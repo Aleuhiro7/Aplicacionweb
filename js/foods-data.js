@@ -311,9 +311,10 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 2;
+window.FOOD_BLOCKS_VERSION = 3;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
+  3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -332,8 +333,6 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Atún en aceite de oliva (lata, escurrido)', 'Sardinas en aceite (lata, escurridas)', 'Caballa en aceite (lata, escurrida)', 'Salmón ahumado'] },
   { id: 'blk-huevos', family: 'Proteínas', name: 'Huevos', macro: 'protein', amount: 25,
     foods: ['Huevo entero', 'Clara de huevo'] },
-  { id: 'blk-lacteos-proteicos', family: 'Proteínas', name: 'Claras y lácteos proteicos', macro: 'protein', amount: 25,
-    foods: ['Clara de huevo', 'Queso fresco batido 0 %', 'Yogur proteico natural', 'Skyr natural', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light', 'Proteína de suero (whey concentrada)'] },
   { id: 'blk-proteina-vegetal', family: 'Proteínas', name: 'Proteína vegetal', macro: 'protein', amount: 25,
     foods: ['Tofu firme', 'Seitán', 'Tempeh', 'Soja texturizada (seca)', 'Edamame'] },
 
@@ -355,8 +354,8 @@ window.FOOD_BLOCKS_DEFAULT = [
   { id: 'blk-frutos-secos', family: 'Grasas', name: 'Frutos secos y semillas', macro: 'fat', amount: 10,
     foods: ['Almendras', 'Nueces', 'Avellanas', 'Anacardos', 'Pistachos (sin cáscara)', 'Cacahuetes tostados', 'Crema de cacahuete 100 %', 'Semillas de chía', 'Semillas de lino', 'Semillas de girasol (peladas)', 'Semillas de calabaza', 'Semillas de sésamo'] },
 
-  { id: 'blk-leche', family: 'Lácteos', name: 'Leche y yogures', macro: 'protein', amount: 6.5,
-    foods: ['Leche entera', 'Leche semidesnatada', 'Leche desnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural', 'Yogur natural desnatado', 'Kéfir natural'] },
-  { id: 'blk-quesos', family: 'Lácteos', name: 'Quesos', macro: 'protein', amount: 7,
-    foods: ['Queso curado', 'Queso semicurado', 'Queso en lonchas (tipo gouda)', 'Queso en lonchas light', 'Queso rallado', 'Mozzarella fresca', 'Queso de cabra (rulo)', 'Queso fresco tipo Burgos'] },
+  { id: 'blk-lacteos-menos-grasa', family: 'Lácteos', name: 'Lácteos con menos grasa', macro: 'protein', amount: 10,
+    foods: ['Leche desnatada', 'Leche semidesnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural desnatado', 'Yogur proteico natural', 'Skyr natural', 'Queso fresco batido 0 %', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light', 'Queso en lonchas light'] },
+  { id: 'blk-lacteos-mas-grasa', family: 'Lácteos', name: 'Lácteos con más grasa', macro: 'protein', amount: 10,
+    foods: ['Leche entera', 'Yogur natural', 'Yogur griego natural', 'Kéfir natural', 'Queso fresco tipo Burgos', 'Mozzarella fresca', 'Queso semicurado', 'Queso curado', 'Queso en lonchas (tipo gouda)', 'Queso rallado', 'Queso de cabra (rulo)'] },
 ];
