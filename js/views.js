@@ -335,7 +335,11 @@
         ${name}
         <div class="meta"><span>${esc(reviewText(ri))}</span>${wa ? '' : `<a href="#/clientes/${c.id}" data-action="edit-client" data-id="${c.id}">Añade su teléfono para abrir WhatsApp</a>`}</div>
       </div>
-      ${reviewBadge(ri)}
+      <div class="review-actions">
+        ${reviewBadge(ri)}
+        ${wa ? `<a class="btn sm wa-btn" href="${wa}" target="_blank" rel="noopener" aria-label="Abrir WhatsApp con ${esc(c.name)}">${U.icon('message')}WhatsApp</a>` : ''}
+        <a class="btn sm" href="#/clientes/${c.id}" aria-label="Ver perfil de ${esc(c.name)}">${U.icon('users')}Perfil</a>
+      </div>
     </li>`;
   }
 

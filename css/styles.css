@@ -743,3 +743,15 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 
 .field-label { display: block; font-weight: 700; font-size: .83rem; margin-bottom: 6px; }
 .pay-next { font: 700 1.35rem/1.2 "Barlow Semi Condensed", sans-serif; padding: 8px 0; color: var(--primary); }
+
+.review-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.btn.wa-btn { color: #25d366; border-color: color-mix(in srgb, #25d366 45%, var(--border)); }
+.btn.wa-btn:hover { background: color-mix(in srgb, #25d366 12%, transparent); }
+.btn.wa-btn .ico { color: #25d366; }
+@media (max-width: 560px) {
+  .task.review { flex-wrap: wrap; }
+  .task.review .grow { flex: 1 1 calc(100% - 90px); }
+  .review-actions { width: 100%; padding-left: 36px; justify-content: flex-start; gap: 6px; }
+  .review-actions .btn.sm { padding: 5px 9px; }
+  .review-actions .badge { margin-right: auto; }
+}
