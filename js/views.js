@@ -456,6 +456,199 @@
   }
 
   /* =========================================================
+   * Rutina
+   * ======================================================= */
+
+  /** «4 × 10 · 60 kg · 90 s de descanso» */
+  function exerciseMeta(ex) {
+    const parts = [];
+    if (ex.sets || ex.reps) parts.push([ex.sets, ex.reps].filter(Boolean).join(' × '));
+    if (ex.load) parts.push(ex.load);
+    if (ex.rest) parts.push(`${ex.rest} de descanso`);
+    return parts.join(' · ');
+  }
+
+  function clientRoutine(c) {
+    const r = Store.routineFor(c.id);
+    if (!r) {
+      return `<section class="card">${empty('logo', `<strong>${esc(c.name.split(' ')[0])} aún no tiene rutina.</strong><br>Crea su rutina por días y añade los ejercicios con series, repeticiones, carga y descanso.`,
+        `<div style="margin-top:14px"><button class="btn primary" data-action="routine-create" data-client="${c.id}">${U.icon('plus')}Crear rutina</button></div>`)}</section>`;
+    }
+    const days = r.days || [];
+    return `
+      <section class="card routine-head">
+        <div class="card-header">
+          <div>
+            <h2>${esc(r.name || 'Rutina')}</h2>
+            <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.length, 'día', 'días')} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
+          </div>
+          <div class="actions">
+            <a class="btn sm wa-btn" href="${routineWaLink(c, r)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
+            <button class="btn sm" data-action="routine-copy" data-client="${c.id}">${U.icon('file')}Copiar</button>
+            <button class="btn sm" data-action="routine-edit" data-client="${c.id}">${U.icon('edit')}Editar</button>
+          </div>
+        </div>
+        ${r.notes ? `<p class="routine-notes">${esc(r.notes)}</p>` : ''}
+      </section>
+      ${days.map((d, di) => `
+        <section class="card routine-day">
+          <div class="card-header">
+            <h2><span class="day-num">${di + 1}</span>${esc(d.name || `Día ${di + 1}`)}</h2>
+            <div class="actions">
+              ${di > 0 ? `<button class="icon-btn" data-action="day-move" data-client="${c.id}" data-day="${d.id}" data-dir="-1" aria-label="Subir día" title="Subir">${U.icon('up')}</button>` : ''}
+              ${di < days.length - 1 ? `<button class="icon-btn" data-action="day-move" data-client="${c.id}" data-day="${d.id}" data-dir="1" aria-label="Bajar día" title="Bajar">${U.icon('down')}</button>` : ''}
+              <button class="icon-btn" data-action="day-edit" data-client="${c.id}" data-day="${d.id}" aria-label="Editar día" title="Editar día">${U.icon('edit')}</button>
+            </div>
+          </div>
+          ${(d.exercises || []).length ? `<ol class="list exercise-list">${d.exercises.map((ex, ei) => `
+            <li>
+              <span class="ex-num">${ei + 1}</span>
+              <div class="grow">
+                <div class="title">${esc(ex.name)}</div>
+                ${exerciseMeta(ex) ? `<div class="ex-meta">${esc(exerciseMeta(ex))}</div>` : ''}
+                ${ex.notes ? `<div class="meta ex-notes">${esc(ex.notes)}</div>` : ''}
+              </div>
+              <div class="ex-actions">
+                ${ei > 0 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ejercicio">${U.icon('up')}</button>` : ''}
+                ${ei < d.exercises.length - 1 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ejercicio">${U.icon('down')}</button>` : ''}
+                <button class="icon-btn" data-action="ex-edit" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" aria-label="Editar ejercicio">${U.icon('edit')}</button>
+              </div>
+            </li>`).join('')}</ol>` : '<p class="muted" style="margin:0 0 12px">Sin ejercicios todavía.</p>'}
+          <button class="btn sm" data-action="ex-add" data-client="${c.id}" data-day="${d.id}">${U.icon('plus')}Añadir ejercicio</button>
+        </section>`).join('')}
+      <button class="btn primary add-day" data-action="day-add" data-client="${c.id}">${U.icon('plus')}Añadir día</button>`;
+  }
+
+  function routineText(c, r) {
+    const lines = [`*${r.name || 'Rutina'} — ${c.name}*`];
+    if (r.notes) lines.push('', r.notes);
+    (r.days || []).forEach((d, di) => {
+      lines.push('', `*${d.name || `Día ${di + 1}`}*`);
+      (d.exercises || []).forEach((ex, ei) => {
+        const meta = exerciseMeta(ex);
+        lines.push(`${ei + 1}. ${ex.name}${meta ? ` — ${meta}` : ''}`);
+        if (ex.notes) lines.push(`   _${ex.notes}_`);
+      });
+    });
+    return lines.join('\n');
+  }
+
+  function routineWaLink(c, r) {
+    const base = U.waLink(c.phone) || 'https://wa.me/';
+    return `${base}?text=${encodeURIComponent(routineText(c, r))}`;
+  }
+
+  /** Guarda la rutina tras modificar sus días (marca la fecha de actualización). */
+  function saveRoutine(r) {
+    Store.update('routines', r.id, { days: r.days, name: r.name, notes: r.notes });
+    App.render();
+  }
+
+  const findDay = (r, id) => (r.days || []).find((d) => d.id === id);
+
+  function routineForm(c, existing) {
+    UI.form({
+      title: existing ? 'Editar rutina' : 'Nueva rutina',
+      fields: [
+        { name: 'name', label: 'Nombre de la rutina', required: true, full: true, default: `Rutina de ${monthName(today())}`, placeholder: 'Ej.: Fuerza 4 días, Hipertrofia bloque 1…' },
+        { name: 'notes', label: 'Indicaciones generales', type: 'textarea', placeholder: 'Calentamiento, frecuencia semanal, progresión…' },
+      ],
+      values: existing || {},
+      submitLabel: existing ? 'Guardar' : 'Crear rutina',
+      onDelete: existing ? async () => {
+        const ok = await UI.confirm({ title: 'Eliminar rutina', message: `Se eliminará la rutina completa de ${esc(c.name)} con todos sus días y ejercicios.` });
+        if (!ok) return;
+        Store.remove('routines', existing.id);
+        UI.toast('Rutina eliminada');
+        App.render();
+      } : null,
+      onSubmit: (v) => {
+        if (existing) {
+          Object.assign(existing, v);
+          saveRoutine(existing);
+          UI.toast('Rutina actualizada');
+        } else {
+          Store.add('routines', { clientId: c.id, name: v.name, notes: v.notes, days: [{ id: U.uid(), name: 'Día 1', exercises: [] }] });
+          UI.toast('Rutina creada: añade los ejercicios');
+          App.render();
+        }
+      },
+    });
+  }
+
+  function dayForm(c, r, day) {
+    UI.form({
+      title: day ? 'Editar día' : 'Nuevo día',
+      fields: [{ name: 'name', label: 'Nombre del día', required: true, full: true, default: `Día ${(r.days || []).length + 1}`, placeholder: 'Ej.: Día 1 · Pierna, Lunes · Torso…' }],
+      values: day || {},
+      submitLabel: day ? 'Guardar' : 'Añadir día',
+      onDelete: day ? async () => {
+        const ok = await UI.confirm({ title: 'Eliminar día', message: `Se eliminará «${esc(day.name)}» con sus ${plural((day.exercises || []).length, 'ejercicio', 'ejercicios')}.` });
+        if (!ok) return;
+        r.days = r.days.filter((d) => d.id !== day.id);
+        saveRoutine(r);
+        UI.toast('Día eliminado');
+      } : null,
+      onSubmit: (v) => {
+        if (day) day.name = v.name;
+        else (r.days = r.days || []).push({ id: U.uid(), name: v.name, exercises: [] });
+        saveRoutine(r);
+      },
+    });
+  }
+
+  function exerciseForm(c, r, day, ex) {
+    UI.form({
+      title: ex ? 'Editar ejercicio' : `Añadir ejercicio · ${day.name}`,
+      fields: [
+        { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Ej.: Sentadilla, Press banca, Remo con mancuerna…' },
+        { name: 'sets', label: 'Series', placeholder: 'Ej.: 4' },
+        { name: 'reps', label: 'Repeticiones', placeholder: 'Ej.: 8-10, 12, 30 s' },
+        { name: 'load', label: 'Carga', placeholder: 'Ej.: 60 kg, RPE 8, peso corporal' },
+        { name: 'rest', label: 'Descanso', placeholder: 'Ej.: 90 s, 2 min' },
+        { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Técnica, tempo, variantes…' },
+      ],
+      values: ex || {},
+      submitLabel: ex ? 'Guardar' : 'Añadir',
+      onDelete: ex ? () => {
+        day.exercises = day.exercises.filter((x) => x.id !== ex.id);
+        saveRoutine(r);
+        UI.toast('Ejercicio eliminado', { label: 'Deshacer', onClick: () => { const cur = Store.routineFor(c.id); const d = cur && findDay(cur, day.id); if (d) { d.exercises.push(ex); saveRoutine(cur); } } });
+      } : null,
+      onSubmit: (v) => {
+        if (ex) Object.assign(ex, v);
+        else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, v));
+        saveRoutine(r);
+        if (!ex) UI.toast('Ejercicio añadido');
+      },
+    });
+  }
+
+  function moveItem(list, id, dir) {
+    const i = list.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+
+  async function copyRoutine(c) {
+    const r = Store.routineFor(c.id);
+    if (!r) return;
+    const text = routineText(c, r);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (err) { /* sin portapapeles */ }
+      ta.remove();
+    }
+    UI.toast('Rutina copiada: pégala donde quieras');
+  }
+
+  /* =========================================================
    * Fotos
    * ======================================================= */
 
@@ -715,7 +908,7 @@
       return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
     const pendingCount = Store.tasksFor(c.id).filter((t) => !t.done).length;
-    const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
+    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
     const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
@@ -724,6 +917,7 @@
       case 'progreso': body = clientProgress(c); break;
       case 'pagos': body = clientPayments(c); break;
       case 'fotos': body = clientPhotos(c); break;
+      case 'rutina': body = clientRoutine(c); break;
       case 'tareas': body = clientTasks(c); break;
       default: body = clientSummary(c);
     }
@@ -1163,6 +1357,15 @@
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'open-client-tab': (d) => { state.clientTab = d.value; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'toggle-task': (d) => toggleTask(d.id),
+    'routine-create': (d) => routineForm(Store.get('clients', d.client)),
+    'routine-edit': (d) => routineForm(Store.get('clients', d.client), Store.routineFor(d.client)),
+    'routine-copy': (d) => copyRoutine(Store.get('clients', d.client)),
+    'day-add': (d) => dayForm(Store.get('clients', d.client), Store.routineFor(d.client)),
+    'day-edit': (d) => { const r = Store.routineFor(d.client); dayForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
+    'day-move': (d) => { const r = Store.routineFor(d.client); moveItem(r.days, d.day, Number(d.dir)); saveRoutine(r); },
+    'ex-add': (d) => { const r = Store.routineFor(d.client); exerciseForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
+    'ex-edit': (d) => { const r = Store.routineFor(d.client); const day = findDay(r, d.day); exerciseForm(Store.get('clients', d.client), r, day, day.exercises.find((x) => x.id === d.ex)); },
+    'ex-move': (d) => { const r = Store.routineFor(d.client); moveItem(findDay(r, d.day).exercises, d.ex, Number(d.dir)); saveRoutine(r); },
     'complete-review': (d) => completeReview(d.client),
     'edit-task': (d) => editTask(d.id),
     'toggle-done-list': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showDone = det.open; },

@@ -755,3 +755,23 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   .review-actions .btn.sm { padding: 5px 9px; }
   .review-actions .badge { margin-right: auto; }
 }
+
+/* ---------- Rutina ---------- */
+.routine-head .card-header { align-items: flex-start; }
+.routine-notes { margin: 0; white-space: pre-wrap; color: var(--muted); }
+.routine-day .card-header h2 { gap: 10px; }
+.day-num { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--primary-soft); color: var(--primary); font-size: 1rem; }
+.exercise-list { counter-reset: none; margin-bottom: 12px; }
+.exercise-list li { align-items: flex-start; }
+.ex-num { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-weight: 700; font-size: .8rem; margin-top: 1px; }
+.ex-meta { color: var(--primary); font-weight: 600; font-size: .9rem; margin-top: 2px; }
+.ex-notes { white-space: pre-wrap; margin-top: 3px; }
+.ex-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.ex-actions .icon-btn { width: 30px; height: 30px; }
+.add-day { margin-top: 18px; }
+@media (max-width: 560px) {
+  .routine-head .actions { width: 100%; }
+  .routine-head .actions .btn { flex: 1 1 auto; justify-content: center; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs button { flex: 0 0 auto; padding: 8px 9px; }
+}

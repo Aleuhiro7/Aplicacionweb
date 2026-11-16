@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines'];
 
   function emptyData() {
     return {
@@ -14,6 +14,7 @@
       tasks: [], // tareas pendientes del entrenador por cliente
       photos: [], // solo datos de cada foto; la imagen va aparte (ver photos.js)
       reviews: [], // historial de revisiones hechas
+      routines: [], // rutina de entrenamiento de cada cliente (días con sus ejercicios)
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -152,7 +153,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews']) {
+      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -296,6 +297,10 @@
       .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999') || (a.createdAt || '').localeCompare(b.createdAt || ''));
   }
 
+  function routineFor(clientId) {
+    return data.routines.find((r) => r.clientId === clientId) || null;
+  }
+
   function photosFor(clientId) {
     return data.photos.filter((p) => p.clientId === clientId).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
   }
@@ -343,7 +348,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, routineFor, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },
