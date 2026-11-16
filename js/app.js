@@ -21,6 +21,7 @@
     switch (section) {
       case 'clientes': html = id ? Views.renderClient(id) : Views.renderClients(); break;
       case 'pagos': html = Views.renderPayments(); break;
+      case 'biblioteca': html = Views.renderLibrary(); break;
       case 'ajustes': html = Views.renderSettings(); break;
       default: html = Views.renderPanel();
     }
@@ -41,7 +42,7 @@
 
   /** Título de la pestaña y punto de avisos. */
   function updateChrome() {
-    const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', ajustes: 'Ajustes' };
+    const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', biblioteca: 'Biblioteca', ajustes: 'Ajustes' };
     document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Coach`;
     document.getElementById('alert-dot').hidden = !Views.computeAlerts().length;
   }
@@ -92,6 +93,7 @@
 
   main.addEventListener('input', (e) => {
     if (e.target.id === 'client-search') Views.onClientSearch(e.target.value);
+    if (e.target.id === 'library-search') Views.onLibrarySearch(e.target.value);
   });
 
   main.addEventListener('submit', (e) => {

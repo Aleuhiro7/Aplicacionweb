@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library'];
 
   function emptyData() {
     return {
@@ -15,6 +15,7 @@
       photos: [], // solo datos de cada foto; la imagen va aparte (ver photos.js)
       reviews: [], // historial de revisiones hechas
       routines: [], // rutina de entrenamiento de cada cliente (días con sus ejercicios)
+      library: [], // biblioteca de ejercicios
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -24,10 +25,11 @@
 
   function normalize(raw) {
     const base = emptyData();
-    if (!raw || typeof raw !== 'object') return base;
+    if (!raw || typeof raw !== 'object') { seedLibrary(base); return base; }
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
     migrateNextDue(base);
+    seedLibrary(base);
     // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
     for (const c of base.clients) if (c.startDate && c.nextDue) c.nextDue = snapToStart(c.startDate, c.nextDue);
     return base;
@@ -69,6 +71,17 @@
     return U.addMonths(client.startDate, monthFloor(client.startDate, from) + months);
   }
 
+  /** Añade a la biblioteca los ejercicios de serie que falten (salvo los que el usuario borró). */
+  function seedLibrary(d) {
+    const defaults = window.LIBRARY_DEFAULT || [];
+    if (!defaults.length) return;
+    const have = new Set(d.library.map((x) => x.id));
+    const removed = new Set(d.settings.libraryRemoved || []);
+    for (const ex of defaults) {
+      if (!have.has(ex.id) && !removed.has(ex.id)) d.library.push(Object.assign({ builtIn: true }, ex));
+    }
+  }
+
   /** Versiones anteriores usaban «día de cobro»; se convierte en fecha de próximo pago. */
   function migrateNextDue(d) {
     const t = U.today();
@@ -87,7 +100,7 @@
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      data = raw ? normalize(JSON.parse(raw)) : emptyData();
+      data = normalize(raw ? JSON.parse(raw) : null);
     } catch (e) {
       storageOk = false;
       data = emptyData();
@@ -297,6 +310,17 @@
       .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999') || (a.createdAt || '').localeCompare(b.createdAt || ''));
   }
 
+  function library() {
+    return data.library.slice().sort((a, b) => (a.group || '').localeCompare(b.group || '', 'es') || a.name.localeCompare(b.name, 'es'));
+  }
+
+  /** Borra un ejercicio de la biblioteca; si venía de serie, se recuerda para no volver a añadirlo. */
+  function removeLibraryExercise(id) {
+    const ex = get('library', id);
+    if (ex && ex.builtIn) data.settings.libraryRemoved = [...new Set([...(data.settings.libraryRemoved || []), id])];
+    remove('library', id);
+  }
+
   function routineFor(clientId) {
     return data.routines.find((r) => r.clientId === clientId) || null;
   }
@@ -340,6 +364,7 @@
     const settings = data.settings;
     data = emptyData();
     data.settings = settings;
+    seedLibrary(data);
     save();
   }
 
@@ -348,7 +373,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, routineFor, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, routineFor, library, removeLibraryExercise, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

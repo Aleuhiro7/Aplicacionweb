@@ -37,6 +37,8 @@
     clientFilter: 'activo',
     clientTab: 'resumen',
     payFilter: 'todos',
+    libSearch: '',
+    libGroup: 'todos',
     openPay: null, // cliente con el desplegable de pago abierto
   };
 
@@ -601,7 +603,7 @@
     UI.form({
       title: ex ? 'Editar ejercicio' : `Añadir ejercicio · ${day.name}`,
       fields: [
-        { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Ej.: Sentadilla, Press banca, Remo con mancuerna…' },
+        { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Escribe para buscar en la biblioteca…', datalist: Store.library().map((x) => x.name) },
         { name: 'sets', label: 'Series', placeholder: 'Ej.: 4' },
         { name: 'reps', label: 'Repeticiones', placeholder: 'Ej.: 8-10, 12, 30 s' },
         { name: 'load', label: 'Carga', placeholder: 'Ej.: 60 kg, RPE 8, peso corporal' },
@@ -1133,6 +1135,123 @@
   }
 
   /* =========================================================
+   * Biblioteca de ejercicios
+   * ======================================================= */
+
+  const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Gemelos', 'Core / Abdomen', 'Cuerpo completo', 'Cardio', 'Movilidad / Estiramientos', 'Otros'];
+
+  function libraryGroups() {
+    const used = new Set(Store.data.library.map((x) => x.group).filter(Boolean));
+    return MUSCLE_GROUPS.filter((g) => used.has(g)).concat([...used].filter((g) => !MUSCLE_GROUPS.includes(g)).sort((a, b) => a.localeCompare(b, 'es')));
+  }
+
+  function normalizeText(t) {
+    return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function filteredLibrary() {
+    const q = normalizeText(state.libSearch);
+    const order = libraryGroups();
+    const rank = (g) => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
+    return Store.library().sort((a, b) => rank(a.group) - rank(b.group) || a.name.localeCompare(b.name, 'es')).filter((x) => {
+      if (state.libGroup !== 'todos' && x.group !== state.libGroup) return false;
+      if (!q) return true;
+      return [x.name, x.group, x.equipment, x.description].some((f) => normalizeText(f).includes(q));
+    });
+  }
+
+  function libraryList() {
+    const list = filteredLibrary();
+    if (!Store.data.library.length) {
+      return empty('book', '<strong>La biblioteca está vacía.</strong><br>Añade tus ejercicios con «+ Ejercicio».');
+    }
+    if (!list.length) return empty('search', 'Ningún ejercicio coincide con la búsqueda.');
+    const groups = [];
+    for (const ex of list) {
+      const g = ex.group || 'Sin grupo';
+      const last = groups[groups.length - 1];
+      if (last && last.name === g) last.items.push(ex);
+      else groups.push({ name: g, items: [ex] });
+    }
+    return groups.map((g) => `
+      <h3 class="lib-group">${esc(g.name)} <span class="muted">${g.items.length}</span></h3>
+      <div class="lib-grid">${g.items.map((ex) => `
+        <button class="lib-card" data-action="lib-open" data-id="${ex.id}">
+          <span class="lib-name">${esc(ex.name)}</span>
+          ${ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
+          ${ex.description ? `<span class="lib-desc">${esc(ex.description)}</span>` : ''}
+        </button>`).join('')}</div>`).join('');
+  }
+
+  function renderLibrary() {
+    const groups = libraryGroups();
+    if (state.libGroup !== 'todos' && !groups.includes(state.libGroup)) state.libGroup = 'todos';
+    const chip = (v, l) => `<button class="chip${state.libGroup === v ? ' active' : ''}" data-action="lib-group" data-value="${esc(v)}">${esc(l)}</button>`;
+    return `
+      <div class="page-header">
+        <div><h1 class="display">Biblioteca de ejercicios</h1><p>${plural(Store.data.library.length, 'ejercicio', 'ejercicios')}</p></div>
+        <button class="btn primary pill" data-action="lib-new">${U.icon('plus')}Ejercicio</button>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input type="search" class="search" id="library-search" placeholder="Buscar ejercicio, grupo muscular o material…" value="${esc(state.libSearch)}" aria-label="Buscar ejercicios">
+        </div>
+        ${groups.length ? `<div class="lib-chips">${chip('todos', 'Todos')}${groups.map((g) => chip(g, g)).join('')}</div>` : ''}
+        <div id="library-list">${libraryList()}</div>
+      </div>`;
+  }
+
+  function onLibrarySearch(value) {
+    state.libSearch = value;
+    const el = document.getElementById('library-list');
+    if (el) el.innerHTML = libraryList();
+  }
+
+  function libraryForm(id) {
+    const existing = id ? Store.get('library', id) : null;
+    UI.form({
+      title: existing ? 'Editar ejercicio' : 'Nuevo ejercicio',
+      fields: [
+        { name: 'name', label: 'Nombre', required: true, full: true },
+        { name: 'group', label: 'Grupo muscular', datalist: MUSCLE_GROUPS, placeholder: 'Ej.: Pecho, Glúteos…' },
+        { name: 'equipment', label: 'Material', placeholder: 'Ej.: Barra, mancuernas, polea, sin material' },
+        { name: 'description', label: 'Descripción / técnica', type: 'textarea', placeholder: 'Ejecución, puntos clave, errores comunes…' },
+        { name: 'video', label: 'Enlace a vídeo (opcional)', type: 'url', full: true, placeholder: 'https://…' },
+      ],
+      values: existing || (state.libGroup !== 'todos' ? { group: state.libGroup } : {}),
+      submitLabel: existing ? 'Guardar' : 'Añadir',
+      onDelete: existing ? async () => {
+        const ok = await UI.confirm({ title: 'Eliminar ejercicio', message: `¿Eliminar «${esc(existing.name)}» de la biblioteca? Las rutinas que ya lo usan no cambian.` });
+        if (!ok) return;
+        Store.removeLibraryExercise(id);
+        UI.toast('Ejercicio eliminado');
+        App.render();
+      } : null,
+      onSubmit: (v) => {
+        if (existing) Store.update('library', id, v);
+        else Store.add('library', v);
+        UI.toast(existing ? 'Ejercicio actualizado' : 'Ejercicio añadido');
+        App.render();
+      },
+    });
+  }
+
+  function openLibraryExercise(id) {
+    const ex = Store.get('library', id);
+    if (!ex) return;
+    UI.openModal({
+      title: ex.name,
+      body: `<div class="lib-detail">
+        <div class="actions" style="margin-bottom:12px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
+        ${ex.description ? `<p class="lib-detail-desc">${esc(ex.description)}</p>` : '<p class="muted">Sin descripción.</p>'}
+        ${ex.video ? `<p><a href="${esc(ex.video)}" target="_blank" rel="noopener">${U.icon('right')} Ver vídeo</a></p>` : ''}
+      </div>`,
+      footer: `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button><button type="button" class="btn primary" data-close>Cerrar</button>`,
+      onOpen: () => { document.getElementById('lib-edit').onclick = () => libraryForm(id); },
+    });
+  }
+
+  /* =========================================================
    * Ajustes
    * ======================================================= */
 
@@ -1357,6 +1476,9 @@
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'open-client-tab': (d) => { state.clientTab = d.value; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'toggle-task': (d) => toggleTask(d.id),
+    'lib-new': () => libraryForm(),
+    'lib-open': (d) => openLibraryExercise(d.id),
+    'lib-group': (d) => { state.libGroup = d.value; App.render(); },
     'routine-create': (d) => routineForm(Store.get('clients', d.client)),
     'routine-edit': (d) => routineForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'routine-copy': (d) => copyRoutine(Store.get('clients', d.client)),
@@ -1387,6 +1509,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
+    renderLibrary, onLibrarySearch,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

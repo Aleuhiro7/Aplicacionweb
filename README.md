@@ -12,6 +12,7 @@ Aplicación web para gestionar los clientes de asesoría online: cuotas mensuale
 - **Rutina**: rutina de entrenamiento de cada cliente organizada por días, con ejercicios (series, repeticiones, carga, descanso y notas) que se pueden añadir, editar, reordenar y borrar. Se envía al cliente por WhatsApp ya formateada o se copia como texto.
 - **Fotos**: fotos de progreso de cada cliente (desde la galería o la cámara), agrupadas por fecha, con visor, descarga y borrado. Se comprimen y se guardan en el navegador; con la sesión de Google iniciada se suben también a la nube, cada una aparte.
 - **Tareas pendientes**: anotaciones por cliente con fecha límite opcional; las pendientes salen también en el panel principal y se marcan como hechas con un toque.
+- **Biblioteca de ejercicios**: catálogo de ejercicios por grupo muscular, con material, descripción/técnica y enlace a vídeo. Búsqueda (sin importar tildes) y filtro por grupo; se pueden añadir, editar y borrar. Al añadir un ejercicio a una rutina, se sugieren los de la biblioteca. Los ejercicios de serie están en `js/library-data.js`.
 - **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
 ## Cómo usarla

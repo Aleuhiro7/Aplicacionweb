@@ -775,3 +775,19 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   .tabs { overflow-x: auto; scrollbar-width: none; }
   .tabs button { flex: 0 0 auto; padding: 8px 9px; }
 }
+
+/* ---------- Biblioteca de ejercicios ---------- */
+.lib-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.lib-group { margin: 22px 0 10px; font-size: 1rem; display: flex; gap: 8px; align-items: baseline; }
+.lib-group .muted { font-size: .85rem; font-weight: 500; }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.lib-card {
+  appearance: none; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; transition: border-color .15s;
+}
+.lib-card:hover { border-color: var(--primary); }
+.lib-name { font-weight: 700; }
+.lib-desc { color: var(--muted); font-size: .84rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lib-detail-desc { white-space: pre-wrap; margin: 0 0 12px; }
+@media (max-width: 560px) { .lib-grid { grid-template-columns: 1fr; } }

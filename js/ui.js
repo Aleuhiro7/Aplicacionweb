@@ -88,7 +88,9 @@
           f.placeholder ? `placeholder="${esc(f.placeholder)}"` : '',
           f.type === 'number' ? 'inputmode="decimal"' : '',
         ].join(' ');
-        input = `<input type="${f.type || 'text'}" id="${id}" name="${f.name}" value="${esc(v)}" ${req} ${extra}>`;
+        const list = f.datalist && f.datalist.length ? `list="dl-${f.name}"` : '';
+        input = `<input type="${f.type || 'text'}" id="${id}" name="${f.name}" value="${esc(v)}" ${req} ${extra} ${list} ${list ? 'autocomplete="off"' : ''}>` +
+          (list ? `<datalist id="dl-${f.name}">${f.datalist.map((o) => `<option value="${esc(o)}"></option>`).join('')}</datalist>` : '');
       }
     }
     return `<div class="field${full}" data-field="${f.name}">${label}${input}${hint}</div>`;
