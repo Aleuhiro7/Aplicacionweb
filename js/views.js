@@ -1224,8 +1224,6 @@
   function dietText(c, d) {
     const fmtG = (g) => fmtNum(Number(g) || 0, 0);
     const lines = [`*Dieta — ${c.name}*`];
-    const day = dayTargets(d);
-    if (day) lines.push(`Objetivo diario: ${fmtNum(day.kcal, 0)} kcal · Proteínas ${fmtNum(day.protein, 0)} g · Hidratos ${fmtNum(day.carbs, 0)} g · Grasas ${fmtNum(day.fat, 0)} g`);
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     meals.forEach((m) => {
       lines.push('', `*${m.name}*`);
