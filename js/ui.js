@@ -170,7 +170,13 @@
           `<button type="submit" class="btn ${danger ? 'danger-solid' : 'primary'}">${esc(confirmLabel)}</button>`,
         onSubmit: () => { answered = true; closeModal(); resolve(true); },
       });
-      dlg.addEventListener('close', () => { if (!answered) resolve(false); }, { once: true });
+      // Ignora el «close» rezagado del modal anterior (llega cuando este ya está abierto).
+      const onClose = () => {
+        if (dlg.open) return;
+        dlg.removeEventListener('close', onClose);
+        if (!answered) resolve(false);
+      };
+      dlg.addEventListener('close', onClose);
     });
   }
 
