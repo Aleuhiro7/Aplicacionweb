@@ -686,7 +686,7 @@
         </section>
         <section class="card">
           <div class="card-header"><h2>Tus datos</h2></div>
-          <p class="muted" style="margin-top:0">Los datos se guardan <strong>solo en este navegador</strong>. Exporta una copia de seguridad con regularidad para no perderlos y para pasarlos a otro dispositivo.</p>
+          ${window.Sync ? Sync.settingsHTML() : `<p class="muted" style="margin-top:0">Cargando la sincronización…</p>`}
           ${Store.storageOk ? '' : `<div class="alert">${U.icon('alert')}<div>El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div></div>`}
           <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'medición', 'mediciones')} · ${plural(d.payments.length, 'pago', 'pagos')}</p>
           <div class="actions">

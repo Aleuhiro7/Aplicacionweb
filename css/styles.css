@@ -643,3 +643,10 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   .stats > .stat:nth-child(3):last-child { grid-column: span 2; }
   .bar-value { font-size: .72rem; }
 }
+
+/* Sincronización en la nube */
+.sync-btn .dot { background: var(--warning); }
+.sync-btn[data-state="on"] .dot { background: var(--success, #22c55e); }
+.sync-btn[data-state="busy"] .dot { background: var(--muted, #94a3b8); }
+.sync-box { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.sync-box p { margin: 0; }
