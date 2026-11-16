@@ -74,7 +74,13 @@
         moneyFormatters[cur] = new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' });
       }
     }
-    return moneyFormatters[cur].format(Number(amount) || 0);
+    const n = Number(amount) || 0;
+    const key = cur + (Number.isInteger(n) ? ':int' : '');
+    if (Number.isInteger(n) && !moneyFormatters[key]) {
+      const base = moneyFormatters[cur].resolvedOptions().currency;
+      moneyFormatters[key] = new Intl.NumberFormat('es', { style: 'currency', currency: base, minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    return moneyFormatters[key].format(n);
   }
 
   function fmtNum(n, digits = 1) {
@@ -126,6 +132,9 @@
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
     settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/>',
+    euro: '<path d="M18 7a7 7 0 1 0 0 10M4 10h10M4 14h10"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',

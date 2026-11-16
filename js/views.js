@@ -327,14 +327,69 @@
    * Panel
    * ======================================================= */
 
+  /** Avisos: bonos casi agotados y clientes activos sin sesiones próximas. */
+  function computeAlerts() {
+    const t = today();
+    const alerts = [];
+    for (const c of Store.data.clients.filter((x) => x.status !== 'inactivo')) {
+      const pack = Store.packBalance(c.id);
+      if (pack && pack.remaining <= 1) {
+        alerts.push({ c, text: pack.remaining < 0 ? `Bono agotado (${-pack.remaining} sesión/es sin cubrir)` : pack.remaining === 0 ? 'Bono agotado' : 'Queda 1 sesión del bono', kind: 'warning' });
+      }
+      const last = Store.lastCompletedSession(c.id);
+      if (!Store.nextSession(c.id)) {
+        const days = last ? U.daysBetween(last.date, t) : null;
+        if (days === null || days >= 14) {
+          alerts.push({ c, text: last ? `Sin sesiones desde hace ${days} días` : 'Sin sesiones programadas', kind: 'info' });
+        }
+      }
+    }
+    return alerts;
+  }
+
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  function incomeChart() {
+    const now = U.parseDate(today());
+    const items = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const from = U.toISODate(d);
+      const to = U.toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+      items.push({ label: MONTHS[d.getMonth()].slice(0, 3), value: Store.paidBetween(from, to), current: i === 0 });
+    }
+    const max = Math.max(...items.map((x) => x.value));
+    if (!max) return empty('trend', 'Aún no hay pagos cobrados en los últimos 6 meses.');
+    return `<div class="bars" role="img" aria-label="Ingresos cobrados por mes">${items.map((x) => `
+      <div class="bar-col${x.current ? ' current' : ''}">
+        <span class="bar-value">${x.value ? money(x.value) : ''}</span>
+        <div class="bar" style="height:${Math.max(x.value ? 3 : 0, (x.value / max) * 100)}%" title="${esc(x.label)}: ${money(x.value)}"></div>
+        <span class="bar-label">${esc(x.label)}</span>
+      </div>`).join('')}</div>`;
+  }
+
+  function levelBreakdown(active) {
+    const rows = LEVELS.map((l, i) => ({ n: i + 1, label: l, count: active.filter((c) => c.level === l).length }));
+    const none = active.filter((c) => !LEVELS.includes(c.level)).length;
+    if (none) rows.push({ n: null, label: 'Sin nivel asignado', count: none });
+    const max = Math.max(1, ...rows.map((r) => r.count));
+    return rows.map((r) => `
+      <div class="level-row">
+        <div class="level-name">${r.n ? `<strong>Nivel ${r.n}</strong> ` : ''}${esc(r.label)}</div>
+        <div class="level-bar"><div class="progress"><span style="width:${(r.count / max) * 100}%"></span></div><strong>${r.count}</strong></div>
+      </div>`).join('');
+  }
+
   function renderPanel() {
     const t = today();
     const d = Store.data;
     const name = Store.settings.trainerName;
+    const firstName = name ? name.split(' ')[0] : '';
+    const dateLine = `<p class="eyebrow">${esc(fmtDate(t))}</p>`;
 
     if (!d.clients.length) {
       return `
-        <div class="page-header"><div><h1>¡Bienvenido${name ? ', ' + esc(name) : ''}!</h1><p>Tu centro de control como entrenador personal.</p></div></div>
+        <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido${firstName ? ', ' + esc(firstName) : ''}!</h1><p>Tu centro de control como entrenador personal.</p></div></div>
         <div class="card">
           ${empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
             `<div class="actions" style="justify-content:center;margin-top:16px">
@@ -345,56 +400,49 @@
     }
 
     const weekStart = U.startOfWeek(t);
-    const weekEnd = U.addDays(weekStart, 6);
-    const weekSessions = Store.sessionsBetween(weekStart, weekEnd).filter((s) => s.status !== 'cancelada');
-    const doneWeek = weekSessions.filter((s) => s.status === 'completada').length;
+    const weekSessions = Store.sessionsBetween(weekStart, U.addDays(weekStart, 6)).filter((s) => s.status !== 'cancelada');
     const monthStart = t.slice(0, 8) + '01';
-    const income = Store.paidBetween(monthStart, t.slice(0, 8) + '31');
+    const monthEnd = t.slice(0, 8) + '31';
+    const income = Store.paidBetween(monthStart, monthEnd);
+    const pendingPays = d.payments.filter((p) => p.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
+    const pendingMonth = pendingPays.filter((p) => p.date >= monthStart && p.date <= monthEnd).reduce((s, p) => s + Number(p.amount || 0), 0);
     const pending = Store.pendingAmount();
-    const pendingCount = d.payments.filter((p) => p.status === 'pendiente').length;
+    const pendingClients = new Set(pendingPays.map((p) => p.clientId)).size;
+    const overdue = pendingPays.filter((p) => p.date < t).length;
     const active = d.clients.filter((c) => c.status !== 'inactivo');
 
     const todays = Store.sessionsBetween(t, t).filter((s) => s.status !== 'cancelada');
     const upcoming = Store.sessionsBetween(U.addDays(t, 1), U.addDays(t, 7)).filter((s) => s.status === 'programada');
     const nowTime = `${U.pad(new Date().getHours())}:${U.pad(new Date().getMinutes())}`;
     const nextToday = todays.find((x) => x.status === 'programada' && x.time >= nowTime);
-    const pendingPays = d.payments.filter((p) => p.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
-
-    // Alertas
-    const alerts = [];
-    for (const c of active) {
-      const pack = Store.packBalance(c.id);
-      if (pack && pack.remaining <= 1) {
-        alerts.push({ c, text: pack.remaining < 0 ? `Bono agotado (${-pack.remaining} sesión/es sin cubrir)` : pack.remaining === 0 ? 'Bono agotado' : 'Queda 1 sesión del bono', kind: 'warning' });
-      }
-      const last = Store.lastCompletedSession(c.id);
-      const next = Store.nextSession(c.id);
-      if (!next) {
-        const days = last ? U.daysBetween(last.date, t) : null;
-        if (days === null || days >= 14) {
-          alerts.push({ c, text: last ? `Sin sesiones desde hace ${days} días` : 'Sin sesiones programadas', kind: 'info' });
-        }
-      }
-    }
+    const alerts = computeAlerts();
+    const monthName = MONTHS[U.parseDate(t).getMonth()];
 
     return `
-      <section class="hero">
+      <div class="page-header">
         <div>
-          <p class="hero-date"><span class="capitalize">${esc(U.fmtWeekday(t))}</span></p>
-          <h1>${greeting()}${name ? ', ' + esc(name.split(' ')[0]) : ''}</h1>
-          <p>${todays.length ? `Hoy tienes <strong>${todays.length} ${todays.length === 1 ? 'sesión' : 'sesiones'}</strong>${nextToday ? ` · la próxima a las <strong>${esc(nextToday.time)}</strong> con ${esc(Store.clientName(nextToday.clientId))}` : ''}.` : 'Hoy no tienes sesiones programadas.'}</p>
+          ${dateLine}
+          <h1 class="display">${greeting()}${firstName ? ', ' + esc(firstName) : ''}.</h1>
+          <p>${todays.length ? `Hoy tienes ${todays.length} ${todays.length === 1 ? 'sesión' : 'sesiones'}${nextToday ? ` · la próxima a las ${esc(nextToday.time)} con ${esc(Store.clientName(nextToday.clientId))}` : ''}.` : 'Hoy no tienes sesiones programadas.'}</p>
         </div>
-        <div class="actions">
-          <button class="btn glass" data-action="new-payment">${U.icon('wallet')}Registrar pago</button>
-          <button class="btn light" data-action="new-session">${U.icon('plus')}Nueva sesión</button>
-        </div>
-      </section>
+      </div>
 
       <div class="stats">
-        <div class="card stat"><span class="stat-icon teal">${U.icon('users')}</span><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${d.clients.length - active.length} inactivos</div></div>
-        <div class="card stat"><span class="stat-icon blue">${U.icon('calendar')}</span><div class="stat-label">Sesiones esta semana</div><div class="stat-value">${weekSessions.length}</div><div class="stat-sub">${doneWeek} completadas</div></div>
-        <div class="card stat"><span class="stat-icon green">${U.icon('trend')}</span><div class="stat-label">Ingresos del mes</div><div class="stat-value">${money(income)}</div><div class="stat-sub">pagos cobrados</div></div>
-        <div class="card stat"><span class="stat-icon amber">${U.icon('clock')}</span><div class="stat-label">Pendiente de cobro</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${pendingCount} pago/s</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${monthName}</div><div class="stat-value">${money(income)}</div><div class="stat-sub">de ${money(income + pendingMonth)} previstos</div></div>
+        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${pendingClients} ${pendingClients === 1 ? 'cliente' : 'clientes'} · ${overdue} ${overdue === 1 ? 'vencido' : 'vencidos'}</div></div>
+        <div class="card stat"><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${d.clients.length - active.length} ${d.clients.length - active.length === 1 ? 'inactivo' : 'inactivos'}</div></div>
+        <div class="card stat"><div class="stat-label">Sesiones hoy</div><div class="stat-value">${todays.length}</div><div class="stat-sub">${weekSessions.length} esta semana</div></div>
+      </div>
+
+      <div class="grid-main">
+        <section class="card">
+          <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
+          ${incomeChart()}
+        </section>
+        <section class="card">
+          <div class="card-header"><h2>Clientes por nivel</h2></div>
+          ${levelBreakdown(active)}
+        </section>
       </div>
 
       <div class="grid-2">
@@ -415,7 +463,7 @@
               <button class="btn sm" data-action="mark-paid" data-id="${p.id}">Cobrado</button>
             </li>`).join('')}</ul>` : empty('done', 'Todo cobrado.')}
         </section>
-        <section class="card">
+        <section class="card" id="atencion">
           <div class="card-header"><h2>Requieren atención</h2></div>
           ${alerts.length ? `<ul class="list">${alerts.slice(0, 8).map((a) => `
             <li>
@@ -472,7 +520,7 @@
     const seg = (v, label) => `<button data-action="client-filter" data-value="${v}" class="${state.clientFilter === v ? 'active' : ''}">${label}</button>`;
     return `
       <div class="page-header">
-        <div><h1>Clientes</h1><p>${Store.data.clients.length} en total</p></div>
+        <div><h1 class="display">Clientes</h1><p>${Store.data.clients.length} en total</p></div>
         <button class="btn primary" data-action="new-client">${U.icon('plus')}Nuevo cliente</button>
       </div>
       <div class="card">
@@ -543,10 +591,10 @@
 
     return `
       <div class="stats">
-        <div class="card stat"><span class="stat-icon teal">${U.icon('done')}</span><div class="stat-label">Sesiones completadas</div><div class="stat-value">${done.length}</div><div class="stat-sub">${noShow} ausencias</div></div>
-        <div class="card stat"><span class="stat-icon blue">${U.icon('calendar')}</span><div class="stat-label">Próxima sesión</div><div class="stat-value" style="font-size:1.2rem">${next ? esc(U.relativeDay(next.date)) + ' ' + esc(next.time) : '—'}</div><div class="stat-sub">${last ? 'Última: ' + fmtDate(last.date) : 'Sin sesiones previas'}</div></div>
-        <div class="card stat"><span class="stat-icon violet">${U.icon('activity')}</span><div class="stat-label">Bono</div><div class="stat-value">${pack ? pack.remaining : '—'}</div><div class="stat-sub">${pack ? `${pack.used} de ${pack.bought} usadas` : 'Pago por sesión'}</div></div>
-        <div class="card stat"><span class="stat-icon amber">${U.icon('wallet')}</span><div class="stat-label">Pendiente</div><div class="stat-value">${money(pend)}</div><div class="stat-sub">${money(totalPaid)} cobrado en total</div></div>
+        <div class="card stat"><div class="stat-label">Sesiones completadas</div><div class="stat-value">${done.length}</div><div class="stat-sub">${noShow} ausencias</div></div>
+        <div class="card stat"><div class="stat-label">Próxima sesión</div><div class="stat-value" style="font-size:1.2rem">${next ? esc(U.relativeDay(next.date)) + ' ' + esc(next.time) : '—'}</div><div class="stat-sub">${last ? 'Última: ' + fmtDate(last.date) : 'Sin sesiones previas'}</div></div>
+        <div class="card stat"><div class="stat-label">Bono</div><div class="stat-value">${pack ? pack.remaining : '—'}</div><div class="stat-sub">${pack ? `${pack.used} de ${pack.bought} usadas` : 'Pago por sesión'}</div></div>
+        <div class="card stat"><div class="stat-label">Pendiente</div><div class="stat-value">${money(pend)}</div><div class="stat-sub">${money(totalPaid)} cobrado en total</div></div>
       </div>
       <div class="grid-2">
         <section class="card">
@@ -680,7 +728,7 @@
 
     return `
       <div class="page-header">
-        <div><h1>Agenda</h1><p>${active.length} sesiones · ${fmtNum(hours)} h de entrenamiento</p></div>
+        <div><h1 class="display">Agenda</h1><p>${active.length} sesiones · ${fmtNum(hours)} h de entrenamiento</p></div>
         <button class="btn primary" data-action="new-session">${U.icon('plus')}Nueva sesión</button>
       </div>
       <div class="card">
@@ -711,13 +759,13 @@
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1>Pagos</h1><p>Cobros, bonos y pagos pendientes</p></div>
+        <div><h1 class="display">Pagos</h1><p>Cobros, bonos y pagos pendientes</p></div>
         <button class="btn primary" data-action="new-payment">${U.icon('plus')}Registrar pago</button>
       </div>
       <div class="stats">
-        <div class="card stat"><span class="stat-icon green">${U.icon('trend')}</span><div class="stat-label">Cobrado este mes</div><div class="stat-value">${money(month)}</div><div class="stat-sub">Mes anterior: ${money(prevMonth)}</div></div>
-        <div class="card stat"><span class="stat-icon amber">${U.icon('clock')}</span><div class="stat-label">Pendiente de cobro</div><div class="stat-value">${money(Store.pendingAmount())}</div><div class="stat-sub">${all.filter((p) => p.status === 'pendiente').length} pagos</div></div>
-        <div class="card stat"><span class="stat-icon teal">${U.icon('wallet')}</span><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado este mes</div><div class="stat-value">${money(month)}</div><div class="stat-sub">Mes anterior: ${money(prevMonth)}</div></div>
+        <div class="card stat"><div class="stat-label">Pendiente de cobro</div><div class="stat-value">${money(Store.pendingAmount())}</div><div class="stat-sub">${all.filter((p) => p.status === 'pendiente').length} pagos</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div></div>
       </div>
       <div class="card">
         <div class="toolbar"><div class="segmented" role="group" aria-label="Filtrar pagos">${seg('todos', 'Todos')}${seg('pendiente', 'Pendientes')}${seg('pagado', 'Pagados')}</div></div>
@@ -733,7 +781,7 @@
     const s = Store.settings;
     const d = Store.data;
     return `
-      <div class="page-header"><div><h1>Ajustes</h1><p>Preferencias y copias de seguridad</p></div></div>
+      <div class="page-header"><div><h1 class="display">Ajustes</h1><p>Preferencias y copias de seguridad</p></div></div>
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Preferencias</h2></div>
@@ -889,6 +937,11 @@
 
   const actions = {
     'new-client': () => openClientForm(),
+    alerts: () => {
+      const go = () => document.getElementById('atencion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
+      else { location.hash = '#/panel'; setTimeout(go, 60); }
+    },
     'edit-client': (d) => openClientForm(d.id),
     'new-session': (d) => openSessionForm(null, Object.assign({}, d.client ? { clientId: d.client } : {}, d.date ? { date: d.date } : {})),
     'edit-session': (d) => openSessionForm(d.id),
@@ -925,6 +978,6 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderAgenda, renderPayments, renderSettings,
-    saveSettings, importFile, onClientSearch,
+    saveSettings, importFile, onClientSearch, computeAlerts,
   };
 })();

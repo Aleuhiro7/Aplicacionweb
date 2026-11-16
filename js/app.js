@@ -3,6 +3,7 @@
   'use strict';
 
   const main = document.getElementById('app');
+  const shell = document.querySelector('.layout');
   let lastRoute = '';
 
   function parseRoute() {
@@ -29,11 +30,22 @@
     if (routeKey !== lastRoute) main.focus({ preventScroll: true });
     lastRoute = routeKey;
 
-    document.querySelectorAll('.sidebar a').forEach((a) => {
+    updateChrome();
+    document.querySelectorAll('.sidebar a[data-nav]').forEach((a) => {
       a.classList.toggle('active', a.dataset.nav === (section || 'panel'));
       if (a.dataset.nav === section) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     });
+  }
+
+  /** Marca (nombre e iniciales del entrenador), título y punto de avisos. */
+  function updateChrome() {
+    const name = Store.settings.trainerName || 'EntrenaPro';
+    document.getElementById('brand-title').textContent = name;
+    document.getElementById('brand-logo').textContent = U.initials(name);
+    const labels = { panel: 'Panel', clientes: 'Clientes', agenda: 'Agenda', pagos: 'Pagos', ajustes: 'Ajustes' };
+    document.title = `${labels[parseRoute().section] || 'Panel'} · ${name}`;
+    document.getElementById('alert-dot').hidden = !Views.computeAlerts().length;
   }
 
   function applyTheme() {
@@ -43,9 +55,9 @@
   }
 
   /* ---------- Delegación de eventos ---------- */
-  main.addEventListener('click', (e) => {
+  shell.addEventListener('click', (e) => {
     const actionEl = e.target.closest('[data-action]');
-    if (actionEl && main.contains(actionEl)) {
+    if (actionEl) {
       const fn = Views.actions[actionEl.dataset.action];
       if (fn) {
         e.preventDefault();

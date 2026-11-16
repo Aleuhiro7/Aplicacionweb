@@ -12,7 +12,7 @@
       sessions: [],
       measurements: [],
       payments: [],
-      settings: { trainerName: '', currency: 'EUR', defaultRate: 35, defaultDuration: 60, theme: 'auto' },
+      settings: { trainerName: '', currency: 'EUR', defaultRate: 35, defaultDuration: 60, theme: 'dark' },
     };
   }
 
