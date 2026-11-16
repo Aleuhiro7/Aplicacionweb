@@ -334,6 +334,13 @@ main {
 .stat-sub { color: var(--muted); font-size: .92rem; }
 
 .chart-card { margin-bottom: 18px; }
+.alerts-grid { margin-bottom: 8px; }
+.alert-card.has-items { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--warning); }
+#proximos-pagos.has-items { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); box-shadow: inset 3px 0 0 var(--danger); }
+.card-header h2 { display: flex; align-items: center; gap: 10px; }
+.count { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--warning); color: #1a1205; font: 700 .95rem/1 "Plus Jakarta Sans", sans-serif; }
+#proximos-pagos .count { background: var(--danger); color: #fff; }
+.section-title { font-size: 1.45rem; margin: 26px 0 14px; color: var(--muted); }
 .manage-card { margin-top: 18px; }
 .manage-card .btn.danger { margin-left: auto; }
 @media (max-width: 560px) { .manage-card .actions .btn { flex: 1 1 auto; justify-content: center; } .manage-card .btn.danger { margin-left: 0; } }

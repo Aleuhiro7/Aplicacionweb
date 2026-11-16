@@ -367,17 +367,35 @@
 
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
     const otherAlerts = alerts.filter((a) => a.kind !== 'pago');
-    const soon = payAlerts.filter((a) => a.di.days >= 0).length;
 
     return `
       <div class="page-header">
         <div>
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
-          <p>${soon ? `${plural(soon, 'cliente tiene', 'clientes tienen')} que pagar en los próximos ${Store.REMIND_DAYS} días` : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.</p>
+          <p>${payAlerts.length || otherAlerts.length
+            ? `Tienes ${[payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : ''].filter(Boolean).join(' y ')}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
+            : 'Todo al día: no tienes pagos ni pesos pendientes.'}</p>
         </div>
       </div>
 
+      <div class="grid-2 alerts-grid">
+        <section class="card alert-card${payAlerts.length ? ' has-items' : ''}" id="proximos-pagos">
+          <div class="card-header"><h2>Pagos pendientes ${payAlerts.length ? `<span class="count">${payAlerts.length}</span>` : ''}</h2><a href="#/pagos" class="btn sm">Ver todos</a></div>
+          ${payAlerts.length ? `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>` : empty('done', `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`)}
+        </section>
+        <section class="card alert-card${otherAlerts.length ? ' has-items' : ''}" id="atencion">
+          <div class="card-header"><h2>Pesos pendientes ${otherAlerts.length ? `<span class="count">${otherAlerts.length}</span>` : ''}</h2></div>
+          ${otherAlerts.length ? `<ul class="list">${otherAlerts.map((a) => `
+            <li>
+              ${avatar(a.c)}
+              <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
+              <button class="btn primary sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
+            </li>`).join('')}</ul>` : empty('done', `Todos tus clientes han registrado su peso en los últimos ${STALE_DAYS} días.`)}
+        </section>
+      </div>
+
+      <h2 class="section-title">Este mes</h2>
       <div class="stats">
         <div class="card stat"><div class="stat-label">Cobrado en ${month}</div><div class="stat-value">${money(income)}</div><div class="stat-sub">de ${money(income + pendingMonth)} previstos</div></div>
         <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${plural(pendingClients, 'cliente', 'clientes')} · ${plural(overdue, 'vencido', 'vencidos')}</div></div>
@@ -388,23 +406,7 @@
       <section class="card chart-card">
         <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
         ${incomeChart()}
-      </section>
-
-      <div class="grid-2">
-        <section class="card" id="proximos-pagos">
-          <div class="card-header"><h2>Próximos pagos</h2><a href="#/pagos" class="btn sm">Ver todos</a></div>
-          ${payAlerts.length ? `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>` : empty('done', `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`)}
-        </section>
-        <section class="card" id="atencion">
-          <div class="card-header"><h2>Requieren atención</h2></div>
-          ${otherAlerts.length ? `<ul class="list">${otherAlerts.slice(0, 10).map((a) => `
-            <li>
-              ${avatar(a.c)}
-              <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-              <button class="btn sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
-            </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes tienen su progreso al día.')}
-        </section>
-      </div>`;
+      </section>`;
   }
 
   /* =========================================================
