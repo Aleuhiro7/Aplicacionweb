@@ -900,11 +900,19 @@
     return (Number(r.it.grams) || 0) * (key === 'kcal' ? (num(r.f.kcal) || 0) / 100 : per1g(r.f, key));
   }
 
+  /** Cómo se calculan las equivalencias entre opciones: por calorías (por defecto) o por el macro del bloque. */
+  const equivBy = () => (Store.data.settings.equivBy === 'macro' ? 'macro' : 'kcal');
+  const kcalPer1g = (f) => (num(f.kcal) || 0) / 100;
+  const roundStep = (g, step) => {
+    const raw = Math.min(1500, Math.max(0, Number(g) || 0));
+    return raw > 0 ? Math.max(step, Math.round(raw / step) * step) : 0;
+  };
+
   /**
    * Ajusta los gramos de los alimentos no fijados para acercarse al objetivo de la comida.
-   * Cada opción de un grupo aporta por sí sola la cantidad de su macro que falta tras descontar
-   * lo que aporta la opción de referencia de los otros grupos; así cualquier combinación cuadra más o menos.
-   * Si una opción está fijada a mano, las demás de su grupo se igualan a ella.
+   * La opción de referencia de cada grupo (la primera o la fijada) cubre su macro, descontando
+   * lo que aportan las de referencia de los otros grupos. Las demás opciones del grupo son
+   * equivalentes a ella: con las mismas kcal (o, si se elige así en Ajustes, con el mismo macro).
    */
   function solveMeal(meal, target) {
     if (!target) return;
@@ -912,20 +920,47 @@
     groups.forEach((g) => g.rows.forEach((r) => { if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; }));
     for (let iter = 0; iter < 40; iter++) {
       for (const g of groups) {
-        const k = g.key;
-        const fixed = g.rows.find((r) => r.it.locked && per1g(r.f, k) > 0);
-        const others = groups.filter((x) => x !== g).reduce((n, x) => n + rowAmount(refRow(x), k), 0);
-        const amount = fixed ? (Number(fixed.it.grams) || 0) * per1g(fixed.f, k) : Math.max(0, target[k] - others);
-        for (const r of g.rows) if (!r.it.locked && per1g(r.f, k) > 0) r.it.grams = amount / per1g(r.f, k);
+        const ref = refRow(g);
+        if (ref.it.locked || !(per1g(ref.f, g.key) > 0)) continue;
+        const others = groups.filter((x) => x !== g).reduce((n, x) => n + rowAmount(refRow(x), g.key), 0);
+        ref.it.grams = Math.max(0, target[g.key] - others) / per1g(ref.f, g.key);
       }
     }
-    groups.forEach((g) => g.rows.forEach((r) => {
-      if (r.it.locked) return;
+    const byKcal = equivBy() === 'kcal';
+    for (const g of groups) {
       const step = stepOf(g.key);
-      const raw = Math.min(1500, Math.max(0, Number(r.it.grams) || 0));
-      r.it.grams = raw > 0 ? Math.max(step, Math.round(raw / step) * step) : 0;
-    }));
+      const ref = refRow(g);
+      if (!ref.it.locked) ref.it.grams = roundStep(ref.it.grams, step);
+      for (const r of g.rows) {
+        if (r === ref || r.it.locked) continue;
+        if (byKcal && kcalPer1g(r.f) > 0) r.it.grams = roundStep(rowAmount(ref, 'kcal') / kcalPer1g(r.f), step);
+        else if (per1g(r.f, g.key) > 0) r.it.grams = roundStep(rowAmount(ref, g.key) / per1g(r.f, g.key), step);
+      }
+    }
   }
+
+  /** Recalcula las comidas de todas las dietas (al cambiar cómo se calculan las equivalencias). */
+  function resolveAllDiets() {
+    for (const d of Store.data.diets) {
+      const meals = d.meals || [];
+      if (!meals.length || !mealTargets(d)) continue;
+      const copy = meals.map((m) => Object.assign({}, m, { items: (m.items || []).map((x) => Object.assign({}, x)) }));
+      copy.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals: copy }))));
+      Store.update('diets', d.id, { meals: copy });
+    }
+  }
+
+  function setEquivBy(v) {
+    if (equivBy() === v) return;
+    Store.data.settings.equivBy = v;
+    Store.save();
+    resolveAllDiets();
+    UI.toast(v === 'kcal' ? 'Equivalencias por calorías' : 'Equivalencias por macronutriente');
+    App.render();
+  }
+
+  const equivSwitch = () => `<div class="equiv-switch"><span>Equivalencias por</span>
+    <div class="segmented" role="radiogroup" aria-label="Equivalencias por">${[['kcal', 'Calorías'], ['macro', 'Macronutriente']].map(([v, l]) => `<button type="button" role="radio" aria-checked="${equivBy() === v}" class="${equivBy() === v ? 'active' : ''}" data-action="equiv-by" data-value="${v}">${l}</button>`).join('')}</div></div>`;
 
   /** Totales de una comida: la opción de referencia de cada grupo. */
   function mealTotals(meal) {
@@ -969,7 +1004,7 @@
         <div class="field meal-name"><label for="mn-${meal.id}">Nombre de la comida</label>
           <input id="mn-${meal.id}" value="${esc(meal.name)}" data-action-change="meal-rename" data-client="${c.id}" data-meal="${meal.id}" list="meal-names" placeholder="Ej.: Desayuno, Preentreno…"></div>
         ${macroBars(tot, target)}
-        ${multi ? '<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: cada una aporta lo mismo de su macro. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>' : ''}
+        ${multi ? `<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: ${equivBy() === 'kcal' ? 'todas aportan las mismas <strong>calorías</strong>' : 'todas aportan lo mismo de su macro'}. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>` : ''}
         ${items.length ? groups.map((g) => `<div class="meal-group m-${g.key}">
           <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
           <ul class="list meal-items">${g.rows.map(({ it, f }, i) => {
@@ -1015,6 +1050,7 @@
         <div class="card-header"><h2>Comidas</h2><button class="btn sm" data-action="meal-count-edit">${U.icon('edit')}${plural(meals.length, 'comida', 'comidas')}</button></div>
         ${state.editMealCount ? chooser(true) : ''}
         ${day ? '' : `<div class="alert" style="margin:0 0 12px">${U.icon('alert')}<div>Fija los objetivos de calorías y macros arriba para que la app pueda calcular las cantidades.</div></div>`}
+        ${equivSwitch()}
         <h3 class="meal-day-title">Total del día</h3>
         ${macroBars(tot, day)}
       <datalist id="meal-names">${['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'].map((n) => `<option value="${n}"></option>`).join('')}</datalist>
@@ -1975,16 +2011,30 @@
 
   /** Gramos de un alimento que aportan la cantidad de referencia del bloque, con sus macros. */
   function equivalence(block, f) {
-    const per100 = num(f[block.macro]);
+    const kc = blockKcal(block);
+    const per100 = kc ? num(f.kcal) : num(f[block.macro]);
     if (!per100) return null;
-    const raw = (Number(block.amount) / per100) * 100;
+    const raw = ((kc || Number(block.amount)) / per100) * 100;
     const grams = raw >= 20 ? Math.round(raw / 5) * 5 : Math.max(1, Math.round(raw));
     const k = grams / 100;
     const v = (x) => (num(x) === null ? null : num(x) * k);
     return { grams, kcal: v(f.kcal), protein: v(f.protein), carbs: v(f.carbs), fat: v(f.fat) };
   }
 
+  /**
+   * Con equivalencias por calorías: las kcal de referencia del bloque son las que aporta su primer
+   * alimento en la cantidad de referencia del macro (p. ej. 25 g de proteína de pechuga de pollo ≈ 120 kcal).
+   */
+  function blockKcal(b) {
+    if (equivBy() !== 'kcal' || b.macro === 'kcal') return null;
+    const f0 = (b.foodIds || []).map((id) => Store.get('foods', id)).find((f) => f && num(f[b.macro]) > 0 && num(f.kcal) > 0);
+    if (!f0) return null;
+    return Math.max(10, Math.round(((Number(b.amount) / num(f0[b.macro])) * num(f0.kcal)) / 10) * 10);
+  }
+
   function blockRef(b) {
+    const kc = blockKcal(b);
+    if (kc) return `${fmtNum(kc, 0)} kcal`;
     const m = MACROS[b.macro] || MACROS.protein;
     return b.macro === 'kcal' ? `${fmtNum(b.amount, 0)} kcal` : `${fmtNum(b.amount)} g de ${m.label}`;
   }
@@ -2021,7 +2071,7 @@
     if (!blocks.length) return `<div class="card">${empty('apple', '<strong>Todavía no hay bloques.</strong><br>Crea uno con «+ Bloque» y elige los alimentos que son equivalentes.')}</div>`;
     const fams = BLOCK_FAMILIES.filter((f) => blocks.some((b) => (b.family || 'Otros') === f))
       .concat([...new Set(blocks.map((b) => b.family || 'Otros'))].filter((f) => !BLOCK_FAMILIES.includes(f)));
-    return `<p class="muted block-intro">Cada bloque reúne alimentos parecidos. La tabla indica cuánto de cada uno equivale a la misma cantidad de referencia (pesos en crudo salvo que el alimento diga otra cosa). Toca un bloque para verlo.</p>
+    return `<div class="block-intro"><p class="muted">Cada bloque reúne alimentos parecidos. La tabla indica cuánto de cada uno equivale ${equivBy() === 'kcal' ? 'a las mismas <strong>calorías</strong> (las de la ración de referencia del primer alimento)' : 'a la misma cantidad de su macronutriente'} (pesos en crudo salvo que el alimento diga otra cosa). Toca un bloque para verlo.</p>${equivSwitch()}</div>
       ${fams.map((fam) => `<h2 class="section-title">${esc(fam)}</h2>${blocks.filter((b) => (b.family || 'Otros') === fam).map(blockCard).join('')}`).join('')}`;
   }
 
@@ -2654,6 +2704,7 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
+    'equiv-by': (d) => setEquivBy(d.value),
     'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },
     'meal-count-apply': (d) => applyMealCount(d.client),
     'meal-count-edit': () => { state.editMealCount = !state.editMealCount; App.render(); },
