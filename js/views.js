@@ -869,7 +869,9 @@
 
   /** Macro que «aporta» cada alimento: el del bloque del que se eligió o, si no, el que más kcal da. */
   function roleOf(item, food) {
-    const b = item.blockId && Store.get('foodBlocks', item.blockId);
+    // El bloque con el que se eligió; si el alimento ya no está en él (bloques reorganizados), el bloque en el que esté ahora.
+    let b = item.blockId && Store.get('foodBlocks', item.blockId);
+    if (!b || !(b.foodIds || []).includes(item.foodId)) b = Store.blocksForFood(item.foodId)[0];
     if (b && MACRO_KEYS.includes(b.macro)) return b.macro;
     const kc = { protein: per1g(food, 'protein') * 4, carbs: per1g(food, 'carbs') * 4, fat: per1g(food, 'fat') * 9 };
     return MACRO_KEYS.reduce((a, k) => (kc[k] > kc[a] ? k : a), 'protein');
@@ -972,7 +974,8 @@
           <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
           <ul class="list meal-items">${g.rows.map(({ it, f }, i) => {
           const gr = Number(it.grams) || 0;
-          const b = it.blockId && Store.get('foodBlocks', it.blockId);
+          let b = it.blockId && Store.get('foodBlocks', it.blockId);
+          if (!b || !(b.foodIds || []).includes(it.foodId)) b = Store.blocksForFood(it.foodId)[0];
           return `${i ? '<li class="meal-or" aria-hidden="true"><span>o</span></li>' : ''}<li>
             <div class="grow">
               <div class="title">${esc(f.name)}</div>

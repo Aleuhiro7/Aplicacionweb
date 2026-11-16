@@ -307,10 +307,11 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 3;
+window.FOOD_BLOCKS_VERSION = 4;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
+  4: { replace: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'], add: ['blk-quesos-curados'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -349,9 +350,12 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Aceite de oliva virgen extra', 'Mantequilla', 'Aguacate', 'Aceitunas verdes', 'Aceitunas negras'] },
   { id: 'blk-frutos-secos', family: 'Grasas', name: 'Frutos secos y semillas', macro: 'fat', amount: 10,
     foods: ['Almendras', 'Nueces', 'Avellanas', 'Anacardos', 'Pistachos (sin cáscara)', 'Cacahuetes tostados', 'Crema de cacahuete 100 %', 'Semillas de chía', 'Semillas de lino', 'Semillas de girasol (peladas)', 'Semillas de calabaza', 'Semillas de sésamo'] },
+  { id: 'blk-quesos-curados', family: 'Grasas', name: 'Quesos curados y en lonchas', macro: 'fat', amount: 10,
+    notes: 'Los quesos sólidos cuentan como grasa. Los frescos, batidos y el cottage van en los lácteos (proteína).',
+    foods: ['Queso semicurado', 'Queso curado', 'Queso en lonchas (tipo gouda)', 'Queso en lonchas light', 'Queso rallado', 'Queso de cabra (rulo)'] },
 
   { id: 'blk-lacteos-menos-grasa', family: 'Lácteos', name: 'Lácteos con menos grasa', macro: 'protein', amount: 10,
-    foods: ['Leche desnatada', 'Leche semidesnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural desnatado', 'Yogur proteico natural', 'Skyr natural', 'Queso fresco batido 0 %', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light', 'Queso en lonchas light'] },
+    foods: ['Leche desnatada', 'Leche semidesnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural desnatado', 'Yogur proteico natural', 'Skyr natural', 'Queso fresco batido 0 %', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light'] },
   { id: 'blk-lacteos-mas-grasa', family: 'Lácteos', name: 'Lácteos con más grasa', macro: 'protein', amount: 10,
-    foods: ['Leche entera', 'Yogur natural', 'Yogur griego natural', 'Kéfir natural', 'Queso fresco tipo Burgos', 'Mozzarella fresca', 'Queso semicurado', 'Queso curado', 'Queso en lonchas (tipo gouda)', 'Queso rallado', 'Queso de cabra (rulo)'] },
+    foods: ['Leche entera', 'Yogur natural', 'Yogur griego natural', 'Kéfir natural', 'Queso fresco tipo Burgos', 'Mozzarella fresca'] },
 ];
