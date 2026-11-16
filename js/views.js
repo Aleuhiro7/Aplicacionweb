@@ -1941,7 +1941,7 @@
    * Biblioteca de alimentos
    * ======================================================= */
 
-  const FOOD_CATEGORIES = ['Carnes y aves', 'Embutidos y fiambres', 'Pescados y mariscos', 'Huevos', 'Proteína vegetal', 'Lácteos', 'Cereales, pan y pasta', 'Tortitas', 'Tubérculos', 'Legumbres', 'Verduras y hortalizas', 'Frutas', 'Frutos secos y semillas', 'Grasas y aceites', 'Bebidas', 'Suplementos', 'Salsas y condimentos', 'Otros'];
+  const FOOD_CATEGORIES = ['Carnes y aves', 'Embutidos y fiambres', 'Pescados y mariscos', 'Huevos', 'Proteína vegetal', 'Lácteos', 'Cereales, pan y pasta', 'Tortitas', 'Tubérculos', 'Legumbres', 'Frutas', 'Frutos secos y semillas', 'Grasas y aceites', 'Bebidas', 'Suplementos', 'Salsas y condimentos', 'Otros'];
 
   function foodCategories() {
     const used = new Set(Store.data.foods.map((x) => x.category).filter(Boolean));
@@ -2030,7 +2030,7 @@
     fat: { label: 'grasa', short: 'G' },
     kcal: { label: 'kcal', short: 'kcal' },
   };
-  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Verduras', 'Otros'];
+  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Otros'];
   const unitOf = (f) => (/ml/.test(f.portion || '') ? 'ml' : 'g');
 
   /** Gramos de un alimento que aportan la cantidad de referencia del bloque, con sus macros. */

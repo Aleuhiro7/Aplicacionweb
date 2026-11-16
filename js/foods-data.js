@@ -183,38 +183,6 @@
     ['Habas', 70, 6, 8, 0.4],
   ]);
 
-  cat('Verduras y hortalizas', [
-    ['Lechuga / ensalada variada', 15, 1.3, 1.5, 0.2],
-    ['Espinacas', 23, 2.9, 1.4, 0.4],
-    ['Rúcula', 25, 2.6, 2, 0.7],
-    ['Canónigos', 20, 2, 1, 0.4],
-    ['Brócoli', 34, 2.8, 4, 0.4],
-    ['Coliflor', 25, 1.9, 3, 0.3],
-    ['Tomate', 20, 0.9, 3.5, 0.2],
-    ['Tomate cherry', 25, 1, 4, 0.2],
-    ['Pepino', 13, 0.6, 2, 0.1],
-    ['Pimiento rojo', 30, 1, 5, 0.3],
-    ['Pimiento verde', 20, 0.9, 3, 0.2],
-    ['Cebolla', 38, 1.1, 7.5, 0.1],
-    ['Ajo', 140, 6, 28, 0.5],
-    ['Zanahoria', 38, 0.9, 7.5, 0.2],
-    ['Calabacín', 17, 1.2, 2.2, 0.3],
-    ['Berenjena', 24, 1, 3, 0.2],
-    ['Calabaza', 26, 1, 5.5, 0.1],
-    ['Champiñones', 22, 3, 2.3, 0.3],
-    ['Judías verdes', 31, 1.8, 4, 0.2],
-    ['Espárragos verdes', 20, 2.2, 2, 0.1],
-    ['Espárragos blancos (bote)', 20, 2, 2, 0.2],
-    ['Alcachofa', 47, 3.3, 5, 0.2],
-    ['Puerro', 30, 1.5, 6, 0.3],
-    ['Col / repollo', 25, 1.3, 4.5, 0.1],
-    ['Coles de Bruselas', 43, 3.4, 5, 0.3],
-    ['Apio', 15, 0.7, 1.5, 0.2],
-    ['Remolacha cocida', 44, 1.7, 8, 0.2],
-    ['Tomate triturado (lata)', 25, 1.2, 4, 0.2],
-    ['Verduras congeladas para salteado', 40, 2.5, 5.5, 0.4],
-  ]);
-
   cat('Frutas', [
     ['Manzana', 52, 0.3, 12, 0.2],
     ['Plátano', 89, 1.1, 20, 0.3, '', 'Un plátano mediano pelado pesa unos 120 g.'],
@@ -306,7 +274,7 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 8;
+window.FOOD_BLOCKS_VERSION = 9;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
@@ -315,6 +283,7 @@ window.FOOD_BLOCKS_CHANGES = {
   6: { add: ['blk-verdura'] },
   7: { replace: ['blk-verdura'] },
   8: { replace: ['blk-verdura'] },
+  9: { remove: ['blk-verdura'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -364,7 +333,4 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Leche desnatada', 'Leche semidesnatada', 'Leche sin lactosa semidesnatada', 'Bebida de soja sin azúcar', 'Yogur natural desnatado', 'Yogur proteico natural', 'Skyr natural', 'Queso fresco batido 0 %', 'Queso cottage', 'Requesón', 'Queso fresco tipo Burgos light'] },
   { id: 'blk-lacteos-mas-grasa', family: 'Lácteos', name: 'Lácteos con más grasa', macro: 'protein', amount: 10,
     foods: ['Leche entera', 'Yogur natural', 'Yogur griego natural', 'Kéfir natural', 'Queso fresco tipo Burgos', 'Mozzarella fresca'] },
-  { id: 'blk-verdura', family: 'Verduras', name: 'Verdura', macro: 'kcal', amount: 30,
-    notes: 'En las comidas van aparte: 150 g por defecto y las demás verduras elegidas son opciones con las mismas kcal.',
-    foods: ['Lechuga / ensalada variada', 'Espinacas', 'Rúcula', 'Canónigos', 'Brócoli', 'Coliflor', 'Tomate', 'Tomate cherry', 'Pepino', 'Pimiento rojo', 'Pimiento verde', 'Cebolla', 'Ajo', 'Zanahoria', 'Calabacín', 'Berenjena', 'Calabaza', 'Champiñones', 'Judías verdes', 'Espárragos verdes', 'Espárragos blancos (bote)', 'Alcachofa', 'Puerro', 'Col / repollo', 'Coles de Bruselas', 'Apio', 'Remolacha cocida', 'Tomate triturado (lata)', 'Verduras congeladas para salteado'] },
 ];
