@@ -659,6 +659,17 @@
   }
 
   /* =========================================================
+   * Dieta (apartado preparado; el contenido se definirá más adelante)
+   * ======================================================= */
+
+  function clientDiet(c) {
+    return `<section class="card">
+      <div class="card-header"><h2>Dieta</h2></div>
+      ${empty('file', `<strong>Aquí irá la dieta de ${esc(c.name.split(' ')[0])}.</strong><br>Este apartado está preparado; pronto podrás crear y gestionar su plan de alimentación.`)}
+    </section>`;
+  }
+
+  /* =========================================================
    * Fotos
    * ======================================================= */
 
@@ -915,7 +926,7 @@
       return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
     const pendingCount = Store.tasksFor(c.id).filter((t) => !t.done).length;
-    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
+    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['dieta', 'Dieta'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
     const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
@@ -925,6 +936,7 @@
       case 'pagos': body = clientPayments(c); break;
       case 'fotos': body = clientPhotos(c); break;
       case 'rutina': body = clientRoutine(c); break;
+      case 'dieta': body = clientDiet(c); break;
       case 'tareas': body = clientTasks(c); break;
       default: body = clientSummary(c);
     }
