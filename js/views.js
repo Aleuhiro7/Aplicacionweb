@@ -1017,7 +1017,7 @@
         <span class="meal-num">${idx + 1}</span>
         <div class="grow">
           <h3>${esc(meal.name)}</h3>
-          <div class="muted">${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${multi ? '≈ ' : ''}${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
+          <div class="muted">${meal.vegFree ? '<span class="veg-tag">+ verdura</span> ' : ''}${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${multi ? '≈ ' : ''}${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
         </div>
         <span class="block-chev">${U.icon('down')}</span>
       </summary>
@@ -1043,6 +1043,8 @@
             <button class="icon-btn" data-action="meal-remove" data-client="${c.id}" data-meal="${meal.id}" data-item="${it.id}" aria-label="Quitar ${esc(f.name)}">${U.icon('close')}</button>
           </li>`;
         }).join('')}</ul></div>`).join('') : `<p class="muted" style="margin:12px 0">Añade alimentos de los bloques: la app calculará las cantidades para cuadrar ${target ? 'el objetivo de esta comida' : 'los objetivos (fíjalos arriba)'}. Si eliges varios del mismo tipo (pollo, pavo, lomo…), serán opciones a elegir.</p>`}
+        <label class="veg-free${meal.vegFree ? ' on' : ''}"><input type="checkbox" data-action-change="meal-veg" data-client="${c.id}" data-meal="${meal.id}" ${meal.vegFree ? 'checked' : ''}>
+          <span><strong>Verdura libre</strong><span class="muted">Se puede añadir hasta 150 g de verdura (la que quiera)</span></span></label>
         <div class="actions">
           <button class="btn primary sm" data-action="meal-add" data-client="${c.id}" data-meal="${meal.id}">${U.icon('plus')}Añadir alimentos</button>
           ${items.length && target ? `<button class="btn sm" data-action="meal-solve" data-client="${c.id}" data-meal="${meal.id}">${U.icon('activity')}Reajustar cantidades</button>` : ''}
@@ -2732,6 +2734,7 @@
     'meal-count-edit': () => { state.editMealCount = !state.editMealCount; App.render(); },
     'meal-count-cancel': () => { state.editMealCount = false; App.render(); },
     'meal-toggle': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.openMeal = det.open ? d.id : null; },
+    'meal-veg': (d, el) => updateMeal(d.client, d.meal, (m) => { m.vegFree = el.checked; }, { solve: false }),
     'meal-rename': (d, el) => { const name = el.value.trim(); if (name) updateMeal(d.client, d.meal, (m) => { m.name = name; }, { solve: false }); },
     'meal-add': (d) => mealPicker(d.client, d.meal),
     'meal-solve': (d) => { updateMeal(d.client, d.meal, () => {}); UI.toast('Cantidades reajustadas'); },

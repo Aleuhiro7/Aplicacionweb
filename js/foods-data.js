@@ -195,6 +195,9 @@
     ['Pepino', 13, 0.6, 2, 0.1],
     ['Pimiento rojo', 30, 1, 5, 0.3],
     ['Pimiento verde', 20, 0.9, 3, 0.2],
+    ['Cebolla', 38, 1.1, 7.5, 0.1],
+    ['Ajo', 140, 6, 28, 0.5],
+    ['Zanahoria', 38, 0.9, 7.5, 0.2],
     ['Calabacín', 17, 1.2, 2.2, 0.3],
     ['Berenjena', 24, 1, 3, 0.2],
     ['Calabaza', 26, 1, 5.5, 0.1],
@@ -202,10 +205,14 @@
     ['Judías verdes', 31, 1.8, 4, 0.2],
     ['Espárragos verdes', 20, 2.2, 2, 0.1],
     ['Espárragos blancos (bote)', 20, 2, 2, 0.2],
+    ['Alcachofa', 47, 3.3, 5, 0.2],
     ['Puerro', 30, 1.5, 6, 0.3],
     ['Col / repollo', 25, 1.3, 4.5, 0.1],
+    ['Coles de Bruselas', 43, 3.4, 5, 0.3],
     ['Apio', 15, 0.7, 1.5, 0.2],
+    ['Remolacha cocida', 44, 1.7, 8, 0.2],
     ['Tomate triturado (lata)', 25, 1.2, 4, 0.2],
+    ['Verduras congeladas para salteado', 40, 2.5, 5.5, 0.4],
   ]);
 
   cat('Frutas', [
@@ -299,7 +306,7 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 7;
+window.FOOD_BLOCKS_VERSION = 8;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
@@ -307,6 +314,7 @@ window.FOOD_BLOCKS_CHANGES = {
   5: { add: ['blk-proteina-polvo'] },
   6: { add: ['blk-verdura'] },
   7: { replace: ['blk-verdura'] },
+  8: { replace: ['blk-verdura'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -357,6 +365,6 @@ window.FOOD_BLOCKS_DEFAULT = [
   { id: 'blk-lacteos-mas-grasa', family: 'Lácteos', name: 'Lácteos con más grasa', macro: 'protein', amount: 10,
     foods: ['Leche entera', 'Yogur natural', 'Yogur griego natural', 'Kéfir natural', 'Queso fresco tipo Burgos', 'Mozzarella fresca'] },
   { id: 'blk-verdura', family: 'Verduras', name: 'Verdura', macro: 'kcal', amount: 30,
-    notes: 'Sin las verduras más calóricas (ajo, alcachofa, remolacha, coles de Bruselas, cebolla, zanahoria y mezclas congeladas). En las comidas van aparte: 150 g por defecto y las demás verduras elegidas son opciones con las mismas kcal.',
-    foods: ['Lechuga / ensalada variada', 'Espinacas', 'Rúcula', 'Canónigos', 'Brócoli', 'Coliflor', 'Tomate', 'Tomate cherry', 'Pepino', 'Pimiento rojo', 'Pimiento verde', 'Calabacín', 'Berenjena', 'Calabaza', 'Champiñones', 'Judías verdes', 'Espárragos verdes', 'Espárragos blancos (bote)', 'Puerro', 'Col / repollo', 'Apio', 'Tomate triturado (lata)'] },
+    notes: 'En las comidas van aparte: 150 g por defecto y las demás verduras elegidas son opciones con las mismas kcal.',
+    foods: ['Lechuga / ensalada variada', 'Espinacas', 'Rúcula', 'Canónigos', 'Brócoli', 'Coliflor', 'Tomate', 'Tomate cherry', 'Pepino', 'Pimiento rojo', 'Pimiento verde', 'Cebolla', 'Ajo', 'Zanahoria', 'Calabacín', 'Berenjena', 'Calabaza', 'Champiñones', 'Judías verdes', 'Espárragos verdes', 'Espárragos blancos (bote)', 'Alcachofa', 'Puerro', 'Col / repollo', 'Coles de Bruselas', 'Apio', 'Remolacha cocida', 'Tomate triturado (lata)', 'Verduras congeladas para salteado'] },
 ];

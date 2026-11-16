@@ -994,6 +994,12 @@ button.diet-row:hover { color: var(--primary); }
 .meal-group.m-fat .dot { color: var(--m-fat); }
 .meal-group.m-extra .dot { color: var(--warning); }
 .meal-group.m-veg .dot { color: var(--success); }
+.veg-free { display: flex; align-items: center; gap: 12px; margin: 14px 0 12px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 12px; cursor: pointer; }
+.veg-free input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--success); }
+.veg-free > span { display: flex; flex-direction: column; gap: 2px; }
+.veg-free .muted { font-size: .85rem; }
+.veg-free.on { border-style: solid; border-color: var(--success); }
+.veg-tag { color: var(--success); font-weight: 700; }
 .meal-group.m-extra { border-top: 1px dashed var(--border); padding-top: 12px; }
 .lock-spacer { width: 34px; flex-shrink: 0; }
 .meal-group .meal-items { margin: 6px 0 0; }
