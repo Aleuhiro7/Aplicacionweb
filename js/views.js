@@ -903,7 +903,8 @@
           <div class="card-header"><h2>Tus datos</h2></div>
           ${window.Sync ? Sync.settingsHTML() : `<p class="muted" style="margin-top:0">Cargando la sincronización…</p>`}
           ${Store.storageOk ? '' : `<div class="alert">${U.icon('alert')}<div>El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div></div>`}
-          <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'registro de peso', 'registros de peso')} · ${plural(d.payments.length, 'pago', 'pagos')}</p>
+          <p>${plural(d.clients.length, 'cliente', 'clientes')} · ${plural(d.measurements.length, 'registro de peso', 'registros de peso')} · ${plural(d.payments.length, 'pago', 'pagos')} · ${plural(d.photos.length, 'foto', 'fotos')} · ${plural(d.tasks.length, 'tarea', 'tareas')}</p>
+          <p class="muted" style="font-size:.85rem">La copia de seguridad (Exportar copia) incluye clientes, pesos, pagos y tareas, pero no las fotos.</p>
           <div class="actions">
             <button class="btn primary" data-action="export">${U.icon('download')} Exportar copia</button>
             <label class="btn" for="import-file" tabindex="0">${U.icon('upload')} Importar copia</label>

@@ -8,6 +8,8 @@ Aplicación web para gestionar los clientes de asesoría online: cuotas mensuale
 - **Clientes**: ficha con contacto, importe habitual, fecha del próximo pago, lesiones/patologías (destacadas en un aviso) y notas. Estados activo / en pausa / baja, búsqueda y accesos directos a WhatsApp y email.
 - **Progreso**: registra el peso en cada revisión; gráfico de evolución y cambio respecto a la revisión anterior y al inicio.
 - **Pagos**: lista de clientes con un botón **Pago** que abre un desplegable para indicar la cantidad y la fecha del próximo pago (con atajos de 1, 2, 3 o 6 meses). La app avisa 5 días antes en el resumen, en la campana y, si se activan, con notificaciones del navegador. Se puede deshacer un pago guardado por error.
+- **Fotos**: fotos de progreso de cada cliente (desde la galería o la cámara), agrupadas por fecha, con visor, descarga y borrado. Se comprimen y se guardan en el navegador; con la sesión de Google iniciada se suben también a la nube, cada una aparte.
+- **Tareas pendientes**: anotaciones por cliente con fecha límite opcional; las pendientes salen también en el panel principal y se marcan como hechas con un toque.
 - **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
 ## Cómo usarla
