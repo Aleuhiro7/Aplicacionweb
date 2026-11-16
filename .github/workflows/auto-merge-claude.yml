@@ -32,7 +32,13 @@ jobs:
           BRANCH="${GITHUB_REF#refs/heads/}"
           git fetch origin "$BRANCH"
           git merge --no-edit "origin/$BRANCH" -m "Auto-merge $BRANCH en main"
-          git push origin main
+          for i in 1 2 3 4; do
+            git push origin main && exit 0
+            echo "Fallo al subir (intento $i), reintentando..."
+            sleep $((i * 10))
+            git pull --no-edit --no-rebase origin main || true
+          done
+          exit 1
 
       - name: Volver a publicar GitHub Pages
         env:
