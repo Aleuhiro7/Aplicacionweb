@@ -1001,7 +1001,7 @@
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
       </div>
       ${body}
-      ${state.clientTab === 'resumen' ? clientManage(c) : ''}`;
+      ${state.clientTab === 'resumen' ? questionnaireCard(c) + clientManage(c) : ''}`;
   }
 
   /** Sección al final del perfil para pausar, dar de baja, reactivar o eliminar al cliente. */
@@ -1413,6 +1413,130 @@
   }
 
   /* =========================================================
+   * Cuestionario para conocer al cliente (se envía por WhatsApp)
+   * ======================================================= */
+
+  const DEFAULT_QUESTIONS = [
+    'Nombre completo y edad',
+    'Altura (cm) y peso actual (kg)',
+    '¿Cuál es tu objetivo principal? (perder grasa, ganar músculo, ganar fuerza, mejorar tu salud…)',
+    '¿Tienes alguna lesión, dolor o problema de salud? ¿Tomas alguna medicación?',
+    '¿Qué experiencia tienes entrenando? ¿Entrenas actualmente? ¿Qué tipo de entrenamiento?',
+    '¿Cuántos días a la semana puedes entrenar y cuánto tiempo por sesión?',
+    '¿Dónde vas a entrenar (gimnasio, casa…) y qué material tienes?',
+    '¿A qué te dedicas? ¿Tu trabajo es activo o pasas muchas horas sentado?',
+    '¿Cuántas horas duermes de media y cómo descansas?',
+    '¿Cómo es tu alimentación en un día normal? (comidas, horarios y qué sueles comer)',
+    '¿Tienes alergias o intolerancias? ¿Hay alimentos que no te gusten o no comas?',
+    '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?',
+    '¿Tomas algún suplemento?',
+    '¿Hay algo más que quieras contarme?',
+  ];
+
+  const questions = () => (Array.isArray(Store.settings.questionnaire) && Store.settings.questionnaire.length ? Store.settings.questionnaire : DEFAULT_QUESTIONS);
+
+  function questionnaireText(c) {
+    const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
+    return [
+      `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para preparar tu plan necesito conocerte un poco mejor. ¿Me respondes a estas preguntas? Puedes contestar en un solo mensaje poniendo el número de cada pregunta.`,
+      '',
+      ...questions().map((q, i) => `${i + 1}. ${q}`),
+      '',
+      '¡Muchas gracias!',
+    ].join('\n');
+  }
+
+  function sendQuestionnaire(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    const url = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(questionnaireText(c))}`;
+    window.open(url, '_blank', 'noopener');
+    const q = Object.assign({}, c.questionnaire || {}, { sentAt: today() });
+    Store.update('clients', clientId, { questionnaire: q });
+    App.render();
+    UI.toast('Cuestionario preparado en WhatsApp');
+  }
+
+  /** Reparte una respuesta pegada de WhatsApp («1. … 2. …») entre las preguntas. */
+  function splitAnswers(text) {
+    const out = {};
+    let current = null;
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const m = line.match(/^\s*\*?(\d{1,2})\s*[.)\-:ºª]+\s*\*?\s*(.*)$/);
+      if (m) { current = Number(m[1]) - 1; out[current] = m[2].trim(); }
+      else if (current !== null && line.trim()) out[current] = `${out[current] ? out[current] + '\n' : ''}${line.trim()}`;
+    }
+    return out;
+  }
+
+  function questionnaireForm(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    const saved = (c.questionnaire && c.questionnaire.items) || [];
+    const qs = saved.length ? saved.map((x) => x.q) : questions();
+    const values = {};
+    qs.forEach((q, i) => { values[`q${i}`] = (saved[i] && saved[i].a) || ''; });
+    UI.form({
+      title: `Respuestas de ${c.name.split(' ')[0]}`,
+      fields: [
+        { name: 'paste', label: 'Pega aquí su respuesta de WhatsApp (opcional)', type: 'textarea', placeholder: '1. …\n2. …', hint: 'Si contestó con el número de cada pregunta, se repartirá solo en las casillas de abajo. Revísalo antes de guardar.' },
+        { type: 'section', label: 'Respuestas' },
+        ...qs.map((q, i) => ({ name: `q${i}`, label: `${i + 1}. ${q}`, type: 'textarea' })),
+      ],
+      values,
+      submitLabel: 'Guardar respuestas',
+      onReady: (dlg) => {
+        const paste = dlg.querySelector('#f-paste');
+        paste.addEventListener('input', () => {
+          const parts = splitAnswers(paste.value);
+          let n = 0;
+          Object.entries(parts).forEach(([i, a]) => { const el = dlg.querySelector(`#f-q${i}`); if (el) { el.value = a; n++; } });
+          paste.closest('.field').querySelector('.hint').textContent = n
+            ? `Repartidas ${n} de ${qs.length} respuestas. Revísalas abajo antes de guardar.`
+            : 'No he encontrado respuestas numeradas: copia cada respuesta en su casilla.';
+        });
+      },
+      onSubmit: (v) => {
+        const items = qs.map((q, i) => ({ q, a: (v[`q${i}`] || '').trim() }));
+        const answered = items.some((x) => x.a);
+        const prev = c.questionnaire || {};
+        Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, { items, answeredAt: answered ? (prev.answeredAt || today()) : '' }) });
+        UI.toast(answered ? 'Respuestas guardadas' : 'Cuestionario sin respuestas');
+        App.render();
+      },
+    });
+  }
+
+  function questionnaireCard(c) {
+    const q = c.questionnaire || {};
+    const answered = (q.items || []).filter((x) => x.a);
+    const status = answered.length
+      ? badge('Respondido', 'success')
+      : q.sentAt ? badge('Pendiente de respuesta', 'info') : badge('Sin enviar', 'warning');
+    const meta = [q.sentAt ? `Enviado el ${fmtDate(q.sentAt)}` : '', q.answeredAt ? `respondido el ${fmtDate(q.answeredAt)}` : ''].filter(Boolean).join(' · ');
+    return `<section class="card questionnaire-card">
+      <div class="card-header"><h2>Cuestionario</h2>${status}</div>
+      <p class="muted" style="margin:0 0 14px">${meta ? esc(meta.charAt(0).toUpperCase() + meta.slice(1)) + '.' : `Envíale el cuestionario para conocer su objetivo, salud, experiencia, disponibilidad y hábitos.`}</p>
+      <div class="actions">
+        <button class="btn wa-btn" data-action="send-questionnaire" data-client="${c.id}">${U.icon('message')}${q.sentAt ? 'Reenviar por WhatsApp' : 'Enviar por WhatsApp'}</button>
+        <button class="btn ${q.sentAt && !answered.length ? 'primary' : ''}" data-action="questionnaire-answers" data-client="${c.id}">${U.icon('edit')}${answered.length ? 'Editar respuestas' : 'Apuntar respuestas'}</button>
+      </div>
+      ${answered.length ? `<details class="q-answers"${state.showAnswers ? ' open' : ''}>
+        <summary data-action="toggle-answers">Ver respuestas (${answered.length} de ${(q.items || []).length})</summary>
+        <dl>${(q.items || []).map((x, i) => `<dt>${i + 1}. ${esc(x.q)}</dt><dd>${x.a ? esc(x.a) : '<span class="muted">Sin respuesta</span>'}</dd>`).join('')}</dl>
+      </details>` : ''}
+    </section>`;
+  }
+
+  function saveQuestionnaire(form) {
+    const list = form.elements.questions.value.split(/\r?\n/).map((x) => x.replace(/^\s*\d{1,2}\s*[.)\-:]\s*/, '').trim()).filter(Boolean);
+    Store.settings.questionnaire = list.length ? list : DEFAULT_QUESTIONS.slice();
+    Store.save();
+    UI.toast('Preguntas del cuestionario guardadas');
+    App.render();
+  }
+
+  /* =========================================================
    * Ajustes
    * ======================================================= */
 
@@ -1456,7 +1580,15 @@
             <button class="btn danger" data-action="reset-data">Borrar todos los datos</button>
           </div>
         </section>
-      </div>`;
+      </div>
+      <section class="card" style="margin-top:18px">
+        <div class="card-header"><h2>Cuestionario para clientes</h2><button class="btn sm" data-action="questionnaire-reset">Restaurar preguntas básicas</button></div>
+        <p class="muted" style="margin:0 0 12px">Estas son las preguntas que se envían por WhatsApp desde la ficha de cada cliente. Escribe una pregunta por línea; se numeran solas.</p>
+        <form id="questionnaire-form">
+          <textarea name="questions" rows="${Math.max(8, questions().length + 1)}" aria-label="Preguntas del cuestionario">${esc(questions().join('\n'))}</textarea>
+          <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">Guardar preguntas</button></div>
+        </form>
+      </section>`;
   }
 
   function saveSettings(formEl) {
@@ -1654,6 +1786,17 @@
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
     'enable-notifications': () => enableNotifications(),
+    'send-questionnaire': (d) => sendQuestionnaire(d.client),
+    'questionnaire-answers': (d) => questionnaireForm(d.client),
+    'toggle-answers': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showAnswers = det.open; },
+    'questionnaire-reset': async () => {
+      const ok = await UI.confirm({ title: 'Restaurar preguntas', message: 'Se sustituirán tus preguntas por las del cuestionario básico.', confirmLabel: 'Restaurar', danger: false });
+      if (!ok) return;
+      Store.settings.questionnaire = DEFAULT_QUESTIONS.slice();
+      Store.save();
+      UI.toast('Preguntas restauradas');
+      App.render();
+    },
     'reset-data': () => resetData(),
   };
 
@@ -1665,7 +1808,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, submitDietForm,
+    renderLibrary, onLibrarySearch, submitDietForm, saveQuestionnaire,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

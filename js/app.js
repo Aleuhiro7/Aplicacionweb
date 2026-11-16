@@ -97,6 +97,11 @@
   });
 
   main.addEventListener('submit', (e) => {
+    if (e.target.id === 'questionnaire-form') {
+      e.preventDefault();
+      Views.saveQuestionnaire(e.target);
+      return;
+    }
     if (e.target.classList.contains('diet-form')) {
       e.preventDefault();
       Views.submitDietForm(e.target);

@@ -826,3 +826,13 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 #sin-rutina.has-items, #sin-dieta.has-items { border-color: color-mix(in srgb, var(--violet) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--violet); }
 #sin-rutina .count, #sin-dieta .count { background: var(--violet); color: #fff; }
 .diet-form textarea { min-height: 220px; }
+
+/* ---------- Cuestionario ---------- */
+.questionnaire-card { margin-top: 18px; }
+.q-answers { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.q-answers summary { cursor: pointer; font-weight: 700; color: var(--primary); list-style: none; }
+.q-answers summary::-webkit-details-marker { display: none; }
+.q-answers dl { margin: 12px 0 0; }
+.q-answers dt { font-weight: 700; font-size: .9rem; margin-top: 12px; }
+.q-answers dd { margin: 4px 0 0; white-space: pre-wrap; color: var(--text); }
+#questionnaire-form textarea { min-height: 260px; line-height: 1.7; }
