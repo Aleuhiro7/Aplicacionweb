@@ -313,6 +313,7 @@ main {
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 18px; }
 .stats > .card { margin-top: 0; }
+.card + .stats { margin-top: 18px; }
 .stat { padding: 22px 22px; position: relative; transition: border-color .15s; }
 .stat:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
 .stat-icon {
@@ -576,8 +577,9 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%) translateY(20px);
-  background: var(--text);
-  color: var(--bg);
+  background: #111a2b;
+  color: #fff;
+  border: 1px solid #26344d;
   padding: 11px 18px;
   border-radius: 12px;
   font-weight: 600;
@@ -589,6 +591,19 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   box-shadow: var(--shadow-lg);
 }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast { display: flex; align-items: center; gap: 14px; width: max-content; }
+#toast.show.has-action { pointer-events: auto; }
+.toast-action { appearance: none; border: 0; background: none; color: #5eead4; font: inherit; font-weight: 800; cursor: pointer; padding: 2px 4px; }
+.pending-list li { padding: 14px 0; }
+.pending-list .amount { font: 700 1.25rem/1 "Barlow Semi Condensed", sans-serif; white-space: nowrap; }
+.btn.pay { white-space: nowrap; }
+@media (max-width: 560px) {
+  .pending-list li { flex-wrap: wrap; }
+  .pending-list .grow { flex: 1 1 calc(100% - 56px); }
+  .pending-list .pay-row { display: flex; align-items: center; gap: 10px; width: 100%; padding-left: 52px; }
+  .pending-list .pay-row .btn.pay { margin-left: auto; }
+}
+.pay-row { display: flex; align-items: center; gap: 12px; }
 
 .muted { color: var(--muted); }
 .mt { margin-top: 16px; }
@@ -608,5 +623,6 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
   .profile-cover { margin: 0 -16px; }
   .list .btn.sm { padding: 5px 8px; }
   .bars { height: 220px; gap: 8px; }
+  .stats > .stat:nth-child(3):last-child { grid-column: span 2; }
   .bar-value { font-size: .72rem; }
 }

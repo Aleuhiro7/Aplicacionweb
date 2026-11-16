@@ -195,11 +195,38 @@
     });
   }
 
-  /** Abre el registro de pago con la cuota del mes ya rellenada. */
+  /** Método de pago usado en el último pago del cliente (para no tener que elegirlo cada vez). */
+  function lastMethod(clientId) {
+    const last = Store.paymentsFor(clientId).find((p) => p.method);
+    return last ? last.method : '';
+  }
+
+  /** Marca la cuota del mes como pagada con un toque (con opción de deshacer). */
   function payFee(clientId) {
     const c = Store.get('clients', clientId);
     if (!c) return;
-    openPaymentForm(null, { clientId, amount: Number(c.rate) || '', concept: `Cuota de ${monthName(today())}` });
+    const p = Store.add('payments', {
+      clientId, date: today(), amount: Number(c.rate) || 0, concept: `Cuota de ${monthName(today())}`,
+      method: lastMethod(clientId), status: 'pagado', notes: '',
+    });
+    App.render();
+    UI.toast(`${c.name.split(' ')[0]} marcado como pagado`, {
+      label: 'Deshacer',
+      onClick: () => { Store.remove('payments', p.id); App.render(); },
+    });
+  }
+
+  /** Marca como pagado un pago que estaba registrado como pendiente. */
+  function markPaid(id) {
+    const p = Store.get('payments', id);
+    if (!p) return;
+    const prev = { status: p.status, date: p.date };
+    Store.update('payments', id, { status: 'pagado', date: today() });
+    App.render();
+    UI.toast(`${Store.clientName(p.clientId).split(' ')[0]} marcado como pagado`, {
+      label: 'Deshacer',
+      onClick: () => { Store.update('payments', id, prev); App.render(); },
+    });
   }
 
   async function deleteRecord(collection, id, label) {
@@ -221,7 +248,7 @@
     for (const c of Store.clients().filter((x) => clientStatus(x) === 'activo')) {
       const fs = Store.feeStatus(c);
       if (fs && fs.status === 'vencido') {
-        alerts.push({ c, text: `Cuota de ${monthName(t)} vencida (${money(fs.amount)})`, action: 'pay-fee', label: 'Cobrar' });
+        alerts.push({ c, text: `Cuota de ${monthName(t)} vencida (${money(fs.amount)})`, action: 'pay-fee', label: 'Marcar pagado' });
       }
       const last = Store.lastMeasurement(c.id);
       const days = last ? U.daysBetween(last.date, t) : null;
@@ -318,7 +345,7 @@
               ${avatar(c)}
               <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${money(fs.amount)} · ${fs.status === 'pagado' ? 'cobrada' : 'vence el ' + esc(U.fmtDateShort(fs.dueDate))}</div></div>
               ${feeBadge(fs)}
-              ${fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">Cobrar</button>` : ''}
+              ${fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Pagado</button>` : ''}
             </li>`).join('')}</ul>` : empty('wallet', 'Ningún cliente activo tiene cuota mensual.')}
         </section>
         <section class="card" id="atencion">
@@ -522,7 +549,7 @@
         <td class="num"><strong>${money(p.amount)}</strong></td>
         <td>${payBadge(p)}</td>
         <td class="actions-cell">
-          ${p.status === 'pendiente' ? `<button class="btn sm" data-action="mark-paid" data-id="${p.id}">Cobrado</button>` : ''}
+          ${p.status === 'pendiente' ? `<button class="btn sm" data-action="mark-paid" data-id="${p.id}">${U.icon('check')}Marcar pagado</button>` : ''}
           <button class="icon-btn" data-action="edit-payment" data-id="${p.id}" aria-label="Editar">${U.icon('edit')}</button>
         </td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -534,7 +561,7 @@
     return `<section class="card">
       <div class="card-header"><h2>Pagos (${list.length})</h2>
         <div class="actions">
-          ${fs && fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">Cobrar cuota de ${monthName(today())}</button>` : ''}
+          ${fs && fs.status !== 'pagado' ? `<button class="btn sm" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Marcar ${monthName(today())} como pagado</button>` : ''}
           <button class="btn primary sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Pago</button>
         </div>
       </div>
@@ -546,33 +573,63 @@
    * Pagos
    * ======================================================= */
 
+  /** Lista de quién falta por pagar: cuotas del mes sin pagar y pagos marcados como pendientes. */
+  function pendingList() {
+    const t = today();
+    const items = Store.receivables().sort((a, b) => (b.overdue - a.overdue) || a.date.localeCompare(b.date));
+    const noFee = Store.data.clients.filter((c) => clientStatus(c) === 'activo' && !(Number(c.rate) > 0));
+    const noFeeNote = noFee.length
+      ? `<p class="muted" style="margin:12px 0 0;font-size:.88rem">${plural(noFee.length, 'cliente activo no tiene', 'clientes activos no tienen')} cuota mensual asignada, por eso no ${noFee.length === 1 ? 'aparece' : 'aparecen'} aquí: ${noFee.map((c) => `<a href="#/clientes/${c.id}">${esc(c.name)}</a>`).join(', ')}.</p>`
+      : '';
+    if (!items.length) {
+      return empty('done', `<strong>Todos tus clientes han pagado ${monthName(t)}.</strong>`) + noFeeNote;
+    }
+    return `<ul class="list pending-list">${items.map((r) => {
+      const c = Store.get('clients', r.clientId) || { id: r.clientId, name: Store.clientName(r.clientId) };
+      const when = r.overdue ? `Vencido desde el ${U.fmtDateShort(r.date)}` : r.date === t ? 'Vence hoy' : `Vence el ${U.fmtDateShort(r.date)}`;
+      const concept = r.payment ? (r.payment.concept || 'Pago pendiente') : `Cuota de ${monthName(t)}`;
+      const btn = r.payment
+        ? `<button class="btn primary sm pay" data-action="mark-paid" data-id="${r.payment.id}">${U.icon('check')}Marcar pagado</button>`
+        : `<button class="btn primary sm pay" data-action="pay-fee" data-client="${c.id}">${U.icon('check')}Marcar pagado</button>`;
+      return `<li>
+        ${avatar(c)}
+        <div class="grow"><a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a><div class="meta">${esc(concept)} · ${esc(when)}</div></div>
+        <div class="pay-row">
+          ${r.overdue ? badge('Vencido', 'danger') : badge('Pendiente', 'info')}
+          <span class="amount">${money(r.amount)}</span>
+          ${btn}
+        </div>
+      </li>`;
+    }).join('')}</ul>${noFeeNote}`;
+  }
+
   function renderPayments() {
     const t = today();
     const all = Store.data.payments.slice().sort((a, b) => b.date.localeCompare(a.date));
     const list = state.payFilter === 'todos' ? all : all.filter((p) => p.status === state.payFilter);
     const { from, to } = Store.monthRange(t);
     const month = Store.paidBetween(from, to);
-    const prevStart = U.parseDate(from);
-    prevStart.setMonth(prevStart.getMonth() - 1);
-    const prev = Store.monthRange(U.toISODate(prevStart));
-    const prevMonth = Store.paidBetween(prev.from, prev.to);
     const year = Store.paidBetween(t.slice(0, 4) + '-01-01', t.slice(0, 4) + '-12-31');
     const rec = Store.receivables();
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Pagos</h1><p>Cuotas cobradas y pendientes</p></div>
-        <button class="btn primary pill" data-action="new-payment">${U.icon('plus')}Registrar pago</button>
+        <div><h1 class="display">Pagos</h1><p>Marca a tus clientes como pagados cuando te paguen</p></div>
+        <button class="btn pill" data-action="new-payment">${U.icon('plus')}Otro pago</button>
       </div>
+      <section class="card" id="pendientes">
+        <div class="card-header"><h2>Pendientes de pago</h2><span class="muted">${plural(rec.length, 'pendiente', 'pendientes')}</span></div>
+        ${pendingList()}
+      </section>
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Cobrado en ${monthName(t)}</div><div class="stat-value">${money(month)}</div><div class="stat-sub">${monthName(prev.from)}: ${money(prevMonth)}</div></div>
-        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(rec.reduce((s, r) => s + r.amount, 0))}</div><div class="stat-sub">${plural(rec.filter((r) => r.overdue).length, 'vencido', 'vencidos')}</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${monthName(t)}</div><div class="stat-value">${money(month)}</div><div class="stat-sub">de ${money(month + rec.filter((r) => r.date >= from && r.date <= to).reduce((s, r) => s + r.amount, 0))} previstos</div></div>
+        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(rec.reduce((s, r) => s + r.amount, 0))}</div><div class="stat-sub">${plural(new Set(rec.map((r) => r.clientId)).size, 'cliente', 'clientes')} · ${plural(rec.filter((r) => r.overdue).length, 'vencido', 'vencidos')}</div></div>
         <div class="card stat"><div class="stat-label">Cobrado en ${t.slice(0, 4)}</div><div class="stat-value">${money(year)}</div><div class="stat-sub">desde enero</div></div>
       </div>
-      <div class="card">
-        <div class="toolbar"><div class="segmented" role="group" aria-label="Filtrar pagos">${seg('todos', 'Todos')}${seg('pendiente', 'Pendientes')}${seg('pagado', 'Pagados')}</div></div>
+      <section class="card">
+        <div class="card-header"><h2>Historial de pagos</h2><div class="segmented" role="group" aria-label="Filtrar pagos">${seg('todos', 'Todos')}${seg('pagado', 'Pagados')}${seg('pendiente', 'Pendientes')}</div></div>
         ${paymentsTable(list)}
-      </div>`;
+      </section>`;
   }
 
   /* =========================================================
@@ -742,11 +799,7 @@
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),
     'edit-payment': (d) => openPaymentForm(d.id),
     'pay-fee': (d) => payFee(d.client),
-    'mark-paid': (d) => {
-      Store.update('payments', d.id, { status: 'pagado', paidAt: today() });
-      UI.toast('Pago marcado como cobrado');
-      App.render();
-    },
+    'mark-paid': (d) => markPaid(d.id),
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'client-filter': (d) => { state.clientFilter = d.value; App.render(); },
     metric: (d) => { state.metric = d.value; App.render(); },
