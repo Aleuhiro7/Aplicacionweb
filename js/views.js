@@ -28,15 +28,6 @@
     { value: 'PEN', label: 'Sol peruano' },
     { value: 'GBP', label: 'Libra esterlina (£)' },
   ];
-  const METRICS = [
-    { key: 'weight', label: 'Peso', unit: 'kg' },
-    { key: 'bodyFat', label: '% Grasa', unit: '%' },
-    { key: 'waist', label: 'Cintura', unit: 'cm' },
-    { key: 'hip', label: 'Cadera', unit: 'cm' },
-    { key: 'chest', label: 'Pecho', unit: 'cm' },
-    { key: 'arm', label: 'Brazo', unit: 'cm' },
-    { key: 'thigh', label: 'Muslo', unit: 'cm' },
-  ];
   const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const monthName = (iso) => MONTHS[U.parseDate(iso).getMonth()];
   const STALE_DAYS = 14; // días sin actualizar progreso para avisar
@@ -46,7 +37,6 @@
     clientSearch: '',
     clientFilter: 'activo',
     clientTab: 'resumen',
-    metric: 'weight',
     payFilter: 'todos',
     openPay: null, // cliente con el desplegable de pago abierto
   };
@@ -150,14 +140,7 @@
   function measurementFields() {
     return [
       { name: 'date', label: 'Fecha', type: 'date', required: true, default: today(), full: true },
-      { name: 'weight', label: 'Peso (kg)', type: 'number', step: '0.1', min: 0 },
-      { name: 'bodyFat', label: '% Grasa corporal', type: 'number', step: '0.1', min: 0, max: 80 },
-      { type: 'section', label: 'Perímetros (cm)' },
-      { name: 'waist', label: 'Cintura', type: 'number', step: '0.1', min: 0 },
-      { name: 'hip', label: 'Cadera', type: 'number', step: '0.1', min: 0 },
-      { name: 'chest', label: 'Pecho', type: 'number', step: '0.1', min: 0 },
-      { name: 'arm', label: 'Brazo', type: 'number', step: '0.1', min: 0 },
-      { name: 'thigh', label: 'Muslo', type: 'number', step: '0.1', min: 0 },
+      { name: 'weight', label: 'Peso (kg)', type: 'number', step: '0.1', min: 0, required: true, full: true },
       { name: 'notes', label: 'Notas de la revisión', type: 'textarea', placeholder: 'Sensaciones, adherencia, cambios en el plan…' },
     ];
   }
@@ -170,8 +153,6 @@
       values: existing || {},
       onDelete: existing ? () => deleteRecord('measurements', id, 'la medición') : null,
       onSubmit: (v) => {
-        const hasData = METRICS.some((m) => v[m.key] !== '') || v.notes;
-        if (!hasData) { UI.toast('Introduce al menos un valor'); return false; }
         if (existing) Store.update('measurements', id, v);
         else Store.add('measurements', Object.assign({ clientId }, v));
         UI.toast('Medición guardada');
@@ -611,33 +592,32 @@
   }
 
   function clientProgress(c) {
-    const ms = Store.measurementsFor(c.id);
-    const metric = METRICS.find((m) => m.key === state.metric) || METRICS[0];
-    const available = METRICS.filter((m) => ms.some((x) => x[m.key] !== '' && x[m.key] !== undefined));
-    const points = ms.map((m) => ({ x: m.date, y: m[metric.key] })).filter((p) => p.y !== '' && p.y !== undefined);
+    const ms = Store.measurementsFor(c.id).filter((m) => m.weight !== '' && m.weight !== undefined && m.weight !== null);
     const first = ms[0];
-    const delta = (m, key) => {
-      if (!first || m === first || m[key] === '' || m[key] === undefined || first[key] === '' || first[key] === undefined) return '';
-      const d = Number(m[key]) - Number(first[key]);
-      if (!d) return '';
-      return ` <small class="${d > 0 ? 'delta-up' : 'delta-down'}">${d > 0 ? '+' : ''}${fmtNum(d)}</small>`;
+    const diff = (a, b) => {
+      if (!a || !b) return '<span class="muted">—</span>';
+      const d = Number(a.weight) - Number(b.weight);
+      if (!d) return '<span class="muted">0</span>';
+      return `<span class="${d > 0 ? 'delta-up' : 'delta-down'}">${d > 0 ? '+' : ''}${fmtNum(d)} kg</span>`;
     };
+    const rows = ms.slice().reverse();
     return `
       <section class="card">
         <div class="card-header">
-          <h2>Evolución: ${esc(metric.label)}</h2>
+          <h2>Evolución del peso</h2>
           <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button>
         </div>
-        ${available.length ? `<div class="segmented" style="margin-bottom:12px">${available.map((m) => `<button data-action="metric" data-value="${m.key}" class="${m.key === metric.key ? 'active' : ''}">${m.label}</button>`).join('')}</div>` : ''}
-        ${ms.length ? UI.lineChart(points, { unit: metric.unit }) : empty('ruler', 'Registra la primera medición para empezar a ver la evolución.')}
+        ${ms.length ? UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg' }) : empty('ruler', 'Registra el primer peso para empezar a ver la evolución.')}
       </section>
       ${ms.length ? `<section class="card">
-        <div class="card-header"><h2>Historial de mediciones</h2><span class="muted" style="font-size:.85rem">Diferencias respecto a la primera medición</span></div>
+        <div class="card-header"><h2>Historial de peso</h2></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Fecha</th>${METRICS.map((m) => `<th class="num">${m.label}${m.unit === '%' ? '' : ` <span style="text-transform:none">(${m.unit})</span>`}</th>`).join('')}<th></th></tr></thead>
-          <tbody>${ms.slice().reverse().map((m) => `<tr>
+          <thead><tr><th>Fecha</th><th class="num">Peso</th><th class="num">Cambio</th><th class="num hide-sm">Desde el inicio</th><th></th></tr></thead>
+          <tbody>${rows.map((m, i) => `<tr>
             <td>${fmtDate(m.date)}${m.notes ? ` <span class="muted" title="${esc(m.notes)}">${U.icon('note')}</span>` : ''}</td>
-            ${METRICS.map((k) => `<td class="num">${fmtNum(m[k.key])}${delta(m, k.key)}</td>`).join('')}
+            <td class="num"><strong>${fmtNum(m.weight)} kg</strong></td>
+            <td class="num">${diff(m, rows[i + 1])}</td>
+            <td class="num hide-sm">${m === first ? '<span class="muted">—</span>' : diff(m, first)}</td>
             <td class="actions-cell"><button class="icon-btn" data-action="edit-measurement" data-id="${m.id}" aria-label="Editar">${U.icon('edit')}</button></td>
           </tr>`).join('')}</tbody>
         </table></div>
@@ -842,9 +822,7 @@
         Store.add('measurements', {
           clientId: c.id, date: U.addDays(t, -p.lastM - (total - 1 - i) * 14),
           weight: Math.round((p.w + trend * i + (i % 2 ? 0.2 : 0)) * 10) / 10,
-          bodyFat: Math.round((p.fat - 0.5 * i) * 10) / 10,
-          waist: Math.round((p.w + 8 - 0.8 * i) * 10) / 10,
-          hip: '', chest: '', arm: '', thigh: '', notes: '',
+          notes: '',
         });
       }
     });
@@ -930,7 +908,6 @@
     'mark-paid': (d) => markPaid(d.id),
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },
     'client-filter': (d) => { state.clientFilter = d.value; App.render(); },
-    metric: (d) => { state.metric = d.value; App.render(); },
     'pay-filter': (d) => { state.payFilter = d.value; App.render(); },
     export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
     'export-csv': () => exportCSV(),
