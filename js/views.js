@@ -1449,7 +1449,7 @@
     '¿Cuántas horas duermes de media y cómo descansas?',
     '¿Cómo es tu alimentación en un día normal? (comidas, horarios y qué sueles comer)',
     '¿Tienes alergias o intolerancias? ¿Hay alimentos que no te gusten o no comas?',
-    '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?',
+    '¿Cuánta agua bebes al día? ¿Consumes alcohol?',
     '¿Tomas algún suplemento?',
     '¿Hay algo más que quieras contarme?',
   ];

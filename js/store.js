@@ -30,6 +30,10 @@
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
     migrateNextDue(base);
+    // Ya no se pregunta por el tabaco en el cuestionario.
+    if (Array.isArray(base.settings.questionnaire)) {
+      base.settings.questionnaire = base.settings.questionnaire.map((q) => (q === '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?' ? '¿Cuánta agua bebes al día? ¿Consumes alcohol?' : q));
+    }
     seedLibrary(base);
     // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
     for (const c of base.clients) if (c.startDate && c.nextDue) c.nextDue = snapToStart(c.startDate, c.nextDue);
