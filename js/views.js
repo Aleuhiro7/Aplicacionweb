@@ -1057,7 +1057,7 @@
         `<ul class="list">${routineGapAlerts.map((a) => planItem(a.c, 'rutina', a.gaps.routineEmpty ? 'Tiene la rutina sin ejercicios' : 'Todavía no tiene rutina', a.gaps.routineEmpty ? 'Completar rutina' : 'Crear rutina')).join('')}</ul>`,
         'Todos tienen rutina'),
       section('sin-dieta', 'Sin dieta', dietGapAlerts.length, '',
-        `<ul class="list">${dietGapAlerts.map((a) => planItem(a.c, 'dieta', 'Todavía no tiene dieta', 'Crear dieta')).join('')}</ul>`,
+        `<ul class="list">${dietGapAlerts.map((a) => planItem(a.c, 'dieta', a.gaps.hasTargets ? 'Tiene los objetivos fijados, falta rellenar la dieta' : 'Todavía no tiene dieta', a.gaps.hasTargets ? 'Completar dieta' : 'Crear dieta')).join('')}</ul>`,
         'Todos tienen dieta'),
       section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
         `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,

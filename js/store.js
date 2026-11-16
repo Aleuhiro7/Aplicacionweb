@@ -383,8 +383,10 @@
     const r = routineFor(client.id);
     const d = dietFor(client.id);
     const noRoutine = !r || !(r.days || []).some((day) => (day.exercises || []).length);
-    const noDiet = !d || (!(d.text || '').trim() && !(d.targets && Number(d.targets.kcal) > 0));
-    return noRoutine || noDiet ? { noRoutine, noDiet, routineEmpty: !!r && noRoutine } : null;
+    // Fijar solo los objetivos (kcal y macros) no cuenta: la dieta tiene que estar rellenada con alimentos.
+    const noDiet = !d || !(d.text || '').trim();
+    const hasTargets = !!(d && d.targets && Number(d.targets.kcal) > 0);
+    return noRoutine || noDiet ? { noRoutine, noDiet, routineEmpty: !!r && noRoutine, hasTargets } : null;
   }
 
   function routineFor(clientId) {
