@@ -4,7 +4,7 @@ Aplicación web para gestionar los clientes de asesoría online: cuotas mensuale
 
 ## Funcionalidades
 
-- **Resumen**: cobrado en el mes frente a lo previsto, lo que falta por cobrar (y lo vencido), clientes activos y en pausa, altas del mes, gráfico de ingresos de los últimos 6 meses, **próximos pagos** (vencidos o que vencen en los próximos 5 días) y clientes sin actualizar su peso.
+- **Resumen**: cobrado en el mes frente a lo previsto, lo que falta por cobrar (y lo vencido), clientes activos y en pausa, altas del mes, gráfico de ingresos de los últimos 6 meses, **próximos pagos** (vencidos o que vencen en los próximos 5 días).
 - **Clientes**: ficha con contacto, importe habitual, fecha del próximo pago, lesiones/patologías (destacadas en un aviso) y notas. Estados activo / en pausa / baja, búsqueda y accesos directos a WhatsApp y email.
 - **Progreso**: registra el peso en cada revisión; gráfico de evolución y cambio respecto a la revisión anterior y al inicio.
 - **Pagos**: los pagos caen el mismo día del mes que la fecha de alta de cada cliente. Lista de clientes con un botón **Pago** que abre un desplegable para indicar la cantidad y cuántos meses paga (1, 2, 3 o 6); la fecha del siguiente pago se calcula sola. La app avisa 5 días antes en el resumen, en la campana y, si se activan, con notificaciones del navegador. Se puede deshacer un pago guardado por error.

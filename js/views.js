@@ -30,7 +30,6 @@
   ];
   const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   const monthName = (iso) => MONTHS[U.parseDate(iso).getMonth()];
-  const STALE_DAYS = 14; // días sin actualizar progreso para avisar
 
   /* Estado de la interfaz (no se guarda). */
   const state = {
@@ -530,19 +529,12 @@
     });
   }
 
-  /** Avisos: pagos vencidos o que vencen en los próximos días y clientes sin actualizar su progreso. */
+  /** Avisos: pagos que vencen pronto o vencidos, seguimientos/revisiones y tareas pendientes. */
   function computeAlerts() {
-    const t = today();
     const pay = [];
-    const progress = [];
     for (const c of Store.clients().filter((x) => clientStatus(x) === 'activo')) {
       const di = Store.dueInfo(c);
       if (di && di.status !== 'al-dia') pay.push({ c, di, kind: 'pago' });
-      const last = Store.lastMeasurement(c.id);
-      const days = last ? U.daysBetween(last.date, t) : null;
-      if (days === null || days >= STALE_DAYS) {
-        progress.push({ c, kind: 'progreso', text: last ? `Sin actualizar el peso desde hace ${days} días` : 'Sin peso registrado todavía' });
-      }
     }
     pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
     const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
@@ -550,7 +542,7 @@
       .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
       .filter((x) => x.ri && x.ri.status !== 'al-dia')
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
-    return pay.concat(reviews, progress, tasks);
+    return pay.concat(reviews, tasks);
   }
 
   function incomeChart() {
@@ -605,7 +597,6 @@
     const alerts = computeAlerts();
 
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
-    const otherAlerts = alerts.filter((a) => a.kind === 'progreso');
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
 
@@ -628,14 +619,6 @@
       section('revisiones', 'Seguimientos y revisiones', reviewAlerts.length, '',
         `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
         `Nada en los próximos ${Store.REVIEW_NOTICE} días`),
-      section('atencion', 'Pesos pendientes', otherAlerts.length, '',
-        `<ul class="list">${otherAlerts.map((a) => `
-          <li>
-            ${avatar(a.c)}
-            <div class="grow"><a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a><div class="meta">${esc(a.text)}</div></div>
-            <button class="btn primary sm" data-action="new-measurement" data-client="${a.c.id}">${U.icon('plus')}Peso</button>
-          </li>`).join('')}</ul>`,
-        'Todos han registrado su peso'),
       section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
         `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,
         'Sin tareas pendientes'),
@@ -646,9 +629,9 @@
         <div>
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
-          <p>${payAlerts.length || reviewAlerts.length || otherAlerts.length || taskAlerts.length
-            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'seguimiento o revisión', 'seguimientos o revisiones') : '', otherAlerts.length ? plural(otherAlerts.length, 'peso pendiente', 'pesos pendientes') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
-            : 'Todo al día: no tienes pagos, revisiones, pesos ni tareas pendientes.'}</p>
+          <p>${payAlerts.length || reviewAlerts.length || taskAlerts.length
+            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'seguimiento o revisión', 'seguimientos o revisiones') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
+            : 'Todo al día: no tienes pagos, revisiones ni tareas pendientes.'}</p>
         </div>
       </div>
 
@@ -1149,7 +1132,7 @@
     'new-client': () => openClientForm(),
     alerts: () => {
       const kinds = computeAlerts().map((a) => a.kind);
-      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('revision') ? 'revisiones' : kinds.includes('progreso') ? 'atencion' : 'tareas-pendientes';
+      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('revision') ? 'revisiones' : 'tareas-pendientes';
       const go = () => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
       else { location.hash = '#/panel'; setTimeout(go, 60); }
