@@ -791,3 +791,15 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .lib-desc { color: var(--muted); font-size: .84rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lib-detail-desc { white-space: pre-wrap; margin: 0 0 12px; }
 @media (max-width: 560px) { .lib-grid { grid-template-columns: 1fr; } }
+
+.lib-pattern { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; font-weight: 700; font-size: .88rem; color: var(--primary); }
+.lib-pattern .muted { font-weight: 500; }
+.lib-series { font-size: .8rem; color: var(--primary); font-weight: 600; }
+.lib-guide { margin: 4px 0 6px; border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: var(--surface-2); }
+.lib-guide summary { cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 8px; list-style: none; }
+.lib-guide summary::-webkit-details-marker { display: none; }
+.lib-guide summary::after { content: "▸"; margin-left: auto; color: var(--muted); transition: transform .15s; }
+.lib-guide[open] summary::after { transform: rotate(90deg); }
+.lib-guide h4 { margin: 14px 0 6px; font-size: .9rem; color: var(--primary); }
+.lib-guide ul { margin: 0; padding-left: 18px; color: var(--text); font-size: .9rem; }
+.lib-guide li { margin: 4px 0; }

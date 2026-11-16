@@ -136,7 +136,7 @@
    * Abre un formulario modal.
    * onSubmit(values) se llama con los valores validados; devolver false mantiene el modal abierto.
    */
-  function form({ title, fields, values = {}, submitLabel = 'Guardar', onSubmit, onDelete }) {
+  function form({ title, fields, values = {}, submitLabel = 'Guardar', onSubmit, onDelete, onReady }) {
     const body = `<div class="form-grid">${fields.map((f) => renderField(f, values[f.name])).join('')}</div>`;
     const footer =
       (onDelete ? `<button type="button" class="btn danger" id="modal-delete" style="margin-right:auto">Eliminar</button>` : '') +
@@ -157,6 +157,7 @@
         if (first) first.focus();
         const del = document.getElementById('modal-delete');
         if (del) del.onclick = () => { closeModal(); onDelete(); };
+        if (onReady) onReady(dlg);
       },
     });
   }

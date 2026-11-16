@@ -617,6 +617,19 @@
         saveRoutine(r);
         UI.toast('Ejercicio eliminado', { label: 'Deshacer', onClick: () => { const cur = Store.routineFor(c.id); const d = cur && findDay(cur, day.id); if (d) { d.exercises.push(ex); saveRoutine(cur); } } });
       } : null,
+      // Al elegir un ejercicio de la biblioteca se rellenan series, repeticiones, descanso y notas vacías.
+      onReady: (dlg) => {
+        const nameEl = dlg.querySelector('#f-name');
+        const fill = () => {
+          const lib = Store.library().find((x) => x.name.toLowerCase() === nameEl.value.trim().toLowerCase());
+          if (!lib) return;
+          const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
+          const set = (id, val) => { const el = dlg.querySelector(`#f-${id}`); if (el && !el.value && val) el.value = val; };
+          set('sets', lib.sets); set('reps', lib.reps); set('rest', lib.rest); set('notes', notes);
+        };
+        nameEl.addEventListener('change', fill);
+        nameEl.addEventListener('input', () => { if (Store.library().some((x) => x.name === nameEl.value)) fill(); });
+      },
       onSubmit: (v) => {
         if (ex) Object.assign(ex, v);
         else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, v));
@@ -1153,11 +1166,31 @@
     const q = normalizeText(state.libSearch);
     const order = libraryGroups();
     const rank = (g) => { const i = order.indexOf(g); return i < 0 ? 999 : i; };
-    return Store.library().sort((a, b) => rank(a.group) - rank(b.group) || a.name.localeCompare(b.name, 'es')).filter((x) => {
+    // Orden: grupo → patrón → orden original del PDF (los añadidos a mano, por nombre).
+    const pdfOrder = new Map((window.LIBRARY_DEFAULT || []).map((x, i) => [x.id, i]));
+    const pos = (x) => (pdfOrder.has(x.id) ? pdfOrder.get(x.id) : 1e6);
+    return Store.library().sort((a, b) => rank(a.group) - rank(b.group)
+      || (a.pattern || '\uffff').localeCompare(b.pattern || '\uffff', 'es')
+      || pos(a) - pos(b) || a.name.localeCompare(b.name, 'es')).filter((x) => {
       if (state.libGroup !== 'todos' && x.group !== state.libGroup) return false;
       if (!q) return true;
-      return [x.name, x.group, x.equipment, x.description].some((f) => normalizeText(f).includes(q));
+      return [x.name, x.group, x.pattern, x.equipment, x.description].some((f) => normalizeText(f).includes(q));
     });
+  }
+
+  /** «3 × 12 (Casi-Fallo) / 10 (Fallo)…» */
+  const libSeries = (ex) => [ex.sets && `${ex.sets} series`, ex.reps].filter(Boolean).join(' × ');
+
+  function libraryGuide(group) {
+    const guide = (window.LIBRARY_GUIDES || {})[group];
+    if (!guide) return '';
+    return `<details class="lib-guide">
+      <summary>${U.icon('book')}Pautas de ${esc(group)}</summary>
+      ${guide.map((sec) => `<h4>${esc(sec.title)}</h4><ul>${sec.items.map((it) => {
+        const m = it.match(/^([^:]{2,30}):\s*(.*)$/);
+        return `<li>${m ? `<strong>${esc(m[1])}:</strong> ${esc(m[2])}` : esc(it)}</li>`;
+      }).join('')}</ul>`).join('')}
+    </details>`;
   }
 
   function libraryList() {
@@ -1166,21 +1199,29 @@
       return empty('book', '<strong>La biblioteca está vacía.</strong><br>Añade tus ejercicios con «+ Ejercicio».');
     }
     if (!list.length) return empty('search', 'Ningún ejercicio coincide con la búsqueda.');
+    const searching = !!state.libSearch.trim();
     const groups = [];
     for (const ex of list) {
       const g = ex.group || 'Sin grupo';
-      const last = groups[groups.length - 1];
-      if (last && last.name === g) last.items.push(ex);
-      else groups.push({ name: g, items: [ex] });
+      let last = groups[groups.length - 1];
+      if (!last || last.name !== g) groups.push((last = { name: g, patterns: [] }));
+      const pat = ex.pattern || '';
+      let lp = last.patterns[last.patterns.length - 1];
+      if (!lp || lp.name !== pat) last.patterns.push((lp = { name: pat, items: [] }));
+      lp.items.push(ex);
     }
     return groups.map((g) => `
-      <h3 class="lib-group">${esc(g.name)} <span class="muted">${g.items.length}</span></h3>
-      <div class="lib-grid">${g.items.map((ex) => `
-        <button class="lib-card" data-action="lib-open" data-id="${ex.id}">
-          <span class="lib-name">${esc(ex.name)}</span>
-          ${ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
-          ${ex.description ? `<span class="lib-desc">${esc(ex.description)}</span>` : ''}
-        </button>`).join('')}</div>`).join('');
+      <h3 class="lib-group">${esc(g.name)} <span class="muted">${g.patterns.reduce((n, p) => n + p.items.length, 0)}</span></h3>
+      ${searching ? '' : libraryGuide(g.name)}
+      ${g.patterns.map((p) => `
+        ${p.name ? `<div class="lib-pattern"><span>${esc(p.name)}</span>${p.items[0].rest ? `<span class="muted">Descanso ${esc(p.items[0].rest)}</span>` : ''}</div>` : ''}
+        <div class="lib-grid">${p.items.map((ex) => `
+          <button class="lib-card" data-action="lib-open" data-id="${ex.id}">
+            <span class="lib-name">${esc(ex.name)}</span>
+            ${ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
+            ${libSeries(ex) ? `<span class="lib-series">${esc(libSeries(ex))}</span>` : ''}
+            ${ex.description ? `<span class="lib-desc">${esc(ex.description)}</span>` : ''}
+          </button>`).join('')}</div>`).join('')}`).join('');
   }
 
   function renderLibrary() {
@@ -1214,8 +1255,13 @@
       fields: [
         { name: 'name', label: 'Nombre', required: true, full: true },
         { name: 'group', label: 'Grupo muscular', datalist: MUSCLE_GROUPS, placeholder: 'Ej.: Pecho, Glúteos…' },
+        { name: 'pattern', label: 'Patrón', datalist: [...new Set(Store.data.library.map((x) => x.pattern).filter(Boolean))], placeholder: 'Ej.: Patrón 1 · Curl pesado' },
         { name: 'equipment', label: 'Material', placeholder: 'Ej.: Barra, mancuernas, polea, sin material' },
-        { name: 'description', label: 'Descripción / técnica', type: 'textarea', placeholder: 'Ejecución, puntos clave, errores comunes…' },
+        { name: 'sets', label: 'Series', placeholder: 'Ej.: 3' },
+        { name: 'reps', label: 'Repeticiones', full: true, placeholder: 'Ej.: 12 (Casi-Fallo) / 10 (Fallo) / 8 [Top Set] (Fallo-Total)' },
+        { name: 'rest', label: 'Descanso', placeholder: 'Ej.: 2 a 3 min' },
+        { name: 'tempo', label: 'Tempo', placeholder: 'Ej.: 3 s excéntrica / concéntrica explosiva' },
+        { name: 'description', label: 'Notas / técnica', type: 'textarea', placeholder: 'Ejecución, puntos clave, errores comunes…' },
         { name: 'video', label: 'Enlace a vídeo (opcional)', type: 'url', full: true, placeholder: 'https://…' },
       ],
       values: existing || (state.libGroup !== 'todos' ? { group: state.libGroup } : {}),
@@ -1239,12 +1285,20 @@
   function openLibraryExercise(id) {
     const ex = Store.get('library', id);
     if (!ex) return;
+    const row = (k, v) => (v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '');
     UI.openModal({
       title: ex.name,
       body: `<div class="lib-detail">
-        <div class="actions" style="margin-bottom:12px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
-        ${ex.description ? `<p class="lib-detail-desc">${esc(ex.description)}</p>` : '<p class="muted">Sin descripción.</p>'}
-        ${ex.video ? `<p><a href="${esc(ex.video)}" target="_blank" rel="noopener">${U.icon('right')} Ver vídeo</a></p>` : ''}
+        <div class="actions" style="margin-bottom:14px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
+        <dl class="dl">
+          ${row('Patrón', ex.pattern)}
+          ${row('Series', ex.sets)}
+          ${row('Repeticiones', ex.reps)}
+          ${row('Descanso', ex.rest)}
+          ${row('Tempo', ex.tempo)}
+          ${row('Notas', ex.description)}
+        </dl>
+        ${ex.video ? `<p style="margin-top:14px"><a href="${esc(ex.video)}" target="_blank" rel="noopener">${U.icon('right')} Ver vídeo</a></p>` : ''}
       </div>`,
       footer: `<button type="button" class="btn" id="lib-edit" style="margin-right:auto">${U.icon('edit')}Editar</button><button type="button" class="btn primary" data-close>Cerrar</button>`,
       onOpen: () => { document.getElementById('lib-edit').onclick = () => libraryForm(id); },
