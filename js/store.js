@@ -120,6 +120,9 @@
       }
       d.settings.blocksVersion = version;
     }
+    // Si un alimento deja de existir, se quita también de los bloques.
+    const foodIds = new Set(d.foods.map((f) => f.id));
+    for (const b of d.foodBlocks) b.foodIds = (b.foodIds || []).filter((id) => foodIds.has(id));
     // Los bloques de serie se muestran en su orden; los creados a mano, al final.
     const order = new Map(defaults.map((b, i) => [b.id, i]));
     d.foodBlocks = d.foodBlocks.map((b, i) => [b, i]).sort((x, y) => (order.has(x[0].id) ? order.get(x[0].id) : 1e6 + x[1]) - (order.has(y[0].id) ? order.get(y[0].id) : 1e6 + y[1])).map((x) => x[0]);

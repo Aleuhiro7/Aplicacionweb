@@ -49,7 +49,6 @@
     ['Fiambre de pechuga de pollo', 100, 18.5, 2, 1.8],
     ['Jamón cocido extra', 110, 19, 1, 3.5],
     ['Jamón serrano', 240, 31, 0.5, 13],
-    ['Jamón ibérico', 330, 30, 0.5, 23],
     ['Lomo embuchado', 220, 38, 1, 7],
   ]);
 
@@ -324,7 +323,7 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Carne picada de vacuno (cruda)', 'Hamburguesa de vacuno (cruda)', 'Hamburguesa de pollo (cruda)', 'Cordero pierna (crudo)', 'Pollo entero con piel (crudo)'] },
   { id: 'blk-embutidos', family: 'Proteínas', name: 'Embutidos y fiambres', macro: 'protein', amount: 15,
     notes: 'Se toman en raciones más pequeñas: 15 g de proteína ≈ 50 g de jamón serrano.',
-    foods: ['Jamón serrano', 'Jamón ibérico', 'Fiambre de pechuga de pavo', 'Fiambre de pechuga de pollo', 'Lomo embuchado', 'Jamón cocido extra'] },
+    foods: ['Jamón serrano', 'Fiambre de pechuga de pavo', 'Fiambre de pechuga de pollo', 'Lomo embuchado', 'Jamón cocido extra'] },
   { id: 'blk-pescado-blanco', family: 'Proteínas', name: 'Pescado blanco y marisco', macro: 'protein', amount: 25,
     foods: ['Merluza (cruda)', 'Bacalao fresco (crudo)', 'Bacalao desalado (crudo)', 'Lubina (cruda)', 'Atún al natural (lata, escurrido)', 'Gambas peladas congeladas (crudas)', 'Langostinos / gambas cocidos', 'Calamar (crudo)', 'Sepia (cruda)', 'Pulpo (crudo)', 'Mejillones (crudos)'] },
   { id: 'blk-pescado-azul', family: 'Proteínas', name: 'Pescado azul y semigraso', macro: 'protein', amount: 25,
