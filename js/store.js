@@ -27,7 +27,45 @@
     for (const c of COLLECTIONS) base[c] = Array.isArray(raw[c]) ? raw[c] : [];
     base.settings = Object.assign(base.settings, raw.settings || {});
     migrateNextDue(base);
+    // El próximo pago siempre cae el mismo día del mes que la fecha de alta.
+    for (const c of base.clients) if (c.startDate && c.nextDue) c.nextDue = snapToStart(c.startDate, c.nextDue);
     return base;
+  }
+
+  /* ---------- Pagos alineados con la fecha de alta ---------- */
+
+  /** Mayor k ≥ 0 tal que el alta + k meses cae en `date` o antes. */
+  function monthFloor(start, date) {
+    const a = U.parseDate(start);
+    const b = U.parseDate(date);
+    let k = Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()) + 1);
+    while (k > 0 && U.addMonths(start, k) > date) k--;
+    return k;
+  }
+
+  /** Fecha «aniversario mensual» del alta más cercana a `date` (nunca antes del alta). */
+  function snapToStart(start, date) {
+    if (!start || !date) return date;
+    if (date <= start) return start;
+    const k = monthFloor(start, date);
+    const before = U.addMonths(start, k);
+    const after = U.addMonths(start, k + 1);
+    return U.daysBetween(before, date) <= U.daysBetween(date, after) ? before : after;
+  }
+
+  /** Primer aniversario mensual del alta que cae en `date` o después. */
+  function startOnOrAfter(start, date) {
+    if (date <= start) return start;
+    const k = monthFloor(start, date);
+    const d = U.addMonths(start, k);
+    return d >= date ? d : U.addMonths(start, k + 1);
+  }
+
+  /** Fecha del próximo pago si paga `months` meses a partir de `base` (alineada con el alta). */
+  function nextDueAfter(client, base, months) {
+    if (!client.startDate) return U.addMonths(base, months);
+    const from = base < client.startDate ? client.startDate : base;
+    return U.addMonths(client.startDate, monthFloor(client.startDate, from) + months);
   }
 
   /** Versiones anteriores usaban «día de cobro»; se convierte en fecha de próximo pago. */
@@ -305,7 +343,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

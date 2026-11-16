@@ -93,7 +93,7 @@
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
-      { name: 'nextDue', label: 'Próximo pago', type: 'date', default: today(), hint: `Te avisaré ${Store.REMIND_DAYS} días antes.` },
+      { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío: el próximo aniversario del alta. Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -110,6 +110,8 @@
       submitLabel: existing ? 'Guardar cambios' : 'Crear cliente',
       onDelete: existing ? () => deleteClient(id) : null,
       onSubmit: (v) => {
+        // El próximo pago se alinea con el día del alta.
+        if (v.startDate) v.nextDue = v.nextDue ? Store.snapToStart(v.startDate, v.nextDue) : Store.startOnOrAfter(v.startDate, today());
         if (existing) {
           Store.update('clients', id, v);
           UI.toast('Cliente actualizado');
@@ -207,18 +209,20 @@
     return c.nextDue && c.nextDue >= U.addDays(today(), -31) ? c.nextDue : today();
   }
 
-  /** Desplegable para registrar un pago: cantidad y fecha del próximo pago. */
+  /** Desplegable para registrar un pago: cantidad y cuántos meses paga (el próximo pago cae el día del alta). */
   function payForm(c) {
     const amount = Number(c.rate) || Store.lastPaidAmount(c.id) || Store.settings.defaultRate || '';
     const base = payBase(c);
-    const quick = [1, 2, 3, 6].map((n) => `<button type="button" class="chip" data-action="pay-months" data-months="${n}">${n === 1 ? '1 mes' : `${n} meses`}</button>`).join('');
-    return `<form class="pay-form" data-client="${c.id}" data-base="${base}">
+    const options = [1, 2, 3, 6].map((n) => ({ n, date: Store.nextDueAfter(c, base, n) }));
+    const first = options[0];
+    const quick = options.map((o) => `<button type="button" class="chip${o === first ? ' active' : ''}" data-action="pay-months" data-date="${o.date}" aria-pressed="${o === first}">${o.n === 1 ? '1 mes' : `${o.n} meses`}</button>`).join('');
+    return `<form class="pay-form" data-client="${c.id}">
       <div class="pay-fields">
         <div class="field"><label for="pa-${c.id}">Cantidad (${esc(Store.settings.currency)})</label><input id="pa-${c.id}" name="amount" type="number" step="0.01" min="0" inputmode="decimal" required value="${esc(amount)}"></div>
-        <div class="field"><label for="pd-${c.id}">Próximo pago</label><input id="pd-${c.id}" name="nextDue" type="date" required value="${U.addMonths(base, 1)}"></div>
+        <div class="field"><span class="field-label">Próximo pago</span><div class="pay-next" aria-live="polite">${esc(fmtDate(first.date))}</div><input type="hidden" name="nextDue" value="${first.date}"></div>
       </div>
-      <div class="pay-quick"><span class="muted">Siguiente pago dentro de:</span>${quick}</div>
-      <p class="hint">Te avisaré ${Store.REMIND_DAYS} días antes de la fecha del próximo pago.</p>
+      <div class="pay-quick"><span class="muted">Paga:</span>${quick}</div>
+      <p class="hint">${c.startDate ? `Los pagos caen el día ${Number(c.startDate.slice(8))} de cada mes (fecha de alta: ${esc(fmtDate(c.startDate))}). ` : ''}Te avisaré ${Store.REMIND_DAYS} días antes.</p>
       <div class="pay-actions">
         <button type="button" class="btn sm" data-action="pay-close">Cancelar</button>
         <button type="submit" class="btn primary sm">${U.icon('check')}Guardar pago</button>
@@ -929,7 +933,7 @@
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Pagos</h1><p>Pulsa «Pago» cuando un cliente te pague e indica cuándo le toca el siguiente</p></div>
+        <div><h1 class="display">Pagos</h1><p>Pulsa «Pago» cuando un cliente te pague y elige cuántos meses paga: el siguiente pago cae el mismo día del mes que su alta</p></div>
         <button class="btn pill" data-action="new-payment">${U.icon('plus')}Otro pago</button>
       </div>
       <section class="card" id="pendientes">
@@ -1164,8 +1168,9 @@
     'pay-close': () => { state.openPay = null; App.render(); },
     'pay-months': (d, el) => {
       const form = el.closest('.pay-form');
-      form.elements.nextDue.value = U.addMonths(form.dataset.base, Number(d.months));
-      form.querySelectorAll('.chip').forEach((b) => b.classList.toggle('active', b === el));
+      form.elements.nextDue.value = d.date;
+      form.querySelector('.pay-next').textContent = fmtDate(d.date);
+      form.querySelectorAll('.chip').forEach((b) => { b.classList.toggle('active', b === el); b.setAttribute('aria-pressed', String(b === el)); });
     },
     'mark-paid': (d) => markPaid(d.id),
     'client-tab': (d) => { state.clientTab = d.value; App.render(); },

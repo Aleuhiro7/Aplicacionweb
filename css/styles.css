@@ -740,3 +740,6 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .wa-link:hover { color: #25d366; text-decoration: underline; }
 .review-done { margin-top: 10px; }
 #revisiones.has-items { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--warning); }
+
+.field-label { display: block; font-weight: 700; font-size: .83rem; margin-bottom: 6px; }
+.pay-next { font: 700 1.35rem/1.2 "Barlow Semi Condensed", sans-serif; padding: 8px 0; color: var(--primary); }
