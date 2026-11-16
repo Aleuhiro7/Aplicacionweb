@@ -357,12 +357,6 @@
     });
   }
 
-  /** «a, b y c» */
-  function joinList(parts) {
-    const p = parts.filter(Boolean);
-    return p.length <= 1 ? p.join('') : `${p.slice(0, -1).join(', ')} y ${p[p.length - 1]}`;
-  }
-
   /* =========================================================
    * Tareas pendientes
    * ======================================================= */
@@ -837,9 +831,6 @@
         <div>
           ${dateLine}
           <h1 class="display" data-greeting data-day="${t}">${esc(greetingText())}</h1>
-          <p>${payAlerts.length || reviewAlerts.length || taskAlerts.length
-            ? `Tienes ${joinList([payAlerts.length ? plural(payAlerts.length, 'pago pendiente', 'pagos pendientes') : '', reviewAlerts.length ? plural(reviewAlerts.length, 'seguimiento o revisión', 'seguimientos o revisiones') : '', taskAlerts.length ? plural(taskAlerts.length, 'tarea pendiente', 'tareas pendientes') : ''])}${overdue ? ` · ${plural(overdue, 'pago vencido', 'pagos vencidos')}` : ''}.`
-            : 'Todo al día: no tienes pagos, revisiones ni tareas pendientes.'}</p>
         </div>
       </div>
 
@@ -1327,7 +1318,7 @@
           </form>
           <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
           <h2 style="margin-bottom:6px">Avisos de pago</h2>
-          <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen, en la campana y, si lo activas, con una notificación del navegador.</p>
+          <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen y, si lo activas, con una notificación del navegador.</p>
           ${notificationStatus() ? `<p style="margin:0 0 12px">${esc(notificationStatus())}</p>` : ''}
           ${canNotify() && Notification.permission === 'default' ? `<button class="btn" data-action="enable-notifications">${U.icon('bell')} Activar notificaciones</button>` : ''}
         </section>
@@ -1497,13 +1488,6 @@
 
   const actions = {
     'new-client': () => openClientForm(),
-    alerts: () => {
-      const kinds = computeAlerts().map((a) => a.kind);
-      const target = kinds.includes('pago') ? 'proximos-pagos' : kinds.includes('revision') ? 'revisiones' : 'tareas-pendientes';
-      const go = () => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
-      else { location.hash = '#/panel'; setTimeout(go, 60); }
-    },
     'edit-client': (d) => openClientForm(d.id),
     'delete-client': (d) => deleteClient(d.id),
     'set-status': (d) => setClientStatus(d.id, d.value),

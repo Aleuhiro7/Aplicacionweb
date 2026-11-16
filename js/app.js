@@ -40,11 +40,10 @@
     });
   }
 
-  /** Título de la pestaña y punto de avisos. */
+  /** Título de la pestaña. */
   function updateChrome() {
     const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', biblioteca: 'Biblioteca', ajustes: 'Ajustes' };
     document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Coach`;
-    document.getElementById('alert-dot').hidden = !Views.computeAlerts().length;
   }
 
   function applyTheme() {
