@@ -823,7 +823,6 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .pick-banner .muted { font-size: .85rem; margin-top: 2px; }
 @media (max-width: 760px) { .pick-banner { top: 62px; } .pick-banner .actions { width: 100%; } .pick-banner .actions .btn { flex: 1; justify-content: center; } }
 
-#sin-plan.has-items { border-color: color-mix(in srgb, var(--violet) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--violet); }
-#sin-plan .count { background: var(--violet); color: #fff; }
+#sin-rutina.has-items, #sin-dieta.has-items { border-color: color-mix(in srgb, var(--violet) 45%, var(--border)); box-shadow: inset 3px 0 0 var(--violet); }
+#sin-rutina .count, #sin-dieta .count { background: var(--violet); color: #fff; }
 .diet-form textarea { min-height: 220px; }
-@media (max-width: 560px) { .plan-item { flex-wrap: wrap; } .plan-item .review-actions { width: 100%; padding-left: 52px; } }

@@ -834,6 +834,17 @@
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
+    const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
+    const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
+    const planItem = (c, tab, text, label) => `
+          <li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">${esc(text)}</div>
+            </div>
+            <button class="btn sm" data-action="open-client-tab" data-client="${c.id}" data-value="${tab}">${U.icon('plus')}${label}</button>
+          </li>`;
 
     /* Avisos: primero las tarjetas con algo pendiente; las que están al día, en una sola línea al final. */
     const section = (id, title, n, link, list, okText) => ({
@@ -854,20 +865,12 @@
       section('revisiones', 'Seguimientos y revisiones', reviewAlerts.length, '',
         `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
         `Nada en los próximos ${Store.REVIEW_NOTICE} días`),
-      section('sin-plan', 'Sin rutina o dieta', planAlerts.length, '',
-        `<ul class="list">${planAlerts.map((a) => `
-          <li class="plan-item">
-            ${avatar(a.c)}
-            <div class="grow">
-              <a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a>
-              <div class="meta">${[a.gaps.noRoutine ? 'Sin rutina' : '', a.gaps.noDiet ? 'Sin dieta' : ''].filter(Boolean).join(' · ')}</div>
-            </div>
-            <div class="review-actions">
-              ${a.gaps.noRoutine ? `<button class="btn sm" data-action="open-client-tab" data-client="${a.c.id}" data-value="rutina">${U.icon('plus')}Rutina</button>` : ''}
-              ${a.gaps.noDiet ? `<button class="btn sm" data-action="open-client-tab" data-client="${a.c.id}" data-value="dieta">${U.icon('plus')}Dieta</button>` : ''}
-            </div>
-          </li>`).join('')}</ul>`,
-        'Todos tienen rutina y dieta'),
+      section('sin-rutina', 'Sin rutina', routineGapAlerts.length, '',
+        `<ul class="list">${routineGapAlerts.map((a) => planItem(a.c, 'rutina', a.gaps.routineEmpty ? 'Tiene la rutina sin ejercicios' : 'Todavía no tiene rutina', a.gaps.routineEmpty ? 'Completar rutina' : 'Crear rutina')).join('')}</ul>`,
+        'Todos tienen rutina'),
+      section('sin-dieta', 'Sin dieta', dietGapAlerts.length, '',
+        `<ul class="list">${dietGapAlerts.map((a) => planItem(a.c, 'dieta', 'Todavía no tiene dieta', 'Crear dieta')).join('')}</ul>`,
+        'Todos tienen dieta'),
       section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
         `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,
         'Sin tareas pendientes'),
