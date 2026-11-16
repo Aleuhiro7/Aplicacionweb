@@ -1266,7 +1266,10 @@
       </section>`;
     const mealPage = (m, i) => {
       const groups = mealGroups(m);
-      return `<section class="ds-page">
+      // Cuantos más alimentos, más compacto, para que todo quepa en su página.
+      const n = groups.reduce((t, g) => t + g.rows.length + 0.6, 0) + (m.vegFree ? 1 : 0);
+      const dens = n > 11 ? ' ds-xdense' : n > 7 ? ' ds-dense' : n <= 4.5 ? ' ds-sparse' : '';
+      return `<section class="ds-page${dens}">
         ${top}
         <div class="ds-main">
           <span class="ds-kicker">Comida ${i + 1} de ${meals.length}</span>
@@ -1274,9 +1277,9 @@
           <span class="ds-rule"></span>
           <div class="ds-groups">${groups.map((g) => {
             const many = g.key !== 'extra' && g.rows.length > 1;
-            return `<div class="ds-group ds-${g.key}">
+            return `<div class="ds-group ds-${g.key}" style="--rows:${g.rows.length + 1}">
               <div class="ds-glabel"><i></i><b>${ROLE_LABEL[g.key]}</b>${many ? `<em>${g.rows.length} opciones · elige una</em>` : g.key === 'extra' ? '<em>además</em>' : ''}</div>
-              ${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}</span></div>`).join('')}
+              <div class="ds-items">${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}</span></div>`).join('')}</div>
             </div>`;
           }).join('')}
           ${m.vegFree ? '<div class="ds-veg"><span>🥗</span><div><b>Verdura libre</b>Puedes añadir hasta 150 g de verdura, la que quieras.</div></div>' : ''}
