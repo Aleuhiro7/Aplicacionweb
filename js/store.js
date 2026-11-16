@@ -52,13 +52,43 @@
     }
   }
 
-  function save() {
+  const saveListeners = [];
+
+  function writeLocal() {
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
       storageOk = true;
     } catch (e) {
       storageOk = false;
     }
+  }
+
+  /** Guarda en este navegador y avisa a la sincronización en la nube. */
+  function save() {
+    writeLocal();
+    for (const fn of saveListeners) {
+      try { fn(data); } catch (e) { console.error(e); }
+    }
+  }
+
+  function onSave(fn) { saveListeners.push(fn); }
+
+  /** Sustituye todos los datos por los que llegan de la nube (sin volver a subirlos). */
+  function replaceAll(raw) {
+    data = normalize(raw);
+    writeLocal();
+  }
+
+  /** Une los datos de la nube con los de este navegador (por id) sin perder nada. */
+  function mergeIn(raw) {
+    const remote = normalize(raw);
+    for (const c of COLLECTIONS) {
+      const ids = new Set(remote[c].map((r) => r.id));
+      remote[c] = remote[c].concat(data[c].filter((r) => !ids.has(r.id)));
+    }
+    remote.settings = Object.assign({}, data.settings, remote.settings);
+    data = remote;
+    writeLocal();
   }
 
   function now() { return new Date().toISOString(); }
@@ -200,7 +230,7 @@
   function today() { return U.today(); }
 
   window.Store = {
-    load, save, add, update, remove, get, reset, exportJSON, importJSON,
+    load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },

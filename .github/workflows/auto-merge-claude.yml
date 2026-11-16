@@ -1,0 +1,40 @@
+# Fusiona automáticamente en main lo que Claude Code sube a ramas claude/**
+# y vuelve a publicar la web en GitHub Pages.
+name: Auto-merge Claude a main
+
+on:
+  push:
+    branches:
+      - "claude/**"
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: auto-merge-main
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Fusionar la rama en main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          git fetch origin "$BRANCH"
+          git merge --no-edit "origin/$BRANCH" -m "Auto-merge $BRANCH en main"
+          git push origin main
+
+      - name: Volver a publicar GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Pages se publicará solo"

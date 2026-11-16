@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=2026.11.16-8">
+  <link rel="stylesheet" href="css/styles.css?v=2026.11.16-9">
 </head>
 <body>
   <div class="layout">
@@ -35,6 +35,7 @@
       <header class="topbar">
         <a href="#/panel" class="topbar-brand" aria-label="Ir al resumen"><span class="brand-logo">DO</span><span>David Orihuela</span></a>
         <button class="btn primary pill" data-action="new-client"><span data-icon="plus"></span><span class="pill-text">Nuevo cliente</span></button>
+        <button class="icon-btn bell sync-btn" data-sync="open" aria-label="Sincronización" title="Sincronización"><span data-icon="cloud"></span><span class="dot" id="sync-dot"></span></button>
         <button class="icon-btn bell" data-action="alerts" aria-label="Avisos" title="Avisos"><span data-icon="bell"></span><span class="dot" id="alert-dot" hidden></span></button>
         <button class="icon-btn menu-btn" data-menu="open" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button>
       </header>
@@ -57,10 +58,11 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/utils.js?v=2026.11.16-8"></script>
-  <script src="js/store.js?v=2026.11.16-8"></script>
-  <script src="js/ui.js?v=2026.11.16-8"></script>
-  <script src="js/views.js?v=2026.11.16-8"></script>
-  <script src="js/app.js?v=2026.11.16-8"></script>
+  <script src="js/utils.js?v=2026.11.16-9"></script>
+  <script src="js/store.js?v=2026.11.16-9"></script>
+  <script src="js/ui.js?v=2026.11.16-9"></script>
+  <script src="js/views.js?v=2026.11.16-9"></script>
+  <script src="js/app.js?v=2026.11.16-9"></script>
+  <script type="module" src="js/sync.js?v=2026.11.16-9"></script>
 </body>
 </html>
