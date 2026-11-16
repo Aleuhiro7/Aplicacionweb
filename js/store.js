@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets'];
 
   function emptyData() {
     return {
@@ -16,6 +16,7 @@
       reviews: [], // historial de revisiones hechas
       routines: [], // rutina de entrenamiento de cada cliente (días con sus ejercicios)
       library: [], // biblioteca de ejercicios
+      diets: [], // dieta de cada cliente (por ahora, texto libre)
       settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
     };
   }
@@ -169,7 +170,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines']) {
+      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'diets']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -324,6 +325,20 @@
     remove('library', id);
   }
 
+  function dietFor(clientId) {
+    return data.diets.find((d) => d.clientId === clientId) || null;
+  }
+
+  /** Qué le falta a un cliente activo: rutina (con al menos un ejercicio) y dieta. */
+  function planGaps(client) {
+    if (!client || (client.status || 'activo') !== 'activo') return null;
+    const r = routineFor(client.id);
+    const d = dietFor(client.id);
+    const noRoutine = !r || !(r.days || []).some((day) => (day.exercises || []).length);
+    const noDiet = !d || !(d.text || '').trim();
+    return noRoutine || noDiet ? { noRoutine, noDiet } : null;
+  }
+
   function routineFor(clientId) {
     return data.routines.find((r) => r.clientId === clientId) || null;
   }
@@ -376,7 +391,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, routineFor, library, removeLibraryExercise, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

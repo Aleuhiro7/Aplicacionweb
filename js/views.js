@@ -663,10 +663,29 @@
    * ======================================================= */
 
   function clientDiet(c) {
+    const d = Store.dietFor(c.id);
+    const saved = d && (d.text || '').trim();
     return `<section class="card">
-      <div class="card-header"><h2>Dieta</h2></div>
-      ${empty('file', `<strong>Aquí irá la dieta de ${esc(c.name.split(' ')[0])}.</strong><br>Este apartado está preparado; pronto podrás crear y gestionar su plan de alimentación.`)}
+      <div class="card-header">
+        <h2>Dieta</h2>
+        ${saved ? `<span class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : badge('Sin dieta', 'warning')}
+      </div>
+      <form class="diet-form" data-client="${c.id}">
+        <textarea name="text" rows="10" placeholder="Escribe aquí el plan de alimentación de ${esc(c.name.split(' ')[0])}: comidas, cantidades, indicaciones…" aria-label="Dieta">${esc(d ? d.text : '')}</textarea>
+        <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar dieta</button></div>
+      </form>
+      <p class="muted" style="font-size:.82rem;margin:12px 0 0">Más adelante este apartado tendrá su propio formato; lo que escribas aquí se conservará.</p>
     </section>`;
+  }
+
+  function submitDietForm(form) {
+    const clientId = form.dataset.client;
+    const text = form.elements.text.value;
+    const d = Store.dietFor(clientId);
+    if (d) Store.update('diets', d.id, { text });
+    else Store.add('diets', { clientId, text });
+    UI.toast(text.trim() ? 'Dieta guardada' : 'Dieta vacía guardada');
+    App.render();
   }
 
   /* =========================================================
@@ -756,7 +775,8 @@
       .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
       .filter((x) => x.ri && x.ri.status !== 'al-dia')
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
-    return pay.concat(reviews, tasks);
+    const plans = Store.clients().map((c) => ({ c, gaps: Store.planGaps(c), kind: 'plan' })).filter((x) => x.gaps);
+    return pay.concat(reviews, plans, tasks);
   }
 
   function incomeChart() {
@@ -813,6 +833,7 @@
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
     const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
+    const planAlerts = alerts.filter((a) => a.kind === 'plan');
 
     /* Avisos: primero las tarjetas con algo pendiente; las que están al día, en una sola línea al final. */
     const section = (id, title, n, link, list, okText) => ({
@@ -833,6 +854,20 @@
       section('revisiones', 'Seguimientos y revisiones', reviewAlerts.length, '',
         `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
         `Nada en los próximos ${Store.REVIEW_NOTICE} días`),
+      section('sin-plan', 'Sin rutina o dieta', planAlerts.length, '',
+        `<ul class="list">${planAlerts.map((a) => `
+          <li class="plan-item">
+            ${avatar(a.c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a>
+              <div class="meta">${[a.gaps.noRoutine ? 'Sin rutina' : '', a.gaps.noDiet ? 'Sin dieta' : ''].filter(Boolean).join(' · ')}</div>
+            </div>
+            <div class="review-actions">
+              ${a.gaps.noRoutine ? `<button class="btn sm" data-action="open-client-tab" data-client="${a.c.id}" data-value="rutina">${U.icon('plus')}Rutina</button>` : ''}
+              ${a.gaps.noDiet ? `<button class="btn sm" data-action="open-client-tab" data-client="${a.c.id}" data-value="dieta">${U.icon('plus')}Dieta</button>` : ''}
+            </div>
+          </li>`).join('')}</ul>`,
+        'Todos tienen rutina y dieta'),
       section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
         `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,
         'Sin tareas pendientes'),
@@ -1627,7 +1662,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch,
+    renderLibrary, onLibrarySearch, submitDietForm,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

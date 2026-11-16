@@ -97,6 +97,11 @@
   });
 
   main.addEventListener('submit', (e) => {
+    if (e.target.classList.contains('diet-form')) {
+      e.preventDefault();
+      Views.submitDietForm(e.target);
+      return;
+    }
     if (e.target.classList.contains('task-form')) {
       e.preventDefault();
       Views.submitTaskForm(e.target);
