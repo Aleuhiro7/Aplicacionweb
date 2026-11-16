@@ -17,7 +17,6 @@
     vencido: { label: 'Vencido', badge: 'danger' },
   };
   const GOALS = ['Pérdida de grasa', 'Ganancia muscular', 'Recomposición corporal', 'Fuerza', 'Resistencia', 'Salud general', 'Rendimiento deportivo'];
-  const LEVELS = ['Principiante', 'Intermedio', 'Avanzado'];
   const PAY_METHODS = ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'];
   const CURRENCIES = [
     { value: 'EUR', label: 'Euro (€)' },
@@ -88,7 +87,6 @@
       { name: 'rate', label: `Cuota mensual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate },
       { name: 'billingDay', label: 'Día de cobro', type: 'number', min: 1, max: 31, step: 1, default: Number(today().slice(8)), hint: 'Día del mes en que vence la cuota.' },
       { name: 'goal', label: 'Objetivo principal', type: 'select', options: GOALS, placeholder: 'Selecciona…' },
-      { name: 'level', label: 'Nivel', type: 'select', options: LEVELS, placeholder: 'Selecciona…' },
       { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
@@ -254,18 +252,6 @@
       </div>`).join('')}</div>`;
   }
 
-  function levelBreakdown(active) {
-    const rows = LEVELS.map((l, i) => ({ n: i + 1, label: l, count: active.filter((c) => c.level === l).length }));
-    const none = active.filter((c) => !LEVELS.includes(c.level)).length;
-    if (none) rows.push({ n: null, label: 'Sin nivel asignado', count: none });
-    const max = Math.max(1, ...rows.map((r) => r.count));
-    return rows.map((r) => `
-      <div class="level-row">
-        <div class="level-name">${r.n ? `<strong>Nivel ${r.n}</strong> ` : ''}${esc(r.label)}</div>
-        <div class="level-bar"><div class="progress"><span style="width:${(r.count / max) * 100}%"></span></div><strong>${r.count}</strong></div>
-      </div>`).join('');
-  }
-
   function renderPanel() {
     const t = today();
     const d = Store.data;
@@ -321,16 +307,10 @@
         <div class="card stat"><div class="stat-label">Altas en ${month}</div><div class="stat-value">${newThisMonth}</div><div class="stat-sub">${plural(d.clients.length, 'cliente', 'clientes')} en total</div></div>
       </div>
 
-      <div class="grid-main">
-        <section class="card">
-          <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
-          ${incomeChart()}
-        </section>
-        <section class="card">
-          <div class="card-header"><h2>Clientes por nivel</h2></div>
-          ${levelBreakdown(active)}
-        </section>
-      </div>
+      <section class="card chart-card">
+        <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
+        ${incomeChart()}
+      </section>
 
       <div class="grid-2">
         <section class="card">
@@ -382,7 +362,7 @@
         const fs = Store.feeStatus(c);
         const last = Store.lastMeasurement(c.id);
         return `<tr class="clickable" data-href="#/clientes/${c.id}" tabindex="0">
-          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : `<span class="muted" style="font-size:.8rem">${esc(c.level || '')}</span>`}</div></div></td>
+          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</div></div></td>
           <td class="hide-sm">${esc(c.goal || '—')}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
@@ -419,7 +399,7 @@
     const tabs = [['resumen', 'Resumen'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
-    const sub = [c.goal, c.level, ageVal !== null ? `${ageVal} años` : null].filter(Boolean).join(' · ');
+    const sub = [c.goal, ageVal !== null ? `${ageVal} años` : null].filter(Boolean).join(' · ');
     let body;
     switch (state.clientTab) {
       case 'progreso': body = clientProgress(c); break;
@@ -665,7 +645,7 @@
   }
 
   function exportCSV() {
-    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['goal', 'Objetivo'], ['level', 'Nivel'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
+    const cols = [['name', 'Nombre'], ['email', 'Email'], ['phone', 'Teléfono'], ['birthDate', 'Nacimiento'], ['goal', 'Objetivo'], ['status', 'Estado'], ['rate', 'Cuota mensual'], ['billingDay', 'Día de cobro'], ['startDate', 'Alta'], ['health', 'Salud'], ['notes', 'Notas']];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [cols.map((c) => q(c[1])).join(';')].concat(
       Store.clients().map((c) => cols.map(([k]) => q(k === 'status' ? CLIENT_STATUS[clientStatus(c)].label : c[k])).join(';'))
@@ -701,17 +681,17 @@
     const t = today();
     const tDay = Number(t.slice(8));
     const people = [
-      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', goal: 'Pérdida de grasa', level: 'Intermedio', rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, billingDay: 1, paidNow: true, lastM: 3 },
-      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', goal: 'Ganancia muscular', level: 'Avanzado', rate: 80, height: 180, w: 78, fat: 18, months: 4, billingDay: Math.max(1, tDay - 4), paidNow: false, lastM: 6 },
-      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', goal: 'Salud general', level: 'Principiante', rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, billingDay: Math.min(28, tDay + 6), paidNow: false, lastM: 20 },
-      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', goal: 'Rendimiento deportivo', level: 'Intermedio', rate: 60, height: 176, w: 74, fat: 15, months: 2, billingDay: 1, paidNow: true, lastM: 2 },
-      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', goal: 'Fuerza', level: 'Intermedio', rate: 60, height: 170, w: 63, fat: 24, months: 4, billingDay: 10, status: 'pausa', lastM: 40 },
+      { name: 'Laura Martínez', email: 'laura@example.com', phone: '+34 600 111 222', birthDate: '1990-04-12', gender: 'Mujer', goal: 'Pérdida de grasa', rate: 60, height: 165, health: 'Molestias en la rodilla izquierda: evitar impacto alto.', w: 72, fat: 30, months: 5, billingDay: 1, paidNow: true, lastM: 3 },
+      { name: 'Carlos Ruiz', email: 'carlos@example.com', phone: '+34 600 333 444', birthDate: '1985-09-30', gender: 'Hombre', goal: 'Ganancia muscular', rate: 80, height: 180, w: 78, fat: 18, months: 4, billingDay: Math.max(1, tDay - 4), paidNow: false, lastM: 6 },
+      { name: 'Ana Gómez', email: 'ana@example.com', phone: '+34 600 555 666', birthDate: '1972-01-20', gender: 'Mujer', goal: 'Salud general', rate: 50, height: 158, health: 'Hipertensión controlada con medicación.', w: 68, fat: 34, months: 3, billingDay: Math.min(28, tDay + 6), paidNow: false, lastM: 20 },
+      { name: 'Javier López', email: 'javier@example.com', phone: '+34 600 777 888', birthDate: '1998-06-05', gender: 'Hombre', goal: 'Rendimiento deportivo', rate: 60, height: 176, w: 74, fat: 15, months: 2, billingDay: 1, paidNow: true, lastM: 2 },
+      { name: 'Marta Sánchez', email: 'marta@example.com', phone: '+34 600 999 000', birthDate: '1988-11-15', gender: 'Mujer', goal: 'Fuerza', rate: 60, height: 170, w: 63, fat: 24, months: 4, billingDay: 10, status: 'pausa', lastM: 40 },
     ];
     const now = U.parseDate(t);
     people.forEach((p) => {
       const start = U.toISODate(new Date(now.getFullYear(), now.getMonth() - p.months, Math.min(28, p.billingDay)));
       const c = Store.add('clients', {
-        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender, goal: p.goal, level: p.level,
+        name: p.name, email: p.email, phone: p.phone, birthDate: p.birthDate, gender: p.gender, goal: p.goal,
         rate: p.rate, billingDay: p.billingDay, height: p.height, health: p.health || '', notes: '', startDate: start, status: p.status || 'activo',
       });
       // Cuotas cobradas de los meses anteriores (y la de este mes si procede)

@@ -96,7 +96,19 @@
     }
   });
 
-  window.addEventListener('hashchange', render);
+  /* ---------- Menú lateral en móvil (se abre desde la derecha) ---------- */
+  function setMenu(open) {
+    document.body.classList.toggle('menu-open', open);
+    document.querySelector('.menu-btn')?.setAttribute('aria-expanded', String(open));
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-menu]');
+    if (t) { setMenu(t.dataset.menu === 'open'); return; }
+    if (e.target.closest('.sidebar a')) setMenu(false);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+  window.addEventListener('hashchange', () => { setMenu(false); render(); });
 
   // Sincroniza cambios hechos en otra pestaña.
   window.addEventListener('storage', (e) => {
