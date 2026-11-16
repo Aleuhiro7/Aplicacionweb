@@ -1457,6 +1457,84 @@
     UI.toast('Cuestionario preparado en WhatsApp');
   }
 
+  /** Envía el cuestionario como enlace: el cliente lo rellena y las respuestas llegan solas a su ficha. */
+  async function sendQuestionnaireLink(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    if (location.protocol === 'file:') {
+      UI.toast('Abre la app desde tu web publicada para poder enviar enlaces');
+      return;
+    }
+    if (!window.Sync || !Sync.state.user) {
+      const ok = await UI.confirm({
+        title: 'Inicia sesión con Google',
+        message: 'Para enviar el cuestionario como enlace, la app tiene que estar conectada a la nube (sincronización con Google). Así las respuestas del cliente pueden llegar a su ficha.',
+        confirmLabel: 'Iniciar sesión', danger: false,
+      });
+      if (ok && window.Sync) Sync.signIn();
+      return;
+    }
+    const prev = c.questionnaire || {};
+    const reuse = prev.linkToken && !prev.answeredAt;
+    const token = reuse ? prev.linkToken : [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    // Abrimos la ventana ya (si no, el móvil la bloquea al esperar a la nube).
+    const win = window.open('about:blank', '_blank');
+    try {
+      if (!reuse) {
+        await Sync.createQuestionnaire(token, {
+          clientName: c.name.split(' ')[0],
+          coach: (Store.settings.trainerName || 'David Orihuela').split(' ')[0],
+          questions: questions(),
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      if (win) win.close();
+      UI.openModal({
+        title: 'Falta un permiso en Firebase',
+        body: `<p style="margin-top:0">No se ha podido crear el enlace. Lo más probable es que falte añadir la regla de los cuestionarios en la consola de Firebase (Firestore Database → Reglas). Tienes el texto exacto en el archivo <strong>firestore.rules</strong> del proyecto.</p><p class="muted" style="margin-bottom:0">Detalle: ${esc(e.code || e.message || e)}</p>`,
+        footer: '<button type="button" class="btn primary" data-close>Entendido</button>',
+      });
+      return;
+    }
+    const url = new URL(`cuestionario.html?t=${token}`, location.href.split('#')[0]).href;
+    const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
+    const text = `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para preparar tu plan necesito conocerte un poco mejor. Rellena este cuestionario, son solo unos minutos:\n${url}\n¡Muchas gracias!`;
+    const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
+    if (win) win.location.href = wa; else window.open(wa, '_blank');
+    Store.update('clients', clientId, { questionnaire: Object.assign({}, prev, { sentAt: today(), linkToken: token, via: 'enlace' }) });
+    App.render();
+    UI.toast('Enlace preparado en WhatsApp: las respuestas llegarán solas a su ficha');
+  }
+
+  /** Mira en la nube si algún cliente ha respondido su cuestionario por enlace. */
+  let checkingLinks = false;
+  async function checkQuestionnaireLinks(onlyClientId, manual) {
+    if (checkingLinks || !window.Sync || !Sync.state.user) {
+      if (manual) UI.toast('Inicia sesión con Google (Ajustes) para recibir las respuestas');
+      return;
+    }
+    checkingLinks = true;
+    let found = 0;
+    try {
+      const pending = Store.data.clients.filter((c) => c.questionnaire && c.questionnaire.linkToken && !c.questionnaire.answeredAt && (!onlyClientId || c.id === onlyClientId));
+      for (const c of pending) {
+        const doc = await Sync.fetchQuestionnaire(c.questionnaire.linkToken).catch(() => null);
+        if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
+        const qs = Array.isArray(doc.questions) ? doc.questions : questions();
+        const items = qs.map((q, i) => ({ q, a: (doc.answers[i] || '').trim() }));
+        const answeredAt = doc.answeredAt && doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
+        Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { items, answeredAt }) });
+        found++;
+        UI.toast(`${c.name.split(' ')[0]} ha respondido el cuestionario`);
+      }
+    } finally {
+      checkingLinks = false;
+    }
+    if (found) App.render();
+    else if (manual) UI.toast('Todavía no ha respondido');
+  }
+
   /** Reparte una respuesta pegada de WhatsApp («1. … 2. …») entre las preguntas. */
   function splitAnswers(text) {
     const out = {};
@@ -1513,14 +1591,16 @@
     const status = answered.length
       ? badge('Respondido', 'success')
       : q.sentAt ? badge('Pendiente de respuesta', 'info') : badge('Sin enviar', 'warning');
-    const meta = [q.sentAt ? `Enviado el ${fmtDate(q.sentAt)}` : '', q.answeredAt ? `respondido el ${fmtDate(q.answeredAt)}` : ''].filter(Boolean).join(' · ');
+    const meta = [q.sentAt ? `${q.linkToken ? 'Enlace enviado' : 'Enviado'} el ${fmtDate(q.sentAt)}` : '', q.answeredAt ? `respondido el ${fmtDate(q.answeredAt)}` : (q.linkToken ? 'las respuestas aparecerán aquí cuando lo rellene' : '')].filter(Boolean).join(' · ');
     return `<section class="card questionnaire-card">
       <div class="card-header"><h2>Cuestionario</h2>${status}</div>
       <p class="muted" style="margin:0 0 14px">${meta ? esc(meta.charAt(0).toUpperCase() + meta.slice(1)) + '.' : `Envíale el cuestionario para conocer su objetivo, salud, experiencia, disponibilidad y hábitos.`}</p>
       <div class="actions">
-        <button class="btn wa-btn" data-action="send-questionnaire" data-client="${c.id}">${U.icon('message')}${q.sentAt ? 'Reenviar por WhatsApp' : 'Enviar por WhatsApp'}</button>
-        <button class="btn ${q.sentAt && !answered.length ? 'primary' : ''}" data-action="questionnaire-answers" data-client="${c.id}">${U.icon('edit')}${answered.length ? 'Editar respuestas' : 'Apuntar respuestas'}</button>
+        <button class="btn wa-btn" data-action="send-questionnaire-link" data-client="${c.id}">${U.icon('message')}${q.linkToken && !answered.length ? 'Reenviar enlace por WhatsApp' : 'Enviar enlace por WhatsApp'}</button>
+        ${q.linkToken && !answered.length ? `<button class="btn" data-action="check-questionnaire" data-client="${c.id}">${U.icon('download')}Comprobar respuestas</button>` : ''}
+        <button class="btn" data-action="questionnaire-answers" data-client="${c.id}">${U.icon('edit')}${answered.length ? 'Editar respuestas' : 'Apuntar a mano'}</button>
       </div>
+      <p class="q-alt"><button class="link-btn" data-action="send-questionnaire" data-client="${c.id}">o enviar las preguntas como texto en WhatsApp</button></p>
       ${answered.length ? `<details class="q-answers"${state.showAnswers ? ' open' : ''}>
         <summary data-action="toggle-answers">Ver respuestas (${answered.length} de ${(q.items || []).length})</summary>
         <dl>${(q.items || []).map((x, i) => `<dt>${i + 1}. ${esc(x.q)}</dt><dd>${x.a ? esc(x.a) : '<span class="muted">Sin respuesta</span>'}</dd>`).join('')}</dl>
@@ -1787,6 +1867,8 @@
     'sample-data': () => loadSample(),
     'enable-notifications': () => enableNotifications(),
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
+    'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
+    'check-questionnaire': (d) => checkQuestionnaireLinks(d.client, true),
     'questionnaire-answers': (d) => questionnaireForm(d.client),
     'toggle-answers': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showAnswers = det.open; },
     'questionnaire-reset': async () => {
@@ -1808,7 +1890,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, submitDietForm, saveQuestionnaire,
+    renderLibrary, onLibrarySearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

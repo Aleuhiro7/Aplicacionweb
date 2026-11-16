@@ -161,6 +161,9 @@
     if (el.textContent !== text) el.textContent = text;
   }
   setInterval(refreshGreeting, 60 * 1000);
+  // Respuestas de cuestionarios enviados por enlace: se comprueban cada pocos minutos y al volver a la app.
+  setInterval(() => { if (!document.hidden) Views.checkQuestionnaireLinks(); }, 3 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) Views.checkQuestionnaireLinks(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGreeting(); });
   window.addEventListener('focus', refreshGreeting);
 })();

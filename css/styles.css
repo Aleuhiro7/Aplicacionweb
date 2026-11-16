@@ -836,3 +836,24 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 .q-answers dt { font-weight: 700; font-size: .9rem; margin-top: 12px; }
 .q-answers dd { margin: 4px 0 0; white-space: pre-wrap; color: var(--text); }
 #questionnaire-form textarea { min-height: 260px; line-height: 1.7; }
+
+/* ---------- Página pública del cuestionario ---------- */
+body.q-page { min-height: 100vh; }
+.q-wrap { max-width: 680px; margin: 0 auto; padding: 28px 16px 60px; }
+.q-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.q-brand .brand-name small { color: var(--muted); }
+.q-title { font: 700 2.2rem/1.1 "Barlow Semi Condensed", sans-serif; margin: 0 0 8px; }
+.q-intro { color: var(--muted); margin: 0 0 20px; }
+.q-field { margin-bottom: 18px; }
+.q-field label { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; line-height: 1.4; }
+.q-num { flex-shrink: 0; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--primary); font-size: .8rem; font-weight: 800; }
+.q-field textarea { min-height: 52px; resize: none; overflow: hidden; }
+.q-submit { width: 100%; justify-content: center; padding: 13px; font-size: 1.05rem; margin-top: 6px; }
+.q-note { font-size: .82rem; text-align: center; margin: 12px 0 0; }
+.q-error { color: var(--danger); font-weight: 600; margin: 0 0 10px; }
+.q-done { text-align: center; padding: 20px 0; }
+.q-done-icon { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; background: var(--success-soft); color: var(--success); font-size: 2rem; font-weight: 800; }
+
+.q-alt { margin: 10px 0 0; }
+.link-btn { appearance: none; border: 0; background: none; padding: 0; color: var(--muted); font: inherit; font-size: .85rem; text-decoration: underline; cursor: pointer; }
+.link-btn:hover { color: var(--text); }

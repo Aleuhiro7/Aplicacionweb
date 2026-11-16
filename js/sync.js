@@ -8,7 +8,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, onSnapshot, setDoc, serverTimestamp,
-  getDoc, deleteDoc,
+  getDoc, deleteDoc, getDocFromServer,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -40,6 +40,7 @@ function syncedKey(uid) { return 'entrenapro:synced:' + uid; }
 
 function setStatus(status, error) {
   if (status === 'on' && state.status !== 'on' && window.Photos) setTimeout(() => window.Photos.uploadPending(), 0);
+  if (status === 'on' && state.status !== 'on' && window.Views && Views.checkQuestionnaireLinks) setTimeout(() => Views.checkQuestionnaireLinks(), 500);
   state.status = status;
   state.error = error || '';
   const btn = document.querySelector('.sync-btn');
@@ -136,6 +137,24 @@ async function deletePhoto(id) {
   try { await deleteDoc(doc(db, 'users', state.user.uid, 'photos', id)); } catch (e) { console.error(e); }
 }
 
+/* ---------- Cuestionario por enlace: cuestionarios/{token} ----------
+ * El entrenador crea el documento (con su uid como dueño) y el cliente, sin cuenta,
+ * solo puede añadir sus respuestas una vez. Ver firestore.rules. */
+async function createQuestionnaire(token, payload) {
+  if (!state.user) throw new Error('Inicia sesión con Google para crear enlaces');
+  await setDoc(doc(db, 'cuestionarios', token), Object.assign({}, payload, {
+    owner: state.user.uid, answers: null, answeredAt: null, createdAt: serverTimestamp(),
+  }));
+}
+
+async function fetchQuestionnaire(token) {
+  if (!state.user) return null;
+  const ref = doc(db, 'cuestionarios', token);
+  let snap;
+  try { snap = await getDocFromServer(ref); } catch (e) { snap = await getDoc(ref); }
+  return snap.exists() ? snap.data() : null;
+}
+
 async function signIn() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -183,6 +202,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire };
 setStatus(state.status);
 App.render();
