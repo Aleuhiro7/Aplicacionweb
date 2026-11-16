@@ -49,12 +49,17 @@
   const badge = (text, kind) => `<span class="badge ${kind || ''}">${esc(text)}</span>`;
   const statusBadge = (s) => badge(SESSION_STATUS[s.status]?.label || s.status, SESSION_STATUS[s.status]?.badge);
   const payBadge = (p) => (p.status === 'pagado' ? badge('Pagado', 'success') : badge('Pendiente', 'warning'));
-  const empty = (icon, text, extra = '') => `<div class="empty"><span class="big" aria-hidden="true">${icon}</span>${text}${extra}</div>`;
+  const empty = (icon, text, extra = '') => `<div class="empty"><span class="empty-icon">${U.icon(icon)}</span><div>${text}</div>${extra}</div>`;
   const endTime = (s) => {
     const [h, m] = (s.time || '00:00').split(':').map(Number);
     const total = h * 60 + m + (Number(s.duration) || 60);
     return `${U.pad(Math.floor(total / 60) % 24)}:${U.pad(total % 60)}`;
   };
+
+  function greeting() {
+    const h = new Date().getHours();
+    return h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+  }
 
   function clientOptions(includeInactiveId) {
     return Store.clients()
@@ -182,7 +187,7 @@
           UI.toast(repeat > 1 ? `${repeat} sesiones programadas` : 'Sesión programada');
         }
         if (overlap) {
-          setTimeout(() => UI.toast(`⚠️ Se solapa con la sesión de ${Store.clientName(overlap.clientId)} (${overlap.time})`), 2700);
+          setTimeout(() => UI.toast(`Atención: se solapa con la sesión de ${Store.clientName(overlap.clientId)} (${overlap.time})`), 2700);
         }
         App.render();
       },
@@ -305,7 +310,7 @@
       ? `<a href="#/clientes/${client.id}" class="title" style="color:inherit;text-decoration:none">${esc(client.name)}</a>`
       : `<span class="title">${esc(s.type || 'Sesión')}</span>`;
     const quick = s.status === 'programada'
-      ? `<button class="btn sm" data-action="session-status" data-id="${s.id}" data-status="completada" title="Marcar como completada">✓ Hecha</button>`
+      ? `<button class="btn sm" data-action="session-status" data-id="${s.id}" data-status="completada" title="Marcar como completada">${U.icon('check')}Hecha</button>`
       : statusBadge(s);
     return `<li class="session-row ${s.status}">
       <span class="time-badge">${esc(s.time || '--:--')}</span>
@@ -314,7 +319,7 @@
         <div class="meta">${when}${esc(s.duration || 60)} min${showClient && s.type ? ' · ' + esc(s.type) : ''}${s.location ? ' · ' + esc(s.location) : ''}</div>
       </div>
       ${quick}
-      <button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar sesión" title="Editar">✎</button>
+      <button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar sesión" title="Editar">${U.icon('edit')}</button>
     </li>`;
   }
 
@@ -322,81 +327,132 @@
    * Panel
    * ======================================================= */
 
-  function renderPanel() {
+  /** Avisos: bonos casi agotados y clientes activos sin sesiones próximas. */
+  function computeAlerts() {
     const t = today();
-    const d = Store.data;
-    const name = Store.settings.trainerName;
-
-    if (!d.clients.length) {
-      return `
-        <div class="page-header"><div><h1>¡Bienvenido${name ? ', ' + esc(name) : ''}!</h1><p>Tu centro de control como entrenador personal.</p></div></div>
-        <div class="card">
-          ${empty('🏋️', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
-            `<div class="actions" style="justify-content:center;margin-top:16px">
-               <button class="btn primary" data-action="new-client">+ Añadir cliente</button>
-               <button class="btn" data-action="sample-data">Cargar datos de ejemplo</button>
-             </div>`)}
-        </div>`;
-    }
-
-    const weekStart = U.startOfWeek(t);
-    const weekEnd = U.addDays(weekStart, 6);
-    const weekSessions = Store.sessionsBetween(weekStart, weekEnd).filter((s) => s.status !== 'cancelada');
-    const doneWeek = weekSessions.filter((s) => s.status === 'completada').length;
-    const monthStart = t.slice(0, 8) + '01';
-    const income = Store.paidBetween(monthStart, t.slice(0, 8) + '31');
-    const pending = Store.pendingAmount();
-    const pendingCount = d.payments.filter((p) => p.status === 'pendiente').length;
-    const active = d.clients.filter((c) => c.status !== 'inactivo');
-
-    const todays = Store.sessionsBetween(t, t).filter((s) => s.status !== 'cancelada');
-    const upcoming = Store.sessionsBetween(U.addDays(t, 1), U.addDays(t, 7)).filter((s) => s.status === 'programada');
-    const pendingPays = d.payments.filter((p) => p.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
-
-    // Alertas
     const alerts = [];
-    for (const c of active) {
+    for (const c of Store.data.clients.filter((x) => x.status !== 'inactivo')) {
       const pack = Store.packBalance(c.id);
       if (pack && pack.remaining <= 1) {
         alerts.push({ c, text: pack.remaining < 0 ? `Bono agotado (${-pack.remaining} sesión/es sin cubrir)` : pack.remaining === 0 ? 'Bono agotado' : 'Queda 1 sesión del bono', kind: 'warning' });
       }
       const last = Store.lastCompletedSession(c.id);
-      const next = Store.nextSession(c.id);
-      if (!next) {
+      if (!Store.nextSession(c.id)) {
         const days = last ? U.daysBetween(last.date, t) : null;
         if (days === null || days >= 14) {
           alerts.push({ c, text: last ? `Sin sesiones desde hace ${days} días` : 'Sin sesiones programadas', kind: 'info' });
         }
       }
     }
+    return alerts;
+  }
+
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  function incomeChart() {
+    const now = U.parseDate(today());
+    const items = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const from = U.toISODate(d);
+      const to = U.toISODate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+      items.push({ label: MONTHS[d.getMonth()].slice(0, 3), value: Store.paidBetween(from, to), current: i === 0 });
+    }
+    const max = Math.max(...items.map((x) => x.value));
+    if (!max) return empty('trend', 'Aún no hay pagos cobrados en los últimos 6 meses.');
+    return `<div class="bars" role="img" aria-label="Ingresos cobrados por mes">${items.map((x) => `
+      <div class="bar-col${x.current ? ' current' : ''}">
+        <span class="bar-value">${x.value ? money(x.value) : ''}</span>
+        <div class="bar" style="height:${Math.max(x.value ? 3 : 0, (x.value / max) * 100)}%" title="${esc(x.label)}: ${money(x.value)}"></div>
+        <span class="bar-label">${esc(x.label)}</span>
+      </div>`).join('')}</div>`;
+  }
+
+  function levelBreakdown(active) {
+    const rows = LEVELS.map((l, i) => ({ n: i + 1, label: l, count: active.filter((c) => c.level === l).length }));
+    const none = active.filter((c) => !LEVELS.includes(c.level)).length;
+    if (none) rows.push({ n: null, label: 'Sin nivel asignado', count: none });
+    const max = Math.max(1, ...rows.map((r) => r.count));
+    return rows.map((r) => `
+      <div class="level-row">
+        <div class="level-name">${r.n ? `<strong>Nivel ${r.n}</strong> ` : ''}${esc(r.label)}</div>
+        <div class="level-bar"><div class="progress"><span style="width:${(r.count / max) * 100}%"></span></div><strong>${r.count}</strong></div>
+      </div>`).join('');
+  }
+
+  function renderPanel() {
+    const t = today();
+    const d = Store.data;
+    const name = Store.settings.trainerName || 'David Orihuela';
+    const firstName = name ? name.split(' ')[0] : '';
+    const dateLine = `<p class="eyebrow">${esc(fmtDate(t))}</p>`;
+
+    if (!d.clients.length) {
+      return `
+        <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido${firstName ? ', ' + esc(firstName) : ''}!</h1><p>Tu centro de control como entrenador personal.</p></div></div>
+        <div class="card">
+          ${empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
+            `<div class="actions" style="justify-content:center;margin-top:16px">
+               <button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button>
+               <button class="btn" data-action="sample-data">Cargar datos de ejemplo</button>
+             </div>`)}
+        </div>`;
+    }
+
+    const weekStart = U.startOfWeek(t);
+    const weekSessions = Store.sessionsBetween(weekStart, U.addDays(weekStart, 6)).filter((s) => s.status !== 'cancelada');
+    const monthStart = t.slice(0, 8) + '01';
+    const monthEnd = t.slice(0, 8) + '31';
+    const income = Store.paidBetween(monthStart, monthEnd);
+    const pendingPays = d.payments.filter((p) => p.status === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
+    const pendingMonth = pendingPays.filter((p) => p.date >= monthStart && p.date <= monthEnd).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const pending = Store.pendingAmount();
+    const pendingClients = new Set(pendingPays.map((p) => p.clientId)).size;
+    const overdue = pendingPays.filter((p) => p.date < t).length;
+    const active = d.clients.filter((c) => c.status !== 'inactivo');
+
+    const todays = Store.sessionsBetween(t, t).filter((s) => s.status !== 'cancelada');
+    const upcoming = Store.sessionsBetween(U.addDays(t, 1), U.addDays(t, 7)).filter((s) => s.status === 'programada');
+    const nowTime = `${U.pad(new Date().getHours())}:${U.pad(new Date().getMinutes())}`;
+    const nextToday = todays.find((x) => x.status === 'programada' && x.time >= nowTime);
+    const alerts = computeAlerts();
+    const monthName = MONTHS[U.parseDate(t).getMonth()];
 
     return `
       <div class="page-header">
         <div>
-          <h1>${name ? 'Hola, ' + esc(name) : 'Panel'}</h1>
-          <p class="capitalize">${esc(U.fmtWeekday(t))}</p>
-        </div>
-        <div class="actions">
-          <button class="btn" data-action="new-payment">+ Pago</button>
-          <button class="btn primary" data-action="new-session">+ Sesión</button>
+          ${dateLine}
+          <h1 class="display">${greeting()}${firstName ? ', ' + esc(firstName) : ''}.</h1>
+          <p>${todays.length ? `Hoy tienes ${todays.length} ${todays.length === 1 ? 'sesión' : 'sesiones'}${nextToday ? ` · la próxima a las ${esc(nextToday.time)} con ${esc(Store.clientName(nextToday.clientId))}` : ''}.` : 'Hoy no tienes sesiones programadas.'}</p>
         </div>
       </div>
 
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${d.clients.length - active.length} inactivos</div></div>
-        <div class="card stat"><div class="stat-label">Sesiones esta semana</div><div class="stat-value">${weekSessions.length}</div><div class="stat-sub">${doneWeek} completadas</div></div>
-        <div class="card stat"><div class="stat-label">Ingresos del mes</div><div class="stat-value">${money(income)}</div><div class="stat-sub">pagos cobrados</div></div>
-        <div class="card stat"><div class="stat-label">Pendiente de cobro</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${pendingCount} pago/s</div></div>
+        <div class="card stat"><div class="stat-label">Cobrado en ${monthName}</div><div class="stat-value">${money(income)}</div><div class="stat-sub">de ${money(income + pendingMonth)} previstos</div></div>
+        <div class="card stat"><div class="stat-label">Por cobrar</div><div class="stat-value">${money(pending)}</div><div class="stat-sub">${pendingClients} ${pendingClients === 1 ? 'cliente' : 'clientes'} · ${overdue} ${overdue === 1 ? 'vencido' : 'vencidos'}</div></div>
+        <div class="card stat"><div class="stat-label">Clientes activos</div><div class="stat-value">${active.length}</div><div class="stat-sub">${d.clients.length - active.length} ${d.clients.length - active.length === 1 ? 'inactivo' : 'inactivos'}</div></div>
+        <div class="card stat"><div class="stat-label">Sesiones hoy</div><div class="stat-value">${todays.length}</div><div class="stat-sub">${weekSessions.length} esta semana</div></div>
+      </div>
+
+      <div class="grid-main">
+        <section class="card">
+          <div class="card-header"><h2>Ingresos cobrados</h2><span class="muted">Últimos 6 meses</span></div>
+          ${incomeChart()}
+        </section>
+        <section class="card">
+          <div class="card-header"><h2>Clientes por nivel</h2></div>
+          ${levelBreakdown(active)}
+        </section>
       </div>
 
       <div class="grid-2">
         <section class="card">
-          <div class="card-header"><h2>Hoy</h2><button class="btn sm" data-action="new-session" data-date="${t}">+ Añadir</button></div>
-          ${todays.length ? `<ul class="list">${todays.map((s) => sessionItem(s)).join('')}</ul>` : empty('☕', 'No tienes sesiones hoy.')}
+          <div class="card-header"><h2>Hoy</h2><button class="btn sm" data-action="new-session" data-date="${t}">${U.icon('plus')}Añadir</button></div>
+          ${todays.length ? `<ul class="list">${todays.map((s) => sessionItem(s)).join('')}</ul>` : empty('sun', 'No tienes sesiones hoy.')}
         </section>
         <section class="card">
           <div class="card-header"><h2>Próximos 7 días</h2><a href="#/agenda" class="btn sm">Ver agenda</a></div>
-          ${upcoming.length ? `<ul class="list">${upcoming.slice(0, 8).map((s) => sessionItem(s, { showDate: true })).join('')}</ul>${upcoming.length > 8 ? `<p class="muted">y ${upcoming.length - 8} más…</p>` : ''}` : empty('📅', 'Nada programado esta semana.')}
+          ${upcoming.length ? `<ul class="list">${upcoming.slice(0, 8).map((s) => sessionItem(s, { showDate: true })).join('')}</ul>${upcoming.length > 8 ? `<p class="muted">y ${upcoming.length - 8} más…</p>` : ''}` : empty('calendar', 'Nada programado esta semana.')}
         </section>
         <section class="card">
           <div class="card-header"><h2>Cobros pendientes</h2><a href="#/pagos" class="btn sm">Ver pagos</a></div>
@@ -405,9 +461,9 @@
               <div class="grow"><div class="title">${esc(Store.clientName(p.clientId))}</div><div class="meta">${esc(p.concept || 'Pago')} · ${fmtDate(p.date)}</div></div>
               <strong>${money(p.amount)}</strong>
               <button class="btn sm" data-action="mark-paid" data-id="${p.id}">Cobrado</button>
-            </li>`).join('')}</ul>` : empty('✅', 'Todo cobrado.')}
+            </li>`).join('')}</ul>` : empty('done', 'Todo cobrado.')}
         </section>
-        <section class="card">
+        <section class="card" id="atencion">
           <div class="card-header"><h2>Requieren atención</h2></div>
           ${alerts.length ? `<ul class="list">${alerts.slice(0, 8).map((a) => `
             <li>
@@ -416,7 +472,7 @@
               ${a.kind === 'warning'
                 ? `<button class="btn sm" data-action="new-payment" data-client="${a.c.id}">Renovar</button>`
                 : `<button class="btn sm" data-action="new-session" data-client="${a.c.id}">Programar</button>`}
-            </li>`).join('')}</ul>` : empty('👍', 'Todos tus clientes están al día.')}
+            </li>`).join('')}</ul>` : empty('done', 'Todos tus clientes están al día.')}
         </section>
       </div>`;
   }
@@ -438,8 +494,8 @@
     const list = filteredClients();
     if (!list.length) {
       return Store.data.clients.length
-        ? empty('🔍', 'Ningún cliente coincide con la búsqueda.')
-        : empty('👥', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">+ Añadir cliente</button></div>`);
+        ? empty('search', 'Ningún cliente coincide con la búsqueda.')
+        : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
       <thead><tr><th>Cliente</th><th class="hide-sm">Objetivo</th><th class="hide-sm">Teléfono</th><th>Próxima sesión</th><th class="hide-sm">Bono</th><th class="num">Pendiente</th></tr></thead>
@@ -464,8 +520,8 @@
     const seg = (v, label) => `<button data-action="client-filter" data-value="${v}" class="${state.clientFilter === v ? 'active' : ''}">${label}</button>`;
     return `
       <div class="page-header">
-        <div><h1>Clientes</h1><p>${Store.data.clients.length} en total</p></div>
-        <button class="btn primary" data-action="new-client">+ Nuevo cliente</button>
+        <div><h1 class="display">Clientes</h1><p>${Store.data.clients.length} en total</p></div>
+        <button class="btn primary" data-action="new-client">${U.icon('plus')}Nuevo cliente</button>
       </div>
       <div class="card">
         <div class="toolbar">
@@ -481,7 +537,7 @@
   function renderClient(id) {
     const c = Store.get('clients', id);
     if (!c) {
-      return `<a href="#/clientes" class="back-link">← Clientes</a><div class="card">${empty('🤷', 'Este cliente no existe o fue eliminado.')}</div>`;
+      return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
     const tabs = [['resumen', 'Resumen'], ['sesiones', 'Sesiones'], ['progreso', 'Progreso'], ['pagos', 'Pagos']];
     const ageVal = U.age(c.birthDate);
@@ -494,8 +550,9 @@
       default: body = clientSummary(c);
     }
     return `
-      <a href="#/clientes" class="back-link">← Clientes</a>
-      <div class="card">
+      <a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a>
+      <div class="card profile-card">
+        <div class="profile-cover"></div>
         <div class="profile-head">
           ${avatar(c, 'lg')}
           <div class="grow">
@@ -503,13 +560,13 @@
             <p>${esc(sub || 'Sin objetivo definido')}</p>
           </div>
           <div class="actions">
-            ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
-            ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">Email</a>` : ''}
-            <button class="btn" data-action="edit-client" data-id="${c.id}">Editar</button>
-            <button class="btn primary" data-action="new-session" data-client="${c.id}">+ Sesión</button>
+            ${c.phone ? `<a class="btn" href="https://wa.me/${esc(c.phone.replace(/[^\d]/g, ''))}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
+            ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${U.icon('mail')}Email</a>` : ''}
+            <button class="btn" data-action="edit-client" data-id="${c.id}">${U.icon('edit')}Editar</button>
+            <button class="btn primary" data-action="new-session" data-client="${c.id}">${U.icon('plus')}Sesión</button>
           </div>
         </div>
-        ${c.health ? `<div class="alert">⚠️ <strong>Salud:</strong> ${esc(c.health)}</div>` : ''}
+        ${c.health ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
       </div>
       <div class="tabs" role="tablist">
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
@@ -559,7 +616,7 @@
             ${row('Peso actual', `${fmtNum(lastM.weight)} kg <span class="muted">(${fmtDate(lastM.date)})</span>`)}
             ${weightDelta !== null ? row('Cambio', `<span class="${weightDelta > 0 ? 'delta-up' : 'delta-down'}">${weightDelta > 0 ? '+' : ''}${fmtNum(weightDelta)} kg</span> desde ${fmtDate(ms[0].date)}`) : ''}
             ${imc ? row('IMC', fmtNum(imc)) : ''}
-          </dl>` : empty('📏', 'Sin mediciones todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">+ Medición</button></div>`)}
+          </dl>` : empty('ruler', 'Sin mediciones todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button></div>`)}
           ${ms.length >= 2 ? `<div class="mt">${UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg', height: 180 })}</div>` : ''}
         </section>
       </div>`;
@@ -570,7 +627,7 @@
     const statusSelect = (s) => `<select data-action-change="session-status" data-id="${s.id}" aria-label="Estado" style="width:auto;padding:4px 8px">
       ${Object.entries(SESSION_STATUS).map(([v, o]) => `<option value="${v}" ${s.status === v ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
     return `<section class="card">
-      <div class="card-header"><h2>Sesiones (${sessions.length})</h2><button class="btn primary sm" data-action="new-session" data-client="${c.id}">+ Sesión</button></div>
+      <div class="card-header"><h2>Sesiones (${sessions.length})</h2><button class="btn primary sm" data-action="new-session" data-client="${c.id}">${U.icon('plus')}Sesión</button></div>
       ${sessions.length ? `<div class="table-wrap"><table>
         <thead><tr><th>Fecha</th><th>Hora</th><th class="hide-sm">Tipo</th><th>Estado</th><th class="hide-sm">Notas</th><th></th></tr></thead>
         <tbody>${sessions.map((s) => `<tr>
@@ -579,8 +636,8 @@
           <td class="hide-sm">${esc(s.type || '—')}</td>
           <td>${statusSelect(s)}</td>
           <td class="hide-sm muted" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.notes || '')}</td>
-          <td class="actions-cell"><button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar">✎</button></td>
-        </tr>`).join('')}</tbody></table></div>` : empty('📅', 'Sin sesiones registradas.')}
+          <td class="actions-cell"><button class="icon-btn" data-action="edit-session" data-id="${s.id}" aria-label="Editar">${U.icon('edit')}</button></td>
+        </tr>`).join('')}</tbody></table></div>` : empty('calendar', 'Sin sesiones registradas.')}
     </section>`;
   }
 
@@ -600,26 +657,26 @@
       <section class="card">
         <div class="card-header">
           <h2>Evolución: ${esc(metric.label)}</h2>
-          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">+ Medición</button>
+          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medición</button>
         </div>
         ${available.length ? `<div class="segmented" style="margin-bottom:12px">${available.map((m) => `<button data-action="metric" data-value="${m.key}" class="${m.key === metric.key ? 'active' : ''}">${m.label}</button>`).join('')}</div>` : ''}
-        ${ms.length ? UI.lineChart(points, { unit: metric.unit }) : empty('📏', 'Registra la primera medición para empezar a ver la evolución.')}
+        ${ms.length ? UI.lineChart(points, { unit: metric.unit }) : empty('ruler', 'Registra la primera medición para empezar a ver la evolución.')}
       </section>
       ${ms.length ? `<section class="card">
         <div class="card-header"><h2>Historial de mediciones</h2><span class="muted" style="font-size:.85rem">Diferencias respecto a la primera medición</span></div>
         <div class="table-wrap"><table>
           <thead><tr><th>Fecha</th>${METRICS.map((m) => `<th class="num">${m.label}${m.unit === '%' ? '' : ` <span style="text-transform:none">(${m.unit})</span>`}</th>`).join('')}<th></th></tr></thead>
           <tbody>${ms.slice().reverse().map((m) => `<tr>
-            <td>${fmtDate(m.date)}${m.notes ? ` <span title="${esc(m.notes)}">📝</span>` : ''}</td>
+            <td>${fmtDate(m.date)}${m.notes ? ` <span class="muted" title="${esc(m.notes)}">${U.icon('note')}</span>` : ''}</td>
             ${METRICS.map((k) => `<td class="num">${fmtNum(m[k.key])}${delta(m, k.key)}</td>`).join('')}
-            <td class="actions-cell"><button class="icon-btn" data-action="edit-measurement" data-id="${m.id}" aria-label="Editar">✎</button></td>
+            <td class="actions-cell"><button class="icon-btn" data-action="edit-measurement" data-id="${m.id}" aria-label="Editar">${U.icon('edit')}</button></td>
           </tr>`).join('')}</tbody>
         </table></div>
       </section>` : ''}`;
   }
 
   function paymentsTable(list, { showClient = true } = {}) {
-    if (!list.length) return empty('💶', 'No hay pagos registrados.');
+    if (!list.length) return empty('wallet', 'No hay pagos registrados.');
     return `<div class="table-wrap"><table>
       <thead><tr><th>Fecha</th>${showClient ? '<th>Cliente</th>' : ''}<th>Concepto</th><th class="hide-sm">Método</th><th class="num">Importe</th><th>Estado</th><th></th></tr></thead>
       <tbody>${list.map((p) => `<tr>
@@ -631,7 +688,7 @@
         <td>${payBadge(p)}</td>
         <td class="actions-cell">
           ${p.status === 'pendiente' ? `<button class="btn sm" data-action="mark-paid" data-id="${p.id}">Cobrado</button>` : ''}
-          <button class="icon-btn" data-action="edit-payment" data-id="${p.id}" aria-label="Editar">✎</button>
+          <button class="icon-btn" data-action="edit-payment" data-id="${p.id}" aria-label="Editar">${U.icon('edit')}</button>
         </td>
       </tr>`).join('')}</tbody></table></div>`;
   }
@@ -639,7 +696,7 @@
   function clientPayments(c) {
     const list = Store.paymentsFor(c.id);
     return `<section class="card">
-      <div class="card-header"><h2>Pagos (${list.length})</h2><button class="btn primary sm" data-action="new-payment" data-client="${c.id}">+ Pago</button></div>
+      <div class="card-header"><h2>Pagos (${list.length})</h2><button class="btn primary sm" data-action="new-payment" data-client="${c.id}">${U.icon('plus')}Pago</button></div>
       ${paymentsTable(list, { showClient: false })}
     </section>`;
   }
@@ -663,7 +720,7 @@
       const list = sessions.filter((s) => s.date === day);
       days += `<div class="day-group">
         <h3 class="day-title ${day === t ? 'today' : ''}"><span class="capitalize">${esc(U.fmtWeekday(day))}</span>${day === t ? badge('Hoy', 'primary') : ''}
-          <button class="icon-btn" style="margin-left:auto;width:28px;height:28px" data-action="new-session" data-date="${day}" aria-label="Añadir sesión el ${esc(U.fmtWeekday(day))}" title="Añadir sesión">＋</button>
+          <button class="icon-btn" style="margin-left:auto;width:28px;height:28px" data-action="new-session" data-date="${day}" aria-label="Añadir sesión el ${esc(U.fmtWeekday(day))}" title="Añadir sesión">${U.icon('plus')}</button>
         </h3>
         ${list.length ? `<ul class="list">${list.map((s) => sessionItem(s)).join('')}</ul>` : '<div class="muted" style="font-size:.85rem;padding:2px 0 8px">Sin sesiones</div>'}
       </div>`;
@@ -671,15 +728,15 @@
 
     return `
       <div class="page-header">
-        <div><h1>Agenda</h1><p>${active.length} sesiones · ${fmtNum(hours)} h de entrenamiento</p></div>
-        <button class="btn primary" data-action="new-session">+ Nueva sesión</button>
+        <div><h1 class="display">Agenda</h1><p>${active.length} sesiones · ${fmtNum(hours)} h de entrenamiento</p></div>
+        <button class="btn primary" data-action="new-session">${U.icon('plus')}Nueva sesión</button>
       </div>
       <div class="card">
         <div class="card-header">
           <div class="week-nav">
-            <button class="btn sm" data-action="week" data-value="-1" aria-label="Semana anterior">←</button>
+            <button class="btn sm" data-action="week" data-value="-1" aria-label="Semana anterior">${U.icon('left')}</button>
             <span class="week-label">${esc(label)}</span>
-            <button class="btn sm" data-action="week" data-value="1" aria-label="Semana siguiente">→</button>
+            <button class="btn sm" data-action="week" data-value="1" aria-label="Semana siguiente">${U.icon('right')}</button>
           </div>
           <button class="btn sm" data-action="week" data-value="0">Esta semana</button>
         </div>
@@ -702,8 +759,8 @@
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1>Pagos</h1><p>Cobros, bonos y pagos pendientes</p></div>
-        <button class="btn primary" data-action="new-payment">+ Registrar pago</button>
+        <div><h1 class="display">Pagos</h1><p>Cobros, bonos y pagos pendientes</p></div>
+        <button class="btn primary" data-action="new-payment">${U.icon('plus')}Registrar pago</button>
       </div>
       <div class="stats">
         <div class="card stat"><div class="stat-label">Cobrado este mes</div><div class="stat-value">${money(month)}</div><div class="stat-sub">Mes anterior: ${money(prevMonth)}</div></div>
@@ -724,7 +781,7 @@
     const s = Store.settings;
     const d = Store.data;
     return `
-      <div class="page-header"><div><h1>Ajustes</h1><p>Preferencias y copias de seguridad</p></div></div>
+      <div class="page-header"><div><h1 class="display">Ajustes</h1><p>Preferencias y copias de seguridad</p></div></div>
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Preferencias</h2></div>
@@ -743,13 +800,13 @@
         <section class="card">
           <div class="card-header"><h2>Tus datos</h2></div>
           <p class="muted" style="margin-top:0">Los datos se guardan <strong>solo en este navegador</strong>. Exporta una copia de seguridad con regularidad para no perderlos y para pasarlos a otro dispositivo.</p>
-          ${Store.storageOk ? '' : '<div class="alert">⚠️ El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div>'}
+          ${Store.storageOk ? '' : `<div class="alert">${U.icon('alert')}<div>El navegador no permite guardar datos (¿modo privado?). Los cambios se perderán al cerrar.</div></div>`}
           <p>${d.clients.length} clientes · ${d.sessions.length} sesiones · ${d.measurements.length} mediciones · ${d.payments.length} pagos</p>
           <div class="actions">
-            <button class="btn primary" data-action="export">⬇ Exportar copia</button>
-            <label class="btn" for="import-file" tabindex="0">⬆ Importar copia</label>
+            <button class="btn primary" data-action="export">${U.icon('download')} Exportar copia</button>
+            <label class="btn" for="import-file" tabindex="0">${U.icon('upload')} Importar copia</label>
             <input type="file" id="import-file" accept="application/json,.json" hidden>
-            <button class="btn" data-action="export-csv">Exportar clientes (CSV)</button>
+            <button class="btn" data-action="export-csv">${U.icon('file')} Exportar clientes (CSV)</button>
           </div>
           <hr style="border:0;border-top:1px solid var(--border);margin:18px 0">
           <div class="actions">
@@ -880,6 +937,11 @@
 
   const actions = {
     'new-client': () => openClientForm(),
+    alerts: () => {
+      const go = () => document.getElementById('atencion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (location.hash.replace(/^#\/?/, '') === 'panel' || !location.hash) go();
+      else { location.hash = '#/panel'; setTimeout(go, 60); }
+    },
     'edit-client': (d) => openClientForm(d.id),
     'new-session': (d) => openSessionForm(null, Object.assign({}, d.client ? { clientId: d.client } : {}, d.date ? { date: d.date } : {})),
     'edit-session': (d) => openSessionForm(d.id),
@@ -902,7 +964,7 @@
       state.week = n === 0 ? U.startOfWeek(today()) : U.addDays(state.week, n * 7);
       App.render();
     },
-    export: () => { download(`entrenapro-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
+    export: () => { download(`david-orihuela-coach-copia-${today()}.json`, Store.exportJSON(), 'application/json'); UI.toast('Copia exportada'); },
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
     'reset-data': () => resetData(),
@@ -916,6 +978,6 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderAgenda, renderPayments, renderSettings,
-    saveSettings, importFile, onClientSearch,
+    saveSettings, importFile, onClientSearch, computeAlerts,
   };
 })();

@@ -12,7 +12,7 @@
       sessions: [],
       measurements: [],
       payments: [],
-      settings: { trainerName: '', currency: 'EUR', defaultRate: 35, defaultDuration: 60, theme: 'auto' },
+      settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 35, defaultDuration: 60, theme: 'dark' },
     };
   }
 
@@ -150,13 +150,13 @@
   /* ---------- Copias de seguridad ---------- */
 
   function exportJSON() {
-    return JSON.stringify(Object.assign({ exportedAt: now(), app: 'EntrenaPro' }, data), null, 2);
+    return JSON.stringify(Object.assign({ exportedAt: now(), app: 'David Orihuela Coach' }, data), null, 2);
   }
 
   function importJSON(text) {
     const parsed = JSON.parse(text);
     if (!parsed || !Array.isArray(parsed.clients)) {
-      throw new Error('El archivo no parece una copia de seguridad de EntrenaPro.');
+      throw new Error('El archivo no parece una copia de seguridad de David Orihuela Coach.');
     }
     data = normalize(parsed);
     save();

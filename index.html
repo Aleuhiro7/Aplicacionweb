@@ -3,33 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EntrenaPro · Gestión de clientes</title>
+  <title>Panel · David Orihuela Coach</title>
   <meta name="description" content="Gestiona clientes, sesiones, progreso y pagos como entrenador personal.">
-  <meta name="theme-color" content="#0f766e">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+  <meta name="theme-color" content="#0a0f1a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230f766e'/><path d='M30 30v40M70 30v40M18 40v20M82 40v20M30 50h40' stroke='white' stroke-width='9' stroke-linecap='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <div class="layout">
     <nav class="sidebar" aria-label="Navegación principal">
-      <div class="brand">
-        <span class="brand-logo" aria-hidden="true">🏋️</span>
-        <span class="brand-name">EntrenaPro</span>
+      <a href="#/panel" class="brand" aria-label="Ir al resumen">
+        <span class="brand-logo">DO</span>
+        <span class="brand-name"><span>David Orihuela</span><small>Coach</small></span>
+      </a>
+      <div class="nav-main">
+        <a href="#/panel" data-nav="panel"><span data-icon="home"></span><span>Resumen</span></a>
+        <a href="#/clientes" data-nav="clientes"><span data-icon="users"></span><span>Clientes</span></a>
+        <a href="#/agenda" data-nav="agenda"><span data-icon="calendar"></span><span>Agenda</span></a>
+        <a href="#/pagos" data-nav="pagos"><span data-icon="euro"></span><span>Pagos</span></a>
+        <a href="#/ajustes" data-nav="ajustes" class="mobile-only"><span data-icon="settings"></span><span>Ajustes</span></a>
       </div>
-      <a href="#/panel" data-nav="panel"><span aria-hidden="true">📊</span><span>Panel</span></a>
-      <a href="#/clientes" data-nav="clientes"><span aria-hidden="true">👥</span><span>Clientes</span></a>
-      <a href="#/agenda" data-nav="agenda"><span aria-hidden="true">📅</span><span>Agenda</span></a>
-      <a href="#/pagos" data-nav="pagos"><span aria-hidden="true">💶</span><span>Pagos</span></a>
-      <a href="#/ajustes" data-nav="ajustes"><span aria-hidden="true">⚙️</span><span>Ajustes</span></a>
+      <div class="nav-bottom">
+        <a href="#/ajustes" data-nav="ajustes"><span data-icon="settings"></span><span>Ajustes</span></a>
+        <a href="#" data-action="export"><span data-icon="download"></span><span>Exportar copia</span></a>
+      </div>
     </nav>
-    <main id="app" tabindex="-1"></main>
+    <div class="content">
+      <header class="topbar">
+        <button class="btn primary pill" data-action="new-client"><span data-icon="plus"></span>Nuevo cliente</button>
+        <button class="icon-btn bell" data-action="alerts" aria-label="Avisos" title="Avisos"><span data-icon="bell"></span><span class="dot" id="alert-dot" hidden></span></button>
+      </header>
+      <main id="app" tabindex="-1"></main>
+    </div>
   </div>
 
   <dialog id="modal" aria-labelledby="modal-title">
     <form method="dialog" id="modal-form" novalidate>
       <header class="modal-header">
         <h2 id="modal-title"></h2>
-        <button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button>
+        <button type="button" class="icon-btn" data-close aria-label="Cerrar" data-icon="close"></button>
       </header>
       <div class="modal-body" id="modal-body"></div>
       <footer class="modal-footer" id="modal-footer"></footer>
