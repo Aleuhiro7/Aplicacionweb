@@ -2752,6 +2752,28 @@
     });
   }
 
+  /**
+   * Crea el enlace y abre WhatsApp con el mensaje ya escrito (elige tú el chat, o el de la persona
+   * si se conoce su teléfono). La ventana se abre al momento para que el móvil no la bloquee.
+   */
+  async function sendForm(name = '', phone = '') {
+    if (await needCloud()) return;
+    const win = window.open('about:blank', '_blank');
+    const token = newToken();
+    try {
+      await Sync.createQuestionnaire(token, { clientName: name.trim().split(' ')[0], coach: coachFirst(), questions: prospectQuestions() });
+    } catch (e) {
+      console.error(e);
+      if (win) win.close();
+      UI.toast('No se ha podido crear el enlace (revisa la conexión y las reglas de Firebase)');
+      return;
+    }
+    const f = Store.add('forms', { name: name.trim(), phone: phone.trim(), token, sentAt: today(), answeredAt: '', reviewedAt: '', items: [], clientId: '' });
+    if (win) win.location.href = formWa(f); else window.open(formWa(f), '_blank');
+    App.render();
+    UI.toast('Formulario preparado en WhatsApp: elige a quién enviárselo', { label: 'Copiar enlace', onClick: () => copyText(formUrl(f.token), 'Enlace copiado') });
+  }
+
   function newForm() {
     UI.form({
       title: 'Nuevo formulario',
@@ -2760,21 +2782,8 @@
         { name: 'phone', label: 'Teléfono (opcional)', type: 'tel', placeholder: 'Para abrir directamente su WhatsApp' },
       ],
       values: {},
-      submitLabel: 'Crear enlace',
-      onSubmit: async (v) => {
-        if (await needCloud()) return;
-        const token = newToken();
-        try {
-          await Sync.createQuestionnaire(token, { clientName: (v.name || '').trim().split(' ')[0], coach: coachFirst(), questions: prospectQuestions() });
-        } catch (e) {
-          console.error(e);
-          UI.toast('No se ha podido crear el enlace (revisa la conexión y las reglas de Firebase)');
-          return;
-        }
-        const f = Store.add('forms', { name: (v.name || '').trim(), phone: (v.phone || '').trim(), token, sentAt: today(), answeredAt: '', reviewedAt: '', items: [], clientId: '' });
-        App.render();
-        formShare(f);
-      },
+      submitLabel: 'Abrir WhatsApp',
+      onSubmit: (v) => { UI.closeModal(); sendForm(v.name || '', v.phone || ''); },
     });
   }
 
@@ -2835,15 +2844,16 @@
     return `
       <div class="page-header">
         <div><h1 class="display">Formularios</h1><p>Envía el cuestionario inicial por enlace a quien quieras, aunque todavía no sea cliente</p></div>
-        <button class="btn primary pill" data-action="form-new">${U.icon('plus')}Nuevo formulario</button>
+        <button class="btn primary pill" data-action="form-send">${U.icon('message')}Enviar formulario</button>
       </div>
       <section class="card form-hero">
         <div class="grow">
-          <h2>Cuestionario inicial</h2>
+          <h2><button class="link-btn form-hero-title" data-action="form-send">${U.icon('message')}Cuestionario inicial</button></h2>
           <p class="muted">${plural(prospectQuestions().length, 'pregunta', 'preguntas')}: nombre, teléfono, objetivo, salud, experiencia, disponibilidad, hábitos… La persona lo rellena desde el móvil sin registrarse y las respuestas te llegan aquí. Si te contrata, con «Crear cliente» se da de alta con sus respuestas en la ficha.</p>
         </div>
         <div class="actions">
-          <button class="btn primary" data-action="form-new">${U.icon('message')}Enviar formulario</button>
+          <button class="btn primary wa-solid" data-action="form-send">${U.icon('message')}Enviar por WhatsApp</button>
+          <button class="btn" data-action="form-new">${U.icon('plus')}Con nombre y teléfono</button>
           <a class="btn" href="#/ajustes">${U.icon('edit')}Editar preguntas</a>
           ${window.Sync && Sync.state.user ? `<button class="btn" data-action="form-check">${U.icon('activity')}Comprobar respuestas</button>` : ''}
         </div>
@@ -3225,6 +3235,7 @@
       setTimeout(() => document.querySelector('.questionnaire-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
     },
     'form-new': () => newForm(),
+    'form-send': () => sendForm(),
     'form-share': (d) => { const f = Store.get('forms', d.id); if (f) formShare(f); },
     'form-answers': (d) => formAnswers(d.id),
     'form-client': (d) => formToClient(d.id),

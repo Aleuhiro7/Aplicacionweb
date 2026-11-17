@@ -1212,3 +1212,6 @@ button.diet-row:hover { color: var(--primary); }
   .form-row { flex-wrap: wrap; }
   .form-row .actions { width: 100%; justify-content: flex-start; padding-left: 52px; }
 }
+.form-hero h2 .form-hero-title { font: inherit; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.form-hero h2 .form-hero-title .ico { width: 20px; height: 20px; color: #25d366; }
+.form-hero h2 .form-hero-title:hover { color: var(--primary); }
