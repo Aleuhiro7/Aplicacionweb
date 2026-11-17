@@ -133,7 +133,7 @@
       .toUpperCase();
   }
 
-  const AVATAR_COLORS = ['#0f766e', '#7c3aed', '#c2410c', '#1d4ed8', '#be185d', '#15803d', '#a16207', '#0e7490'];
+  const AVATAR_COLORS = ['#3f3f46', '#7c3aed', '#c2410c', '#1d4ed8', '#be185d', '#15803d', '#a16207', '#0e7490'];
   function avatarColor(seed) {
     let h = 0;
     for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;

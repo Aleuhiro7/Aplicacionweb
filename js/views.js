@@ -1349,7 +1349,7 @@
     const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
-    const brand = '<div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
+    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><path class="hx" d="M50 6 88 28v44L50 94 12 72V28Z"/><text class="hx-in" x="50" y="63.5" text-anchor="middle">DO</text></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';
@@ -1361,6 +1361,7 @@
             <h1>${esc(c.name)}</h1>
             <span class="ds-rule"></span>
             <p>${esc(fmtDate(today()))}</p>
+            <p class="ds-tag">Lo simple funciona.</p>
           </div>
           <ol class="ds-index">${extraPages.concat(meals.map((m) => m.name), afterPages).map((name, i) => `<li><span>${i + 1}</span>${esc(name)}</li>`).join('')}</ol>
           ${anyOptions ? `<p class="ds-cover-note">${optNote}</p>` : '<p class="ds-cover-note"></p>'}
@@ -1437,7 +1438,7 @@
           <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#f87171"/>
           <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#4ade80"/>
           <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#f2d27a"/>
-          <line x1="100" y1="10" x2="100" y2="190" stroke="#0b1b33" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#0b1b33" stroke-width="3"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="#0b0b0b" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#0b0b0b" stroke-width="3"/>
           <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
         </svg>
         <div class="ds-plate-legend">
@@ -1540,7 +1541,7 @@
       else groups.push({ date: p.date, items: [p] });
     }
     return `<section class="card">
-      <div class="card-header"><h2>Fotos ${photos.length ? `<span class="muted" style="font:500 1rem 'Plus Jakarta Sans',sans-serif">${photos.length}</span>` : ''}</h2></div>
+      <div class="card-header"><h2>Fotos ${photos.length ? `<span class="muted" style="font:500 1rem 'Archivo',sans-serif">${photos.length}</span>` : ''}</h2></div>
       <div class="photo-upload">
         <label class="btn primary" for="photo-input" tabindex="0">${U.icon('upload')}Subir fotos</label>
         <input type="file" id="photo-input" data-client="${c.id}" accept="image/*" multiple hidden>

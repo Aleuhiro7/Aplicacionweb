@@ -2,6 +2,8 @@
 
 Aplicación web para gestionar los clientes de asesoría online: cuotas mensuales, progreso físico y cobros.
 
+Identidad: logo del hexágono «DO», amarillo (#F5D90A) y negro, tipografías Anton, Barlow Condensed y Archivo, y el lema «Lo simple funciona.» (app, cuestionario, PDF de la dieta, icono y vista previa de WhatsApp).
+
 ## Funcionalidades
 
 - **Resumen**: cobrado en el mes frente a lo previsto, lo que falta por cobrar (y lo vencido), clientes activos y en pausa, altas del mes, gráfico de ingresos de los últimos 6 meses, **próximos pagos** (vencidos o que vencen en los próximos 5 días).
@@ -21,7 +23,7 @@ Aplicación web para gestionar los clientes de asesoría online: cuotas mensuale
 - **Bloques de equivalencia** (dentro de la biblioteca de alimentos): grupos de alimentos parecidos en macros y calorías (carnes magras, embutidos y fiambres, pescado blanco, huevos, lácteos con menos y con más grasa, quesos curados y en lonchas (cuentan como grasa), proteína en polvo, cereales, fruta, frutos secos…). Cada bloque tiene una cantidad de referencia (p. ej. 25 g de proteína) y la app calcula cuántos gramos de cada alimento la aportan. Se pueden editar y crear bloques nuevos.
 - **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
-- **Vista previa en WhatsApp**: al enviar el enlace del cuestionario, WhatsApp muestra una tarjeta con tu logo y «Cuestionario inicial» (`img/og-cuestionario.jpg`, etiquetas Open Graph de `cuestionario.html`). La dirección de la imagen apunta a `https://aleuhiro7.github.io/Aplicacionweb/`; si publicas la app en otra dirección, cámbiala allí.
+- **Vista previa en WhatsApp**: al enviar el enlace del cuestionario, WhatsApp muestra una tarjeta negra y amarilla con tu logo, «Cuestionario inicial» y el lema (`img/og-cuestionario.jpg`, etiquetas Open Graph de `cuestionario.html`). La dirección de la imagen apunta a `https://aleuhiro7.github.io/Aplicacionweb/`; si publicas la app en otra dirección, cámbiala allí.
 
 ## Cómo usarla
 
