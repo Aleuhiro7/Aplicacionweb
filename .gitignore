@@ -1,0 +1,4 @@
+# Capturas y archivos de prueba
+*.png
+!img/*.png
+*.pdf
