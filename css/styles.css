@@ -5,10 +5,10 @@
   --text: #0b0b0b;
   --muted: #5f5f58;
   --border: #e4e3dc;
-  --primary: #0b0b0b;
-  --primary-hover: #262626;
-  --primary-soft: rgba(245, 217, 10, .28);
-  --on-primary: #f5d90a;
+  --primary: #5b47ff;
+  --primary-hover: #4a36f0;
+  --primary-soft: rgba(91, 71, 255, .11);
+  --on-primary: #ffffff;
   --danger: #c0352b;
   --danger-soft: #fdeceb;
   --success: #15803d;
@@ -21,17 +21,17 @@
   --violet-soft: #efe7fe;
   --sidebar-bg: #ffffff;
   --sidebar-text: #262626;
-  --sidebar-active: rgba(245, 217, 10, .35);
-  --hero-from: #f5d90a;
-  --hero-to: #e5c700;
+  --sidebar-active: rgba(91, 71, 255, .1);
+  --hero-from: #8b7cff;
+  --hero-to: #ff6fb5;
   --shadow: 0 1px 2px rgba(15, 27, 42, .04), 0 2px 8px rgba(15, 27, 42, .05);
   --shadow-lg: 0 8px 28px rgba(15, 27, 42, .1);
   --radius: 18px;
-  --chart-line: #0b0b0b;
-  --brand-yellow: #f5d90a;
-  --logo-hex: #0b0b0b;
+  --chart-line: #5b47ff;
+  --brand-yellow: #5b47ff;
+  --logo-hex: #5b47ff;
   --logo-text: #0b0b0b;
-  --m-carbs-c: #d4a900;
+  --m-carbs-c: #1c7ed6;
   color-scheme: light;
 }
 
@@ -43,10 +43,10 @@
     --text: #f5f5f4;
     --muted: #a3a39e;
     --border: #2a2a2a;
-    --primary: #f5d90a;
-    --primary-hover: #ffe745;
-    --primary-soft: rgba(245, 217, 10, .13);
-    --on-primary: #0b0b0b;
+    --primary: #8b7cff;
+    --primary-hover: #a99dff;
+    --primary-soft: rgba(139, 124, 255, .13);
+    --on-primary: #ffffff;
     --danger: #f87171;
     --danger-soft: rgba(248, 113, 113, .13);
     --success: #4ade80;
@@ -59,15 +59,15 @@
     --violet-soft: rgba(183, 148, 246, .14);
     --sidebar-bg: #0f0f0f;
     --sidebar-text: #d6d6d3;
-    --sidebar-active: rgba(245, 217, 10, .13);
+    --sidebar-active: rgba(139, 124, 255, .13);
     --hero-from: #1d1d1d;
     --hero-to: #0b0b0b;
     --shadow: none;
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, .45);
-    --chart-line: #f5d90a;
-    --logo-hex: #f5d90a;
+    --chart-line: #8b7cff;
+    --logo-hex: #8b7cff;
     --logo-text: #ffffff;
-    --m-carbs-c: #f5d90a;
+    --m-carbs-c: #5bc8ff;
     color-scheme: dark;
   }
 }
@@ -79,10 +79,10 @@
   --text: #f5f5f4;
   --muted: #a3a39e;
   --border: #2a2a2a;
-  --primary: #f5d90a;
-  --primary-hover: #ffe745;
-  --primary-soft: rgba(245, 217, 10, .13);
-  --on-primary: #0b0b0b;
+  --primary: #8b7cff;
+  --primary-hover: #a99dff;
+  --primary-soft: rgba(139, 124, 255, .13);
+  --on-primary: #ffffff;
   --danger: #f87171;
   --danger-soft: rgba(248, 113, 113, .13);
   --success: #4ade80;
@@ -95,15 +95,15 @@
   --violet-soft: rgba(183, 148, 246, .14);
   --sidebar-bg: #0f0f0f;
   --sidebar-text: #d6d6d3;
-  --sidebar-active: rgba(245, 217, 10, .13);
+  --sidebar-active: rgba(139, 124, 255, .13);
   --hero-from: #1d1d1d;
   --hero-to: #0b0b0b;
   --shadow: none;
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, .45);
-  --chart-line: #f5d90a;
-  --logo-hex: #f5d90a;
+  --chart-line: #8b7cff;
+  --logo-hex: #8b7cff;
   --logo-text: #ffffff;
-  --m-carbs-c: #f5d90a;
+  --m-carbs-c: #5bc8ff;
   color-scheme: dark;
 }
 
@@ -156,7 +156,7 @@ h3 { font-size: 1rem; }
 .hexlogo .hx-in { fill: var(--logo-text); font: 400 36px/1 "Anton", "Barlow Condensed", Impact, sans-serif; letter-spacing: -.5px; }
 .brand-name { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
 .brand-name > span { font: 400 1.3rem/1 "Anton", "Barlow Condensed", Impact, sans-serif; text-transform: uppercase; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.brand-name small { font: 700 .68rem/1.2 "Barlow Condensed", sans-serif; color: var(--brand-yellow, #f5d90a); letter-spacing: .32em; text-transform: uppercase; }
+.brand-name small { font: 700 .68rem/1.2 "Barlow Condensed", sans-serif; color: var(--brand-yellow, #8b7cff); letter-spacing: .32em; text-transform: uppercase; }
 :root[data-theme="light"] .brand-name small { color: var(--text); }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .brand-name small { color: var(--text); } }
 
@@ -609,7 +609,7 @@ dialog form { display: flex; flex-direction: column; max-height: calc(100vh - 48
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast { display: flex; align-items: center; gap: 14px; width: max-content; }
 #toast.show.has-action { pointer-events: auto; }
-.toast-action { appearance: none; border: 0; background: none; color: #f5d90a; font: inherit; font-weight: 800; cursor: pointer; padding: 2px 4px; }
+.toast-action { appearance: none; border: 0; background: none; color: #8b7cff; font: inherit; font-weight: 800; cursor: pointer; padding: 2px 4px; }
 .btn.pay { white-space: nowrap; }
 
 .pay-row { display: flex; align-items: center; gap: 12px; }
@@ -908,7 +908,7 @@ body.q-page { min-height: 100vh; }
 
 /* ---------- Objetivos de la dieta ---------- */
 /* Colores de los macros: los mismos tonos de la app (turquesa, azul y violeta suaves). */
-:root { --m-carbs: var(--m-carbs-c, #f5d90a); --m-protein: var(--info); --m-fat: var(--violet); }
+:root { --m-carbs: var(--m-carbs-c, #8b7cff); --m-protein: var(--info); --m-fat: var(--violet); }
 .diet-panel { padding-top: 4px; padding-bottom: 4px; }
 .diet-sec { padding: 18px 0; }
 .diet-sec + .diet-sec { border-top: 1px solid var(--border); }
@@ -1038,7 +1038,7 @@ button.diet-row:hover { color: var(--primary); }
   body.printing #print-root { display: block; }
 }
 .ds {
-  --ds-navy: #0b0b0b; --ds-teal: #f5d90a; --ds-mint: #f5d90a; --ds-soft: #f1f7f6; --ds-ink: #1f2937; --ds-muted: #6b7280; --ds-line: #e5e7eb;
+  --ds-navy: #0b0b0b; --ds-teal: #8b7cff; --ds-mint: #8b7cff; --ds-soft: #f1f7f6; --ds-ink: #1f2937; --ds-muted: #6b7280; --ds-line: #e5e7eb;
   --ds-p: #2563eb; --ds-c: #0d9488; --ds-f: #7c3aed; --ds-x: #d97706;
   color: var(--ds-ink); font: 400 11pt/1.45 'Archivo', system-ui, sans-serif;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -1048,7 +1048,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-brand { display: flex; align-items: center; gap: 10px; }
 .ds-brand strong { display: block; font: 700 13pt/1.1 'Barlow Condensed', sans-serif; color: var(--ds-navy); }
 .ds-brand small { color: var(--ds-teal); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; font-size: 7pt; }
-.ds-logo { width: 40px; height: 40px; display: grid; place-items: center; --logo-hex: #f5d90a; --logo-text: #fff; }
+.ds-logo { width: 40px; height: 40px; display: grid; place-items: center; --logo-hex: #8b7cff; --logo-text: #fff; }
 .ds-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--ds-line); }
 .ds-client { color: var(--ds-muted); font-size: 9.5pt; font-weight: 600; }
 .ds-main { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 9mm 0 7mm; }
@@ -1079,7 +1079,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-page-n { font-weight: 700; color: var(--ds-teal); white-space: nowrap; }
 /* Portada */
 .ds-cover { background: var(--ds-navy); color: #fff; padding: 0; }
-.ds-cover-in { flex: 1; display: flex; flex-direction: column; padding: 22mm 22mm 18mm; background: radial-gradient(120mm 120mm at 100% 0%, rgba(245, 217, 10, .18), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(245, 217, 10, .10), transparent 70%); }
+.ds-cover-in { flex: 1; display: flex; flex-direction: column; padding: 22mm 22mm 18mm; background: radial-gradient(120mm 120mm at 100% 0%, rgba(139, 124, 255, .18), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(139, 124, 255, .10), transparent 70%); }
 .ds-cover .ds-brand strong { color: #fff; }
 .ds-cover .ds-brand small { color: var(--ds-mint); }
 .ds-cover .ds-logo { width: 58px; height: 58px; }
@@ -1090,7 +1090,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-cover-main p { margin: 0; color: #cbd5e1; font-size: 11pt; }
 .ds-index { list-style: none; margin: 0 0 14mm; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
 .ds-index li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); font-weight: 600; }
-.ds-index span { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(245, 217, 10, .18); color: var(--ds-mint); font-size: 9pt; font-weight: 800; }
+.ds-index span { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: rgba(139, 124, 255, .18); color: var(--ds-mint); font-size: 9pt; font-weight: 800; }
 .ds-cover-note { margin: 0; color: #94a3b8; font-size: 8.5pt; }
 .ds-dense .ds-title { font-size: 36pt; }
 .ds-dense .ds-rule { margin: 3mm auto 5mm; }
@@ -1127,9 +1127,9 @@ button.diet-row:hover { color: var(--primary); }
 .ds-sparse .ds-glabel { font-size: 11pt; }
 /* Todas las hojas con el fondo de la portada (azul marino) y el logo en turquesa. */
 .ds-page {
-  background: radial-gradient(120mm 120mm at 100% 0%, rgba(245, 217, 10, .14), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(245, 217, 10, .08), transparent 70%), var(--ds-navy);
+  background: radial-gradient(120mm 120mm at 100% 0%, rgba(139, 124, 255, .14), transparent 70%), radial-gradient(90mm 90mm at 0% 100%, rgba(139, 124, 255, .08), transparent 70%), var(--ds-navy);
   color: #e2e8f0;
-  --ds-p: #60a5fa; --ds-c: #f5d90a; --ds-f: #a78bfa; --ds-x: #fb923c;
+  --ds-p: #60a5fa; --ds-c: #8b7cff; --ds-f: #a78bfa; --ds-x: #fb923c;
 }
 .ds-page .ds-brand strong { color: #fff; }
 .ds-page .ds-brand small { color: var(--ds-mint); }
@@ -1142,7 +1142,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-page .ds-group { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .1); box-shadow: none; }
 .ds-page .ds-glabel { color: #94a3b8; }
 .ds-page .ds-glabel b { color: #fff; }
-.ds-page .ds-g { background: rgba(245, 217, 10, .12); color: #fff; }
+.ds-page .ds-g { background: rgba(139, 124, 255, .12); color: #fff; }
 .ds-page .ds-g small { color: #94a3b8; }
 .ds-page .ds-name { color: #f1f5f9; }
 .ds-page .ds-or::after { background: rgba(255, 255, 255, .1); }
@@ -1165,7 +1165,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-kpi span { display: block; color: #94a3b8; font-size: 9pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .ds-kpi b { display: block; margin-top: 2mm; color: #fff; font: 700 30pt/1 'Barlow Condensed', sans-serif; }
 .ds-kpi b small { font: 600 10pt 'Archivo', sans-serif; color: #94a3b8; margin-left: 4px; }
-.ds-kpi-deficit { background: rgba(245, 217, 10, .12); border-color: rgba(245, 217, 10, .4); }
+.ds-kpi-deficit { background: rgba(139, 124, 255, .12); border-color: rgba(139, 124, 255, .4); }
 .ds-kpi-deficit b, .ds-kpi-deficit span { color: var(--ds-mint); }
 .ds-kpi-superavit { background: rgba(251, 191, 36, .12); border-color: rgba(251, 191, 36, .4); }
 .ds-kpi-superavit b, .ds-kpi-superavit span { color: #fbbf24; }
@@ -1178,7 +1178,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-table td b { color: #fff; font: 700 16pt 'Barlow Condensed', sans-serif; }
 .ds-table tfoot td { background: rgba(255, 255, 255, .05); font-weight: 700; color: #fff; }
 .ds-macrobar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; margin: 6mm 0; gap: 3px; }
-.ds-plan-note { margin: 6mm 0 0; padding: 5mm 6mm; border-radius: 14px; background: rgba(245, 217, 10, .08); border-left: 4px solid var(--ds-mint); color: #e2e8f0; font-size: 12pt; line-height: 1.6; text-align: left; width: 100%; box-sizing: border-box; }
+.ds-plan-note { margin: 6mm 0 0; padding: 5mm 6mm; border-radius: 14px; background: rgba(139, 124, 255, .08); border-left: 4px solid var(--ds-mint); color: #e2e8f0; font-size: 12pt; line-height: 1.6; text-align: left; width: 100%; box-sizing: border-box; }
 .ds-plan-note b { color: var(--ds-mint); }
 .ds-plan-small { margin: 4mm 0 0; color: #94a3b8; font-size: 9pt; }
 .ds-plan { flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -1257,7 +1257,7 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
   --info: #1c7ed6; --info-soft: rgba(28, 126, 214, .1);
   --violet: #7950f2; --violet-soft: rgba(121, 80, 242, .1);
   --pink: #d6336c; --pink-soft: rgba(214, 51, 108, .1);
-  --m-protein-c: #e8590c; --m-fat-c: #7950f2;
+  --m-protein-c: #e8590c; --m-fat-c: #0ca678;
   --wa: #12b886;
 }
 @media (prefers-color-scheme: dark) {
@@ -1268,7 +1268,7 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
     --info: #5bc8ff; --info-soft: rgba(91, 200, 255, .12);
     --violet: #b49cff; --violet-soft: rgba(180, 156, 255, .13);
     --pink: #ff8ac0; --pink-soft: rgba(255, 138, 192, .12);
-    --m-protein-c: #ff7a6b; --m-fat-c: #b49cff;
+    --m-protein-c: #ff7a6b; --m-fat-c: #5ee6a8;
     --wa: #3ddc97;
   }
 }
@@ -1279,7 +1279,7 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
   --info: #5bc8ff; --info-soft: rgba(91, 200, 255, .12);
   --violet: #b49cff; --violet-soft: rgba(180, 156, 255, .13);
   --pink: #ff8ac0; --pink-soft: rgba(255, 138, 192, .12);
-  --m-protein-c: #ff7a6b; --m-fat-c: #b49cff;
+  --m-protein-c: #ff7a6b; --m-fat-c: #5ee6a8;
   --wa: #3ddc97;
 }
 :root { --m-protein: var(--m-protein-c); --m-fat: var(--m-fat-c); }
@@ -1302,11 +1302,11 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
 .btn.wa-btn { color: var(--wa); border-color: color-mix(in srgb, var(--wa) 40%, var(--border)); }
 .btn.wa-btn:hover { background: color-mix(in srgb, var(--wa) 12%, transparent); }
 .btn.wa-solid { background: var(--wa); border-color: var(--wa); color: #0b0b0b; }
-.btn.light:hover { background: #fffbe0; }
+.btn.light:hover { background: #f1eeff; }
 /* Portada de la ficha del cliente con degradado de marca */
-.profile-cover { background: linear-gradient(110deg, color-mix(in srgb, #f5d90a 55%, var(--surface)) 0%, color-mix(in srgb, #ffa94d 45%, var(--surface)) 45%, color-mix(in srgb, #ff7a6b 40%, var(--surface)) 75%, color-mix(in srgb, #b49cff 35%, var(--surface)) 100%); }
+.profile-cover { background: linear-gradient(110deg, color-mix(in srgb, #8b7cff 60%, var(--surface)) 0%, color-mix(in srgb, #ff6fb5 50%, var(--surface)) 55%, color-mix(in srgb, #ffa94d 45%, var(--surface)) 100%); }
 /* PDF: macros en coral, amarillo y lila */
-.ds-page { --ds-p: #ff7a6b; --ds-c: #f5d90a; --ds-f: #b49cff; --ds-x: #ffa94d; }
+.ds-page { --ds-p: #ff7a6b; --ds-c: #5bc8ff; --ds-f: #5ee6a8; --ds-x: #ffa94d; }
 #proximos-pagos.has-items, #revisiones.has-items, #sin-rutina.has-items, #sin-dieta.has-items, #tareas-pendientes.has-items, #cuestionarios.has-items { border-color: color-mix(in srgb, var(--tone) 38%, var(--border)); box-shadow: inset 3px 0 0 var(--tone); }
 #proximos-pagos .count, #revisiones .count, #sin-rutina .count, #sin-dieta .count, #tareas-pendientes .count, #cuestionarios .count { background: var(--tone, var(--warning)); color: #141414; }
 /* Tarjetas de cifras: cada una con su color */
@@ -1317,3 +1317,15 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
 .stat:nth-child(4n+3) { --tone: var(--info); }
 .stat:nth-child(4n+4) { --tone: var(--violet); }
 .stat .stat-value { color: color-mix(in srgb, var(--tone, var(--text)) 70%, var(--text)); }
+
+/* ---------- Marca «Aurora»: violeta eléctrico → rosa → mandarina ---------- */
+:root { --brand-grad: linear-gradient(135deg, #8b7cff 0%, #ff6fb5 55%, #ffa94d 100%); }
+.hexlogo .hx { stroke: url(#dograd); }
+.brand-name small { background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent !important; }
+.ds-brand small { color: #ff8ac0 !important; background: none; }
+.btn.primary { background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, #ff6fb5) 100%); border-color: transparent; color: #fff; }
+.btn.primary:hover { background: linear-gradient(135deg, var(--primary-hover) 0%, color-mix(in srgb, var(--primary-hover) 45%, #ff6fb5) 100%); }
+.btn.primary .ico { color: #fff; }
+.page-header .eyebrow, .eyebrow { background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block; }
+.ds-rule, .ds-cover .ds-rule { background: var(--brand-grad) !important; }
+.ds-tag { color: #ff8ac0 !important; }

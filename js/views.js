@@ -1349,7 +1349,7 @@
     const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
-    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><path class="hx" d="M50 6 88 28v44L50 94 12 72V28Z"/><text class="hx-in" x="50" y="63.5" text-anchor="middle">DO</text></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
+    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cff"/><stop offset=".55" stop-color="#ff6fb5"/><stop offset="1" stop-color="#ffa94d"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><text class="hx-in" x="50" y="63.5" text-anchor="middle">DO</text></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';

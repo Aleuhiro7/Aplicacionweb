@@ -135,7 +135,7 @@
 
   // Degradados de la paleta de la app (amarillo de marca, mandarina, coral, rosa, lila, cielo y menta).
   const AVATAR_COLORS = [
-    'linear-gradient(135deg, #f5d90a, #ffa94d)', 'linear-gradient(135deg, #ff8a7a, #ff5e8a)', 'linear-gradient(135deg, #5bc8ff, #8b9cff)',
+    'linear-gradient(135deg, #8b7cff, #ff6fb5)', 'linear-gradient(135deg, #ff8a7a, #ff5e8a)', 'linear-gradient(135deg, #5bc8ff, #8b9cff)',
     'linear-gradient(135deg, #6ee7b7, #3cc9c0)', 'linear-gradient(135deg, #c4a7ff, #f08cff)', 'linear-gradient(135deg, #ffc46b, #ff7a59)',
     'linear-gradient(135deg, #b8f05d, #3dd39a)', 'linear-gradient(135deg, #7cdaff, #5ee6a8)',
   ];

@@ -2,7 +2,7 @@
 
 Aplicación web para gestionar los clientes de asesoría online: cuotas mensuales, progreso físico y cobros.
 
-Identidad: logo del hexágono «DO», amarillo (#F5D90A) y negro, tipografías Anton, Barlow Condensed y Archivo, y el lema «Lo simple funciona.» (app, cuestionario, PDF de la dieta, icono y vista previa de WhatsApp).
+Identidad: logo del hexágono «DO» en degradado violeta → rosa → mandarina sobre negro, con coral, cielo, menta y lila como colores de apoyo; tipografías Anton, Barlow Condensed y Archivo, y el lema «Lo simple funciona.» (app, cuestionario, PDF de la dieta, icono y vista previa de WhatsApp).
 
 ## Funcionalidades
 
@@ -23,7 +23,7 @@ Identidad: logo del hexágono «DO», amarillo (#F5D90A) y negro, tipografías A
 - **Bloques de equivalencia** (dentro de la biblioteca de alimentos): grupos de alimentos parecidos en macros y calorías (carnes magras, embutidos y fiambres, pescado blanco, huevos, lácteos con menos y con más grasa, quesos curados y en lonchas (cuentan como grasa), proteína en polvo, cereales, fruta, frutos secos…). Cada bloque tiene una cantidad de referencia (p. ej. 25 g de proteína) y la app calcula cuántos gramos de cada alimento la aportan. Se pueden editar y crear bloques nuevos.
 - **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
-- **Vista previa en WhatsApp**: al enviar el enlace del cuestionario, WhatsApp muestra una tarjeta negra y amarilla con tu logo, «Cuestionario inicial» y el lema (`img/og-cuestionario.jpg`, etiquetas Open Graph de `cuestionario.html`). La dirección de la imagen apunta a `https://aleuhiro7.github.io/Aplicacionweb/`; si publicas la app en otra dirección, cámbiala allí.
+- **Vista previa en WhatsApp**: al enviar el enlace del cuestionario, WhatsApp muestra una tarjeta negra con el degradado de la marca, tu logo, «Cuestionario inicial» y el lema (`img/og-cuestionario.jpg`, etiquetas Open Graph de `cuestionario.html`). La dirección de la imagen apunta a `https://aleuhiro7.github.io/Aplicacionweb/`; si publicas la app en otra dirección, cámbiala allí.
 
 ## Cómo usarla
 
