@@ -3219,7 +3219,6 @@
   function renderForms() {
     const forms = Store.data.forms.slice().sort((a, b) => String(b.answeredAt || b.sentAt).localeCompare(String(a.answeredAt || a.sentAt)));
     const answered = forms.filter((f) => f.answeredAt);
-    const pending = forms.filter((f) => !f.answeredAt);
     const who = (f) => formName(f) || 'Sin nombre';
     const initialsOf = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
     const row = (f) => `<li class="form-row">
@@ -3255,10 +3254,6 @@
       <section class="card">
         <div class="card-header"><h2>Respondidos ${answered.length ? `<span class="count">${answered.length}</span>` : ''}</h2></div>
         ${answered.length ? `<ul class="list">${answered.map(row).join('')}</ul>` : '<p class="muted" style="margin:0">Todavía no ha respondido nadie.</p>'}
-      </section>
-      <section class="card">
-        <div class="card-header"><h2>Pendientes de responder ${pending.length ? `<span class="count">${pending.length}</span>` : ''}</h2></div>
-        ${pending.length ? `<ul class="list">${pending.map(row).join('')}</ul>` : empty('file', 'No hay formularios pendientes. Pulsa «Enviar formulario» para mandar uno.')}
       </section>`;
   }
 
