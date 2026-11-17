@@ -31,6 +31,7 @@
     const scroll = routeKey === lastRoute ? window.scrollY : 0;
     main.innerHTML = html;
     if (window.Photos) Photos.hydrate(main);
+    if (Views.hydrateAvatars) Views.hydrateAvatars(main);
     window.scrollTo(0, scroll);
     if (routeKey !== lastRoute) main.focus({ preventScroll: true });
     lastRoute = routeKey;

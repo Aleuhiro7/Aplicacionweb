@@ -1442,3 +1442,20 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 @media (max-width: 560px) { .lib-card.has-img { grid-template-columns: 96px minmax(0, 1fr); } .lib-card.has-img .lib-desc { display: none; } }
 .ex-photo-preview { margin-top: 8px; border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--bg) 70%, #000); aspect-ratio: 120 / 88; max-width: 280px; }
 .ex-photo-preview .muted { display: grid; place-items: center; height: 100%; }
+
+/* Ilustraciones 3D de los ejercicios (figura con músculos marcados) */
+.ex-ill { background: #eef0f3 !important; }
+.ex-ill img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ex-ill-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+.ex-ill-pair figure { margin: 0; position: relative; border-radius: 12px; overflow: hidden; background: #eef0f3; }
+.ex-ill-pair img { display: block; width: 100%; height: auto; }
+.ex-ill-pair figcaption { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(15, 23, 42, .75); color: #fff; font-size: .72rem; font-weight: 700; }
+.ex-muscles { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px 14px; border-radius: 12px; background: #eef0f3; color: #1f2937; margin: 0 0 14px; }
+.ex-muscle-map { display: flex; gap: 2px; }
+.ex-muscle-map img { width: 66px; height: auto; display: block; }
+.ex-muscle-list h4 { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: .95rem; color: #111827; }
+.ex-muscle-list h4 i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.ex-muscle-list .mp { background: #e03a3e; } .ex-muscle-list .ms { background: #f2a20c; }
+.ex-muscle-list ul { margin: 0 0 6px; padding-left: 22px; font-size: .9rem; }
+.ex-photo-preview img { width: 50%; display: inline-block; vertical-align: top; }
+.ex-photo-preview:has(img) { background: #eef0f3; max-width: 360px; aspect-ratio: auto; }

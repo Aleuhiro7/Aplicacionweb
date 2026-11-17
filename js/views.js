@@ -2163,11 +2163,55 @@
     if (Avatar.byId[ex.id]) return Avatar.byId[ex.id];
     return ex.builtIn || ex.avatarOff ? '' : guessTemplate(ex.name, ex.group);
   }
-  /** Avatar animado del ejercicio (muñeco dibujado, sin fotos de personas). */
+  const has3D = () => !!(window.Avatar3D && Avatar3D.supported());
+  const exFor3D = (ex) => Object.assign({}, ex, { template: templateOf(ex) });
+  /**
+   * Ilustración del ejercicio (posición final) para listas: figura 3D con los músculos marcados.
+   * Se dibuja al hacerse visible (ver hydrateAvatars); sin WebGL, se usa el muñeco animado.
+   */
   function exThumb(ex, cls = '') {
     const tpl = templateOf(ex);
     if (!tpl) return '';
-    return `<span class="ex-thumb ${cls}" aria-hidden="true">${Avatar.svg(ex, { template: tpl })}</span>`;
+    if (!has3D()) return `<span class="ex-thumb ${cls}" aria-hidden="true">${Avatar.svg(ex, { template: tpl })}</span>`;
+    return `<span class="ex-thumb ex-ill ${cls}" aria-hidden="true"><img data-av="${esc(ex.id)}" alt=""></span>`;
+  }
+  let avObserver = null;
+  /** Dibuja las ilustraciones que van apareciendo en pantalla. */
+  function hydrateAvatars(root) {
+    const imgs = [...(root || document).querySelectorAll('img[data-av]:not([src])')];
+    if (!imgs.length || !has3D()) return;
+    const paintOne = (img) => {
+      const ex = Store.get('library', img.dataset.av);
+      if (ex) img.src = Avatar3D.image(exFor3D(ex), img.dataset.which || 'end');
+    };
+    if (!('IntersectionObserver' in window)) { imgs.forEach(paintOne); return; }
+    if (!avObserver) {
+      avObserver = new IntersectionObserver((entries) => {
+        for (const e of entries) if (e.isIntersecting) { avObserver.unobserve(e.target); paintOne(e.target); }
+      }, { rootMargin: '300px 0px' });
+    }
+    imgs.forEach((i) => avObserver.observe(i));
+  }
+  /** Bloque del detalle: inicio y final del ejercicio + músculos trabajados. */
+  function exIllustration(ex) {
+    const tpl = templateOf(ex);
+    if (!tpl) return '';
+    if (!has3D()) return `<div class="ex-avatar-big">${Avatar.svg(ex, { template: tpl })}</div>`;
+    const e3 = exFor3D(ex);
+    const m = window.Muscles && Muscles.musclesOf(ex);
+    const map = Avatar3D.muscleMap(e3);
+    const list = (keys) => keys.map((k) => `<li>${esc(Muscles.LABELS[k] || k)}</li>`).join('');
+    return `<div class="ex-ill-pair">
+        <figure><img src="${Avatar3D.image(e3, 'start')}" alt="${esc(ex.name)}: posición inicial"><figcaption>Inicio</figcaption></figure>
+        <figure><img src="${Avatar3D.image(e3, 'end')}" alt="${esc(ex.name)}: posición final"><figcaption>Final</figcaption></figure>
+      </div>
+      ${m ? `<div class="ex-muscles">
+        <div class="ex-muscle-map"><img src="${map.front}" alt="Músculos, vista de frente"><img src="${map.back}" alt="Músculos, vista de espaldas"></div>
+        <div class="ex-muscle-list">
+          <h4><i class="mp"></i>Principales</h4><ul>${list(m.p)}</ul>
+          ${m.s && m.s.length ? `<h4><i class="ms"></i>Secundarios</h4><ul>${list(m.s)}</ul>` : ''}
+        </div>
+      </div>` : ''}`;
   }
 
   /** «3 × 12 (Casi-Fallo) / 10 (Fallo)…» */
@@ -2249,7 +2293,7 @@
   function onLibrarySearch(value) {
     state.libSearch = value;
     const el = document.getElementById('library-list');
-    if (el) el.innerHTML = libraryList();
+    if (el) { el.innerHTML = libraryList(); hydrateAvatars(el); }
   }
 
   function libraryForm(id) {
@@ -2268,7 +2312,7 @@
         { name: 'tempo', label: 'Tempo', placeholder: 'Ej.: 3 s excéntrica / concéntrica explosiva' },
         { name: 'description', label: 'Notas / técnica', type: 'textarea', placeholder: 'Ejecución, puntos clave, errores comunes…' },
         { name: 'video', label: 'Enlace a vídeo (opcional)', type: 'url', full: true, placeholder: 'https://…' },
-        { name: 'avatar', label: 'Animación', type: 'select', full: true, options: avatarOptions(), hint: 'Elige el movimiento del muñeco, o deja «Automática» para usar el del ejercicio más parecido por nombre.' },
+        { name: 'avatar', label: 'Ilustración', type: 'select', full: true, options: avatarOptions(), hint: 'Elige el movimiento de la ilustración, o deja «Automática» para usar el del ejercicio más parecido por nombre.' },
       ],
       values: existing ? Object.assign({}, existing, { avatar: existing.avatarOff ? '__none' : existing.avatar || '' }) : (state.libGroup !== 'todos' ? { group: state.libGroup } : {}),
       onReady: (dlg) => {
@@ -2281,7 +2325,9 @@
           const group = dlg.querySelector('#f-group').value;
           const tpl = sel.value === '__none' ? '' : sel.value || guessTemplate(name, group);
           const eq = dlg.querySelector('#f-equipment').value;
-          prev.innerHTML = tpl ? Avatar.svg({ name, equipment: eq }, { template: tpl }) : '<span class="muted">Sin animación</span>';
+          prev.innerHTML = !tpl ? '<span class="muted">Sin ilustración</span>' : has3D()
+            ? `<img src="${Avatar3D.image({ name, equipment: eq, group, template: tpl }, 'start')}" alt=""><img src="${Avatar3D.image({ name, equipment: eq, group, template: tpl }, 'end')}" alt="">`
+            : Avatar.svg({ name, equipment: eq }, { template: tpl });
         };
         sel.addEventListener('change', paint);
         dlg.querySelector('#f-name').addEventListener('change', paint);
@@ -2312,7 +2358,7 @@
   function avatarOptions() {
     const list = Object.entries((window.Avatar && Avatar.templates) || {}).map(([k, t]) => ({ value: k, label: t.label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'es'));
-    return [{ value: '', label: 'Automática (según el nombre)' }, { value: '__none', label: 'Sin animación' }].concat(list);
+    return [{ value: '', label: 'Automática (según el nombre)' }, { value: '__none', label: 'Sin ilustración' }].concat(list);
   }
 
   function openLibraryExercise(id) {
@@ -2322,7 +2368,7 @@
     UI.openModal({
       title: ex.name,
       body: `<div class="lib-detail">
-        ${templateOf(ex) ? `<div class="ex-avatar-big">${Avatar.svg(ex, { template: templateOf(ex) })}</div>` : ''}
+        ${exIllustration(ex)}
         <div class="actions" style="margin-bottom:14px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
         <dl class="dl">
           ${row('Patrón', ex.pattern)}
@@ -3381,7 +3427,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, renderFoods, renderForms, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
+    renderLibrary, onLibrarySearch, renderFoods, renderForms, hydrateAvatars, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();
