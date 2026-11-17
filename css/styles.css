@@ -1414,11 +1414,13 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .topbar-brand .brand-name > span { font-size: 1.05rem; }
 .topbar-brand .brand-name small { font-size: .56rem; letter-spacing: .18em; }
 /* Logo: una «D» con un botón de play */
-.hexlogo .dl { fill: url(#dograd); }
 .brand-logo { width: 44px; height: 44px; }
-/* Logo «DO» con la D como botón de play (formato apaisado) */
-.brand-logo { width: 78px; height: 42px; }
-.topbar-brand .brand-logo { width: 63px; height: 34px; }
-.q-brand .brand-logo { width: 86px; height: 46px; }
-.ds-logo { width: 74px !important; height: 40px !important; }
-.ds-cover .ds-logo { width: 100px !important; height: 54px !important; }
+/* Logo: hexágono con «DO» y la D como botón de play */
+.brand-logo { width: 46px; height: 46px; }
+.topbar-brand .brand-logo { width: 38px; height: 38px; }
+.q-brand .brand-logo { width: 52px; height: 52px; }
+.hexlogo .hx { fill: none; stroke: url(#dograd); stroke-width: 9; stroke-linejoin: round; }
+.hexlogo .hx-do { fill: var(--logo-text); }
+.ds-logo { width: 40px !important; height: 40px !important; }
+.ds-cover .ds-logo { width: 58px !important; height: 58px !important; }
+.ds .hexlogo .hx { stroke-width: 9; fill: none; stroke-linejoin: round; }
