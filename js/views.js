@@ -470,19 +470,53 @@
     return parts.join(' · ');
   }
 
+  /** Músculo de un ejercicio de la rutina: el suyo o el de la biblioteca. */
+  const exGroup = (ex) => ex.group || ((ex.libraryId && Store.get('library', ex.libraryId)) || {}).group || 'Otros';
+  /** Músculos de un día: los elegidos y los de los ejercicios que ya tenga, en el orden de la biblioteca. */
+  function dayMuscles(d) {
+    const set = new Set([...(d.muscles || []), ...(d.exercises || []).map(exGroup)]);
+    const order = libraryGroups();
+    return [...set].sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
+  }
+  const dayCountPicker = (c, n) => `<div class="day-count" role="group" aria-label="Días de entrenamiento a la semana">
+      ${[1, 2, 3, 4, 5, 6, 7].map((k) => `<button type="button" class="day-count-btn${k === n ? ' active' : ''}" data-action="routine-days" data-client="${c.id}" data-value="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}
+    </div>`;
+
+  function exerciseRow(c, d, ex, list) {
+    const i = list.indexOf(ex);
+    return `<li>
+        <span class="ex-num">${i + 1}</span>
+        ${exThumb(ex.libraryId && Store.get('library', ex.libraryId), 'sm')}
+        <div class="grow">
+          <div class="title">${esc(ex.name)}</div>
+          ${exerciseMeta(ex) ? `<div class="ex-meta">${esc(exerciseMeta(ex))}</div>` : ''}
+          ${ex.notes ? `<div class="meta ex-notes">${esc(ex.notes)}</div>` : ''}
+        </div>
+        <div class="ex-actions">
+          ${i > 0 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ejercicio">${U.icon('up')}</button>` : ''}
+          ${i < list.length - 1 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ejercicio">${U.icon('down')}</button>` : ''}
+          <button class="icon-btn" data-action="ex-edit" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" aria-label="Editar ejercicio">${U.icon('edit')}</button>
+        </div>
+      </li>`;
+  }
+
   function clientRoutine(c) {
     const r = Store.routineFor(c.id);
     if (!r) {
-      return `<section class="card">${empty('logo', `<strong>${esc(c.name.split(' ')[0])} aún no tiene rutina.</strong><br>Crea su rutina por días y añade los ejercicios con series, repeticiones, carga y descanso.`,
-        `<div style="margin-top:14px"><button class="btn primary" data-action="routine-create" data-client="${c.id}">${U.icon('plus')}Crear rutina</button></div>`)}</section>`;
+      return `<section class="card routine-start">
+          <h2>¿Cuántos días va a entrenar ${esc(c.name.split(' ')[0])}?</h2>
+          <p class="muted">Elige los días a la semana. Después, en cada día marcas los músculos y eliges sus ejercicios de la biblioteca.</p>
+          ${dayCountPicker(c, 0)}
+        </section>`;
     }
     const days = r.days || [];
+    const groups = libraryGroups();
     return `
       <section class="card routine-head">
         <div class="card-header">
           <div>
             <h2>${esc(r.name || 'Rutina')}</h2>
-            <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.length, 'día', 'días')} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
+            <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
           </div>
           <div class="actions">
             <a class="btn sm wa-btn" href="${routineWaLink(c, r)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
@@ -490,9 +524,13 @@
             <button class="btn sm" data-action="routine-edit" data-client="${c.id}">${U.icon('edit')}Editar</button>
           </div>
         </div>
+        <div class="day-count-row"><span class="day-count-label">Días de entrenamiento</span>${dayCountPicker(c, days.length)}</div>
         ${r.notes ? `<p class="routine-notes">${esc(r.notes)}</p>` : ''}
       </section>
-      ${days.map((d, di) => `
+      ${days.map((d, di) => {
+        const muscles = dayMuscles(d);
+        const list = d.exercises || [];
+        return `
         <section class="card routine-day">
           <div class="card-header">
             <h2><span class="day-num">${di + 1}</span>${esc(d.name || `Día ${di + 1}`)}</h2>
@@ -502,24 +540,127 @@
               <button class="icon-btn" data-action="day-edit" data-client="${c.id}" data-day="${d.id}" aria-label="Editar día" title="Editar día">${U.icon('edit')}</button>
             </div>
           </div>
-          ${(d.exercises || []).length ? `<ol class="list exercise-list">${d.exercises.map((ex, ei) => `
-            <li>
-              <span class="ex-num">${ei + 1}</span>
-              ${exThumb(ex.libraryId && Store.get('library', ex.libraryId), 'sm')}
-              <div class="grow">
-                <div class="title">${esc(ex.name)}</div>
-                ${exerciseMeta(ex) ? `<div class="ex-meta">${esc(exerciseMeta(ex))}</div>` : ''}
-                ${ex.notes ? `<div class="meta ex-notes">${esc(ex.notes)}</div>` : ''}
+          <div class="day-muscles">
+            <div class="day-muscles-label">Músculos que entrena</div>
+            <div class="chips">${groups.map((g) => `<button type="button" class="chip${muscles.includes(g) ? ' active' : ''}" data-action="day-muscle" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}" aria-pressed="${muscles.includes(g)}">${esc(g)}</button>`).join('')}</div>
+          </div>
+          ${muscles.length ? muscles.map((g) => {
+            const exs = list.filter((ex) => exGroup(ex) === g);
+            return `<div class="muscle-block">
+              <div class="muscle-head">
+                <h3>${esc(g)} <span class="muted">${exs.length || ''}</span></h3>
+                ${g === 'Otros' ? '' : `<button class="btn sm primary" data-action="muscle-pick" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}">${U.icon('plus')}Ejercicios de ${esc(g)}</button>`}
               </div>
-              <div class="ex-actions">
-                ${ei > 0 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ejercicio">${U.icon('up')}</button>` : ''}
-                ${ei < d.exercises.length - 1 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ejercicio">${U.icon('down')}</button>` : ''}
-                <button class="icon-btn" data-action="ex-edit" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" aria-label="Editar ejercicio">${U.icon('edit')}</button>
-              </div>
-            </li>`).join('')}</ol>` : '<p class="muted" style="margin:0 0 12px">Sin ejercicios todavía.</p>'}
-          <button class="btn sm" data-action="ex-add" data-client="${c.id}" data-day="${d.id}">${U.icon('plus')}Añadir ejercicio</button>
-        </section>`).join('')}
-      <button class="btn primary add-day" data-action="day-add" data-client="${c.id}">${U.icon('plus')}Añadir día</button>`;
+              ${exs.length ? `<ol class="list exercise-list">${exs.map((ex) => exerciseRow(c, d, ex, exs)).join('')}</ol>` : `<p class="muted muscle-empty">Pulsa «Ejercicios de ${esc(g)}» para elegirlos de la biblioteca.</p>`}
+            </div>`;
+          }).join('') : '<p class="muted" style="margin:6px 0 0">Marca arriba los músculos que entrena este día.</p>'}
+        </section>`;
+      }).join('')}`;
+  }
+
+  /** Toda la biblioteca de un músculo para elegir uno o varios ejercicios y añadirlos al día. */
+  function musclePicker(clientId, dayId, group) {
+    const c = Store.get('clients', clientId);
+    const r = Store.routineFor(clientId);
+    const day = r && findDay(r, dayId);
+    if (!c || !day) return;
+    const have = new Set((day.exercises || []).map((x) => x.libraryId).filter(Boolean));
+    const items = filteredLibrary().filter((x) => x.group === group);
+    const pats = [];
+    for (const ex of items) {
+      let lp = pats[pats.length - 1];
+      if (!lp || lp.name !== (ex.pattern || '')) pats.push((lp = { name: ex.pattern || '', items: [] }));
+      lp.items.push(ex);
+    }
+    UI.openModal({
+      title: `${group} · ${day.name}`,
+      body: `<p class="muted" style="margin-top:0">Toca los ejercicios que quieras (${plural(items.length, 'ejercicio', 'ejercicios')} en la biblioteca) y pulsa «Añadir».</p>
+        ${libraryGuide(group)}
+        <div class="mpick">${pats.map((p) => `
+          ${p.name ? `<div class="lib-pattern"><span>${esc(p.name)}</span>${p.items[0].rest ? `<span class="muted">Descanso ${esc(p.items[0].rest)}</span>` : ''}</div>` : ''}
+          <div class="lib-grid">${p.items.map((ex) => `
+            <label class="lib-card mpick-card${imgOf(ex) ? ' has-img' : ''}${have.has(ex.id) ? ' added' : ''}">
+              <input type="checkbox" value="${ex.id}" ${have.has(ex.id) ? 'disabled' : ''}>
+              <span class="mpick-check" aria-hidden="true">${U.icon('check')}</span>
+              ${exThumb(ex)}
+              <span class="lib-name">${esc(ex.name)}</span>
+              ${have.has(ex.id) ? badge('Ya está en el día', 'success') : ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
+              ${libSeries(ex) ? `<span class="lib-series">${esc(libSeries(ex))}</span>` : ''}
+              ${ex.description ? `<span class="lib-desc">${esc(ex.description)}</span>` : ''}
+            </label>`).join('')}</div>`).join('')}</div>`,
+      footer: `<button type="button" class="btn" id="mpick-manual" style="margin-right:auto">${U.icon('edit')}No está en la biblioteca</button><button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary" id="mpick-add" disabled>Añadir</button>`,
+      onOpen: (dlg) => {
+        const add = dlg.querySelector('#mpick-add');
+        dlg.querySelector('.mpick').addEventListener('change', () => {
+          const n = dlg.querySelectorAll('.mpick input:checked').length;
+          add.disabled = !n;
+          add.textContent = n ? `Añadir (${n})` : 'Añadir';
+        });
+        dlg.querySelector('#mpick-manual').onclick = () => { UI.closeModal(); setTimeout(() => exerciseForm(c, r, day, null, group), 50); };
+      },
+      onSubmit: () => {
+        const ids = [...document.querySelectorAll('#modal .mpick input:checked')].map((i) => i.value);
+        if (!ids.length) return;
+        day.exercises = day.exercises || [];
+        for (const id of ids) {
+          const lib = Store.get('library', id);
+          if (!lib) continue;
+          const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
+          day.exercises.push({ id: U.uid(), libraryId: lib.id, group: lib.group, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes });
+        }
+        if (!(day.muscles || []).includes(group)) day.muscles = (day.muscles || []).concat(group);
+        UI.closeModal();
+        saveRoutine(r);
+        UI.toast(ids.length === 1 ? 'Ejercicio añadido' : `${ids.length} ejercicios añadidos`);
+      },
+    });
+  }
+
+  /** Cambia el número de días de la rutina (crea la rutina si aún no existe). */
+  async function setRoutineDays(clientId, n) {
+    const c = Store.get('clients', clientId);
+    let r = Store.routineFor(clientId);
+    if (!r) {
+      Store.add('routines', { clientId, name: `Rutina de ${monthName(today())}`, notes: '', days: Array.from({ length: n }, (_, i) => ({ id: U.uid(), name: `Día ${i + 1}`, muscles: [], exercises: [] })) });
+      UI.toast(`Rutina de ${plural(n, 'día', 'días')} creada: marca los músculos de cada día`);
+      App.render();
+      return;
+    }
+    const days = r.days || [];
+    if (n === days.length) return;
+    if (n < days.length) {
+      const gone = days.slice(n);
+      const exs = gone.reduce((t, d) => t + (d.exercises || []).length, 0);
+      if (exs) {
+        const ok = await UI.confirm({ title: 'Quitar días', message: `Se eliminarán ${gone.map((d) => `«${esc(d.name)}»`).join(', ')} con ${plural(exs, 'ejercicio', 'ejercicios')}.`, confirmLabel: 'Quitar' });
+        if (!ok) return;
+      }
+      r.days = days.slice(0, n);
+    } else {
+      r.days = days.concat(Array.from({ length: n - days.length }, (_, i) => ({ id: U.uid(), name: `Día ${days.length + i + 1}`, muscles: [], exercises: [] })));
+    }
+    saveRoutine(r);
+  }
+
+  /** Marca o desmarca un músculo del día (si tiene ejercicios, pregunta antes de quitarlos). */
+  async function toggleDayMuscle(clientId, dayId, group) {
+    const r = Store.routineFor(clientId);
+    const day = r && findDay(r, dayId);
+    if (!day) return;
+    const on = dayMuscles(day).includes(group);
+    if (!on) {
+      day.muscles = (day.muscles || []).concat(group);
+      saveRoutine(r);
+      return;
+    }
+    const exs = (day.exercises || []).filter((x) => exGroup(x) === group);
+    if (exs.length) {
+      const ok = await UI.confirm({ title: `Quitar ${group}`, message: `Se quitarán de «${esc(day.name)}» sus ${plural(exs.length, 'ejercicio', 'ejercicios')} de ${esc(group)}.`, confirmLabel: 'Quitar' });
+      if (!ok) return;
+    }
+    day.muscles = (day.muscles || []).filter((g) => g !== group);
+    day.exercises = (day.exercises || []).filter((x) => exGroup(x) !== group);
+    saveRoutine(r);
   }
 
   function routineText(c, r) {
@@ -527,11 +668,16 @@
     if (r.notes) lines.push('', r.notes);
     (r.days || []).forEach((d, di) => {
       lines.push('', `*${d.name || `Día ${di + 1}`}*`);
-      (d.exercises || []).forEach((ex, ei) => {
-        const meta = exerciseMeta(ex);
-        lines.push(`${ei + 1}. ${ex.name}${meta ? ` — ${meta}` : ''}`);
-        if (ex.notes) lines.push(`   _${ex.notes}_`);
-      });
+      for (const g of dayMuscles(d)) {
+        const exs = (d.exercises || []).filter((ex) => exGroup(ex) === g);
+        if (!exs.length) continue;
+        lines.push(`_${g}_`);
+        exs.forEach((ex, ei) => {
+          const meta = exerciseMeta(ex);
+          lines.push(`${ei + 1}. ${ex.name}${meta ? ` — ${meta}` : ''}`);
+          if (ex.notes) lines.push(`   _${ex.notes}_`);
+        });
+      }
     });
     return lines.join('\n');
   }
@@ -600,9 +746,9 @@
     });
   }
 
-  function exerciseForm(c, r, day, ex) {
+  function exerciseForm(c, r, day, ex, group) {
     UI.form({
-      title: ex ? 'Editar ejercicio' : `Añadir ejercicio · ${day.name}`,
+      title: ex ? 'Editar ejercicio' : `Añadir ejercicio · ${group ? `${group} · ` : ''}${day.name}`,
       fields: [
         { name: 'name', label: 'Ejercicio', required: true, full: true, placeholder: 'Ej.: Sentadilla, Press banca, Remo con mancuerna…' },
         { name: 'sets', label: 'Series', placeholder: 'Ej.: 4' },
@@ -633,7 +779,7 @@
       },
       onSubmit: (v) => {
         if (ex) Object.assign(ex, v);
-        else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, v));
+        else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, group ? { group } : {}, v));
         saveRoutine(r);
         if (!ex) UI.toast('Ejercicio añadido');
       },
@@ -3589,7 +3735,22 @@
     'pick-cancel': () => { const p = state.pick; if (p) backToRoutine(p.client); },
     'pick-manual': () => { const p = pickContext(); if (!p) return; const { client, routine, day } = p; backToRoutine(client.id); setTimeout(() => exerciseForm(client, routine, day), 50); },
     'ex-edit': (d) => { const r = Store.routineFor(d.client); const day = findDay(r, d.day); exerciseForm(Store.get('clients', d.client), r, day, day.exercises.find((x) => x.id === d.ex)); },
-    'ex-move': (d) => { const r = Store.routineFor(d.client); moveItem(findDay(r, d.day).exercises, d.ex, Number(d.dir)); saveRoutine(r); },
+    'ex-move': (d) => {
+      // Se mueve dentro de su músculo: se intercambia con el ejercicio anterior/siguiente del mismo músculo.
+      const r = Store.routineFor(d.client);
+      const list = findDay(r, d.day).exercises;
+      const ex = list.find((x) => x.id === d.ex);
+      if (!ex) return;
+      const same = list.filter((x) => exGroup(x) === exGroup(ex));
+      const other = same[same.indexOf(ex) + Number(d.dir)];
+      if (!other) return;
+      const i = list.indexOf(ex), j = list.indexOf(other);
+      [list[i], list[j]] = [list[j], list[i]];
+      saveRoutine(r);
+    },
+    'routine-days': (d) => setRoutineDays(d.client, Number(d.value)),
+    'day-muscle': (d) => toggleDayMuscle(d.client, d.day, d.value),
+    'muscle-pick': (d) => musclePicker(d.client, d.day, d.value),
     'complete-review': (d) => completeReview(d.client),
     'edit-task': (d) => editTask(d.id),
     'toggle-done-list': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.showDone = det.open; },

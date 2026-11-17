@@ -1554,3 +1554,29 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 @media (max-width: 600px) { .nf-actions { width: 100%; padding-left: 48px; } .nf-actions .btn { flex: 1; justify-content: center; } }
 .nf-item, .nf-actions { box-sizing: border-box; min-width: 0; }
 .nf-item .avatar { background: linear-gradient(135deg, var(--primary), #22d3ee); color: #fff; border: 0; }
+
+/* Rutina: días → músculos → ejercicios de la biblioteca */
+.routine-start h2 { margin: 0 0 6px; }
+.routine-start p { margin: 0 0 16px; }
+.day-count { display: flex; gap: 8px; flex-wrap: wrap; }
+.day-count-btn { appearance: none; width: 46px; height: 46px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface-2); color: var(--text); font: 800 1.15rem "Archivo", sans-serif; cursor: pointer; transition: border-color .15s, background .15s; }
+.day-count-btn:hover { border-color: var(--primary); }
+.day-count-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.day-count-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.day-count-label { font-weight: 700; font-size: .9rem; }
+.day-count-row .day-count-btn { width: 38px; height: 38px; font-size: 1rem; border-radius: 10px; }
+.day-muscles { margin-bottom: 12px; }
+.day-muscles-label { font-weight: 700; font-size: .82rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.day-muscles .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.muscle-block { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.muscle-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.muscle-head h3 { margin: 0; font-size: 1.05rem; }
+.muscle-empty { margin: 0; font-size: .88rem; }
+.mpick-card { position: relative; cursor: pointer; }
+.mpick-card input { position: absolute; opacity: 0; pointer-events: none; }
+.mpick-check { position: absolute; top: 8px; right: 8px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--border); background: var(--surface); color: transparent; }
+.mpick-check svg { width: 15px; height: 15px; }
+.mpick-card:has(input:checked) { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary) inset; }
+.mpick-card:has(input:checked) .mpick-check { background: var(--primary); border-color: var(--primary); color: #fff; }
+.mpick-card.added { opacity: .55; cursor: default; }
+.mpick-card .lib-name { padding-right: 30px; }
