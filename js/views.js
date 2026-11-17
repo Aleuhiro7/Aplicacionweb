@@ -49,10 +49,11 @@
   const badge = (text, kind) => `<span class="badge ${kind || ''}">${esc(text)}</span>`;
   const clientStatus = (c) => (CLIENT_STATUS[c.status] ? c.status : 'activo');
   const statusBadge = (c) => badge(CLIENT_STATUS[clientStatus(c)].label, CLIENT_STATUS[clientStatus(c)].badge);
-  const dueBadge = (di) => (di ? badge(DUE_STATUS[di.status].label, DUE_STATUS[di.status].badge) : badge('Sin fecha'));
+  const dueBadge = (di) => (di && di.first ? badge('Pendiente de pago', 'danger') : di ? badge(DUE_STATUS[di.status].label, DUE_STATUS[di.status].badge) : badge('Sin fecha'));
   /** Texto del próximo pago: «Le toca pagar en 3 días», «Vencido hace 2 días»… */
   function dueText(di) {
     if (!di) return 'Sin fecha de próximo pago';
+    if (di.first) return di.days === 0 ? 'Nuevo cliente · pendiente del primer pago' : `Nuevo cliente · pendiente del primer pago desde el ${U.fmtDateShort(di.date)}`;
     const date = U.fmtDateShort(di.date);
     if (di.status === 'vencido') return `Vencido hace ${plural(-di.days, 'día', 'días')} (${date})`;
     if (di.status === 'hoy') return 'Le toca pagar hoy';
@@ -99,7 +100,7 @@
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
-      { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío: el próximo aniversario del alta. Te avisaré ${Store.REMIND_DAYS} días antes.` },
+      { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío en un cliente nuevo: queda pendiente de pago desde el alta hasta que marques su primer pago. Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
       { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Horarios, material disponible, preferencias, motivación…' },
@@ -116,7 +117,8 @@
       onDelete: existing ? () => deleteClient(id) : null,
       onSubmit: (v) => {
         // El próximo pago se alinea con el día del alta.
-        if (v.startDate) v.nextDue = v.nextDue ? Store.snapToStart(v.startDate, v.nextDue) : Store.startOnOrAfter(v.startDate, today());
+        if (!existing && !v.nextDue) v.nextDue = v.startDate && v.startDate > today() ? v.startDate : today(); // nuevo: pendiente de pago desde el alta
+        else if (v.startDate) v.nextDue = v.nextDue ? Store.snapToStart(v.startDate, v.nextDue) : Store.startOnOrAfter(v.startDate, today());
         if (existing) {
           Store.update('clients', id, v);
           UI.toast('Cliente actualizado');
@@ -3204,7 +3206,7 @@
     // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
     const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
     const c = Store.add('clients', Object.assign({
-      name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
+      name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate, nextDue: today(),
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
     }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}, email ? { email } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });

@@ -305,7 +305,9 @@
     if (days < 0) status = 'vencido';
     else if (days === 0) status = 'hoy';
     else if (days <= REMIND_DAYS) status = 'pronto';
-    return { status, days, date: client.nextDue, amount: Number(client.rate) || lastPaidAmount(client.id) || 0 };
+    // Recién dado de alta y todavía sin ningún pago: queda pendiente hasta que se marque el primero.
+    const first = days <= 0 && !data.payments.some((p) => p.clientId === client.id && p.status === 'pagado');
+    return { status, days, first, date: client.nextDue, amount: Number(client.rate) || lastPaidAmount(client.id) || 0 };
   }
 
   /** Lo que falta por cobrar: pagos que vencen hoy o ya vencidos, y pagos marcados como pendientes. */
