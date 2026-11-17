@@ -1349,7 +1349,7 @@
     const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
-    const brand = '<div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Coach</small></span></div>';
+    const brand = '<div class="ds-brand"><span class="ds-logo">DO</span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';
@@ -1391,7 +1391,7 @@
         ${foot(firstMeal + i, groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '')}
       </section>`;
     };
-    const page = (n, kicker, title, inner, cls = '', footTxt = 'David Orihuela · Coach') => `<section class="ds-page ${cls}">
+    const page = (n, kicker, title, inner, cls = '', footTxt = 'David Orihuela · Entrenador Online') => `<section class="ds-page ${cls}">
         ${top}
         <div class="ds-main">
           <span class="ds-kicker">${kicker}</span>

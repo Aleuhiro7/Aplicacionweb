@@ -46,7 +46,7 @@
   /** Título de la pestaña. */
   function updateChrome() {
     const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', biblioteca: 'Biblioteca', alimentos: 'Alimentos', formularios: 'Formularios', ajustes: 'Ajustes' };
-    document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Coach`;
+    document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Entrenador Online`;
   }
 
   function applyTheme() {

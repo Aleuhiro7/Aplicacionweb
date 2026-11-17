@@ -1,4 +1,4 @@
-# David Orihuela Coach · Gestión de clientes
+# David Orihuela Entrenador Online · Gestión de clientes
 
 Aplicación web para gestionar los clientes de asesoría online: cuotas mensuales, progreso físico y cobros.
 

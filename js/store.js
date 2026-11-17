@@ -449,13 +449,13 @@
   /* ---------- Copias de seguridad ---------- */
 
   function exportJSON() {
-    return JSON.stringify(Object.assign({ exportedAt: now(), app: 'David Orihuela Coach' }, data), null, 2);
+    return JSON.stringify(Object.assign({ exportedAt: now(), app: 'David Orihuela Entrenador Online' }, data), null, 2);
   }
 
   function importJSON(text) {
     const parsed = JSON.parse(text);
     if (!parsed || !Array.isArray(parsed.clients)) {
-      throw new Error('El archivo no parece una copia de seguridad de David Orihuela Coach.');
+      throw new Error('El archivo no parece una copia de seguridad de David Orihuela Entrenador Online.');
     }
     data = normalize(parsed);
     save();
