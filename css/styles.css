@@ -1426,3 +1426,24 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds .hexlogo .hx { stroke-width: 9; fill: none; stroke-linejoin: round; }
 /* PDF: peso aproximado ya cocinado bajo cada alimento crudo */
 .ds-name .ds-cooked { display: block; margin-top: 2px; font-size: .7em; font-weight: 600; color: color-mix(in srgb, var(--ds-accent, #fff) 70%, #fff); opacity: .9; letter-spacing: .01em; }
+/* Fotos de los ejercicios: miniatura que alterna inicio y final del movimiento */
+.ex-thumb { position: relative; display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 10px; overflow: hidden; background: #fff; flex-shrink: 0; }
+.ex-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ex-thumb .ex-thumb-b { animation: ex-swap 2.4s ease-in-out infinite; }
+@keyframes ex-swap { 0%, 40% { opacity: 0; } 50%, 90% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ex-thumb .ex-thumb-b { animation: none; opacity: 0; } }
+.lib-card.has-img { padding-top: 10px; }
+.lib-card .ex-thumb { margin-bottom: 4px; }
+.ex-thumb.sm { width: 72px; aspect-ratio: 3 / 2; border-radius: 8px; }
+.exercise-list li { align-items: center; }
+.ex-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 14px; }
+.ex-photos figure { margin: 0; border-radius: 12px; overflow: hidden; background: #fff; position: relative; }
+.ex-photos img { display: block; width: 100%; height: auto; }
+.ex-photos figcaption { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, .6); color: #fff; font-size: .75rem; font-weight: 700; }
+@media (max-width: 560px) { .ex-thumb.sm { width: 56px; } }
+/* Tarjeta de la biblioteca con la foto a la izquierda (más compacta, sobre todo en el móvil) */
+.lib-card.has-img { display: grid; grid-template-columns: 116px minmax(0, 1fr); column-gap: 12px; row-gap: 5px; align-items: start; align-content: start; padding: 10px; }
+.lib-card.has-img > * { grid-column: 2; }
+.lib-card.has-img .ex-thumb { grid-column: 1; grid-row: 1 / span 4; margin: 0; align-self: start; }
+.lib-card.has-img .badge { justify-self: start; }
+@media (max-width: 560px) { .lib-card.has-img { grid-template-columns: 96px minmax(0, 1fr); } .lib-card.has-img .lib-desc { display: none; } }

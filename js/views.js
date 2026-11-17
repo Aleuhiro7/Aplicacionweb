@@ -503,6 +503,7 @@
           ${(d.exercises || []).length ? `<ol class="list exercise-list">${d.exercises.map((ex, ei) => `
             <li>
               <span class="ex-num">${ei + 1}</span>
+              ${exThumb(ex.libraryId && Store.get('library', ex.libraryId), 'sm')}
               <div class="grow">
                 <div class="title">${esc(ex.name)}</div>
                 ${exerciseMeta(ex) ? `<div class="ex-meta">${esc(exerciseMeta(ex))}</div>` : ''}
@@ -2132,6 +2133,14 @@
     });
   }
 
+  /** Fotos del ejercicio (inicio y final del movimiento), si las tiene. */
+  const exImg = (ex, n) => (ex && ex.img ? `img/ejercicios/${ex.img}_${n}.webp` : '');
+  /** Miniatura animada: alterna la posición inicial y la final para ver el movimiento. */
+  function exThumb(ex, cls = '') {
+    if (!ex || !ex.img) return '';
+    return `<span class="ex-thumb ${cls}" aria-hidden="true"><img src="${exImg(ex, 0)}" alt="" loading="lazy" decoding="async"><img class="ex-thumb-b" src="${exImg(ex, 1)}" alt="" loading="lazy" decoding="async"></span>`;
+  }
+
   /** «3 × 12 (Casi-Fallo) / 10 (Fallo)…» */
   const libSeries = (ex) => [ex.sets && `${ex.sets} series`, ex.reps].filter(Boolean).join(' × ');
 
@@ -2170,7 +2179,8 @@
       ${g.patterns.map((p) => `
         ${p.name ? `<div class="lib-pattern"><span>${esc(p.name)}</span>${p.items[0].rest ? `<span class="muted">Descanso ${esc(p.items[0].rest)}</span>` : ''}</div>` : ''}
         <div class="lib-grid">${p.items.map((ex) => `
-          <button class="lib-card" data-action="lib-open" data-id="${ex.id}">
+          <button class="lib-card${ex.img ? ' has-img' : ''}" data-action="lib-open" data-id="${ex.id}">
+            ${exThumb(ex)}
             <span class="lib-name">${esc(ex.name)}</span>
             ${ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
             ${libSeries(ex) ? `<span class="lib-series">${esc(libSeries(ex))}</span>` : ''}
@@ -2255,6 +2265,7 @@
     UI.openModal({
       title: ex.name,
       body: `<div class="lib-detail">
+        ${ex.img ? `<div class="ex-photos"><figure><img src="${exImg(ex, 0)}" alt="${esc(ex.name)}: posición inicial"><figcaption>Inicio</figcaption></figure><figure><img src="${exImg(ex, 1)}" alt="${esc(ex.name)}: posición final"><figcaption>Final</figcaption></figure></div>` : ''}
         <div class="actions" style="margin-bottom:14px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
         <dl class="dl">
           ${row('Patrón', ex.pattern)}
