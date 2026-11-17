@@ -2024,6 +2024,7 @@
         <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
+        <div class="card stat stat-height"><div class="stat-label">Altura</div><div class="stat-value">${Number(c.height) > 0 ? `${fmtNum(c.height)} cm` : '—'}</div><div class="stat-sub">${imc ? `IMC ${fmtNum(imc)}` : Number(c.height) > 0 ? 'Añade su peso para ver el IMC' : 'Sin altura'}</div><button class="btn sm review-done" data-action="set-height" data-client="${c.id}">${U.icon(Number(c.height) > 0 ? 'edit' : 'plus')}${Number(c.height) > 0 ? 'Cambiar' : 'Añadir'}</button></div>
         <div class="card stat"><div class="stat-label">${ri ? esc(ri.label) : 'Próxima revisión'}</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? 'Añade su fecha de alta en Editar' : 'Solo para clientes activos') : ri.status === 'atrasada' ? `Pendiente desde hace ${plural(-ri.days, 'día', 'días')}` : ri.days === 0 ? 'Hoy' : ri.days === 1 ? 'Mañana' : `En ${ri.days} días`}</div>${ri && ri.status !== 'al-dia' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Hecho</button>` : ''}</div>
       </div>
       <div class="grid-2">
@@ -2035,7 +2036,6 @@
             ${row('Teléfono', c.phone ? esc(c.phone) : '')}
             ${row('Nacimiento', c.birthDate ? fmtDate(c.birthDate) : '')}
             ${row('Sexo', esc(c.gender || ''))}
-            <dt>Altura</dt><dd>${Number(c.height) > 0 ? `${fmtNum(c.height)} cm <button class="link-btn" data-action="set-height" data-client="${c.id}">Cambiar</button>` : `<button class="btn sm" data-action="set-height" data-client="${c.id}">${U.icon('plus')}Añadir altura</button>`}</dd>
             ${row('Alta', c.startDate ? fmtDate(c.startDate) : '')}
             ${row('Notas', esc(c.notes || ''))}
           </dl>

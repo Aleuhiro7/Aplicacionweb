@@ -1462,3 +1462,4 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .supp-item:not(.on) .supp-dose { display: none; }
 @media (max-width: 560px) { .supp-list { grid-template-columns: 1fr 1fr; } .supp-item.on { grid-column: 1 / -1; } .supp-item .supp-name { font-size: .85rem; } }
 .supp-list { grid-auto-flow: dense; }
+@media (max-width: 760px) { .stats > .stat:last-child:nth-child(odd) { grid-column: 1 / -1; } }
