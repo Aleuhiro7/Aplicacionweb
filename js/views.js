@@ -927,12 +927,25 @@
     return out;
   }
 
-  /** Objetivo de una comida: el del día repartido a partes iguales. */
-  function mealTargets(d) {
+  /**
+   * Porcentaje del día de cada comida: el que fijes en cada una; lo que falte hasta 100 %
+   * se reparte a partes iguales entre las que no tengan porcentaje.
+   */
+  function mealShares(meals) {
+    const set = meals.filter((m) => Number(m.pct) > 0);
+    const used = set.reduce((t, m) => t + Number(m.pct), 0);
+    const free = meals.length - set.length;
+    const each = free ? Math.max(0, 100 - used) / free : 0;
+    return new Map(meals.map((m) => [m.id, Number(m.pct) > 0 ? Number(m.pct) : each]));
+  }
+  /** Objetivo de una comida: su porcentaje de las calorías y macros del día. */
+  function mealTargets(d, mealId) {
     const day = dayTargets(d);
-    const n = (d && d.meals || []).length;
-    if (!day || !n) return null;
-    return { kcal: day.kcal / n, protein: day.protein / n, carbs: day.carbs / n, fat: day.fat / n };
+    const meals = (d && d.meals) || [];
+    if (!day || !meals.length) return null;
+    const share = (mealId ? mealShares(meals).get(mealId) : 100 / meals.length) / 100;
+    if (!(share >= 0)) return null;
+    return { kcal: day.kcal * share, protein: day.protein * share, carbs: day.carbs * share, fat: day.fat * share, pct: share * 100 };
   }
 
   const per1g = (f, k) => (num(f[k]) || 0) / 100;
@@ -1033,7 +1046,7 @@
       const meals = d.meals || [];
       if (!meals.length || !mealTargets(d)) continue;
       const copy = meals.map((m) => Object.assign({}, m, { items: (m.items || []).map((x) => Object.assign({}, x)) }));
-      copy.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals: copy }))));
+      copy.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals: copy }), m.id)));
       Store.update('diets', d.id, { meals: copy });
     }
   }
@@ -1076,7 +1089,7 @@
   }
 
   function mealCard(c, d, meal, idx) {
-    const target = mealTargets(d);
+    const target = mealTargets(d, meal.id);
     const tot = mealTotals(meal);
     const open = state.openMeal === meal.id;
     const groups = mealGroups(meal);
@@ -1147,9 +1160,42 @@
         ${equivSwitch()}
         <h3 class="meal-day-title">Total del día</h3>
         ${macroBars(tot, day)}
+        ${day ? shareEditor(c, d) : ''}
       <datalist id="meal-names">${['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'].map((n) => `<option value="${n}"></option>`).join('')}</datalist>
       <div class="meal-list">${meals.map((m, i) => mealCard(c, d, m, i)).join('')}</div>
       </div>`;
+  }
+
+  /** Reparto de las calorías del día entre las comidas (en %). */
+  function shareEditor(c, d) {
+    const meals = d.meals || [];
+    const shares = mealShares(meals);
+    const day = dayTargets(d);
+    const total = [...shares.values()].reduce((a, b) => a + b, 0);
+    const ok = Math.abs(total - 100) < 0.5;
+    const custom = meals.some((m) => Number(m.pct) > 0);
+    return `<div class="meal-shares">
+        <div class="meal-shares-head"><h3 class="meal-day-title">Reparto por comida</h3>
+          <span class="${ok ? 'muted' : 'share-bad'}">Total ${fmtNum(total, 0)} %${ok ? '' : ' · debe sumar 100 %'}</span>
+          ${custom ? `<button class="btn sm" data-action="meal-pct-equal" data-client="${c.id}">Repartir igual</button>` : ''}</div>
+        <div class="meal-share-list">${meals.map((m) => `<label class="meal-share${Number(m.pct) > 0 ? ' fixed' : ''}">
+            <span class="ms-name">${esc(m.name)}</span>
+            <span class="ms-input"><input type="number" min="0" max="100" step="1" inputmode="numeric" value="${fmtNum(shares.get(m.id), 0)}" data-action-change="meal-pct" data-client="${c.id}" data-meal="${m.id}" aria-label="Porcentaje del día para ${esc(m.name)}"><i>%</i></span>
+            <span class="ms-kcal">${fmtNum((day.kcal * shares.get(m.id)) / 100, 0)} kcal</span>
+          </label>`).join('')}</div>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Cambia el % de una comida y el resto se reparte solo entre las demás. Las cantidades de los alimentos se recalculan.</p>
+      </div>`;
+  }
+  /** Aplica un cambio de reparto y recalcula todas las comidas. */
+  function setMealShares(clientId, fn) {
+    const d = Store.dietFor(clientId);
+    if (!d) return;
+    const meals = (d.meals || []).map((m) => Object.assign({}, m, { items: (m.items || []).map((x) => Object.assign({}, x)) }));
+    fn(meals);
+    const nd = Object.assign({}, d, { meals });
+    meals.forEach((m) => solveMeal(m, mealTargets(nd, m.id)));
+    saveDiet(clientId, { meals });
+    App.render();
   }
 
   /** Abre la biblioteca de bloques para elegir varios alimentos y añadirlos a una comida. */
@@ -1209,7 +1255,7 @@
         const meals = d.meals.map((m) => Object.assign({}, m, { items: (m.items || []).slice() }));
         const target = meals.find((m) => m.id === mealId);
         for (const p of picked) if (!target.items.some((x) => x.foodId === p.foodId)) target.items.push({ id: U.uid(), foodId: p.foodId, blockId: p.blockId, grams: 0, locked: false });
-        solveMeal(target, mealTargets(Object.assign({}, d, { meals })));
+        solveMeal(target, mealTargets(Object.assign({}, d, { meals }), mealId));
         saveDiet(clientId, { meals });
         state.openMeal = mealId;
         UI.closeModal();
@@ -1227,7 +1273,7 @@
     const meal = meals.find((m) => m.id === mealId);
     if (!meal) return;
     fn(meal);
-    if (solve) solveMeal(meal, mealTargets(Object.assign({}, d, { meals })));
+    if (solve) solveMeal(meal, mealTargets(Object.assign({}, d, { meals }), mealId));
     saveDiet(clientId, { meals });
     state.openMeal = mealId;
     App.render();
@@ -1243,7 +1289,8 @@
     const lost = old.slice(n).filter((m) => (m.items || []).length).length;
     const done = () => {
       // Con otro número de comidas cambia el objetivo de cada una: se reajustan las cantidades.
-      meals.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals }))));
+      meals.forEach((m) => { delete m.pct; });
+      meals.forEach((m) => solveMeal(m, mealTargets(Object.assign({}, d, { meals }), m.id)));
       saveDiet(clientId, { meals });
       state.editMealCount = false;
       UI.toast(`${n} comidas`);
@@ -1262,22 +1309,7 @@
     return `<section class="card diet-panel">
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
-    <div class="diet-sec">
-      <div class="card-header">
-        <h2>Indicaciones y suplementación</h2>
-        ${d && (d.text || '').trim() ? `<span class="muted" style="font-size:.85rem">Actualizado el ${esc(fmtDate((d.updatedAt || d.createdAt || '').slice(0, 10) || today()))}</span>` : ''}
-      </div>
-      <form class="diet-form" data-client="${c.id}">
-        <textarea name="text" rows="5" placeholder="Recomendaciones para ${esc(c.name.split(' ')[0])}: horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
-        <h3 class="diet-subtitle">Suplementación</h3>
-        <p class="muted" style="margin:0 0 8px;font-size:.88rem">Marca los que tome y ajusta la dosis o la porción (gramos, cápsulas, cacitos, momento del día).</p>
-        ${suppChecklist(d)}
-        <label class="muted" for="supps-other" style="display:block;margin:12px 0 6px;font-size:.88rem">Otros suplementos (uno por línea)</label>
-        <textarea id="supps-other" name="supps" rows="2" placeholder="Ej.: Hierro · 1 comprimido con la comida" aria-label="Otros suplementos">${esc(d ? d.supps || '' : '')}</textarea>
-        <div class="hint" style="margin-top:6px">En el PDF también salen los consejos de agua (unos ${fmtNum(waterLiters(c.id), 1)} L al día para ${esc(c.name.split(' ')[0])}) y el plato saludable para improvisar.</div>
-        <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
-      </form>
-    </div>
+
     ${dietSendable(d) ? `<div class="diet-sec diet-send">
       <div class="card-header"><h2>PDF para el cliente</h2></div>
       <p class="muted" style="margin:0 0 12px">Una portada, una página por comida y las indicaciones al final. Descárgalo y mándaselo.</p>
@@ -1309,8 +1341,7 @@
       }
       if (m.vegFree) lines.push('🥗 Puedes añadir hasta 150 g de verdura (la que quieras)');
     });
-    if (suppLines(d).length) lines.push('', '*Suplementación*', ...suppLines(d).map((x) => `• ${x}`));
-    if ((d.text || '').trim()) lines.push('', '*Indicaciones*', d.text.trim());
+
     if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
     return lines.join('\n');
   }
@@ -1391,8 +1422,8 @@
   function dietSheet(c, d) {
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
-    const notes = (d.text || '').trim();
-    const supps = suppLines(d);
+    const notes = '';
+    const supps = [];
     const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
     // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
     const weights = Store.measurementsFor(c.id).filter((m) => Number(m.weight) > 0);
@@ -3445,6 +3476,19 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
+    'meal-pct': (d, el) => setMealShares(d.client, (meals) => {
+      const m = meals.find((x) => x.id === d.meal);
+      if (!m) return;
+      const v = Math.min(100, Math.max(0, Math.round(Number(el.value) || 0)));
+      m.pct = v;
+      // Si ya están todas fijadas y no suman 100, las demás se reajustan en proporción.
+      const others = meals.filter((x) => x.id !== m.id);
+      if (others.every((x) => Number(x.pct) > 0)) {
+        const rest = others.reduce((t, x) => t + Number(x.pct), 0) || 1;
+        others.forEach((x) => { x.pct = Math.max(1, Math.round(((100 - v) * Number(x.pct)) / rest)); });
+      }
+    }),
+    'meal-pct-equal': (d) => { setMealShares(d.client, (meals) => meals.forEach((m) => { delete m.pct; })); UI.toast('Calorías repartidas a partes iguales'); },
     'set-height': (d) => {
       const c = Store.get('clients', d.client);
       if (!c) return;

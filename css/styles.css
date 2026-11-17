@@ -1489,3 +1489,16 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds-kpi { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ds-kpi b { display: flex; align-items: baseline; justify-content: center; gap: 1.5mm; }
 .ds-kpi b small { margin-left: 0 !important; }
+/* Reparto de calorías por comida */
+.meal-shares { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.meal-shares-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.meal-shares-head .meal-day-title { margin: 0; margin-right: auto; }
+.meal-shares-head .share-bad { color: var(--danger); font-weight: 700; }
+.meal-share-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.meal-share { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name input" "kcal input"; gap: 2px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.meal-share.fixed { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.meal-share .ms-name { grid-area: name; font-weight: 700; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meal-share .ms-kcal { grid-area: kcal; font-size: .8rem; color: var(--muted); }
+.meal-share .ms-input { grid-area: input; position: relative; width: 64px; }
+.meal-share .ms-input input { width: 100%; padding: 6px 20px 6px 8px; text-align: right; font-weight: 700; }
+.meal-share .ms-input i { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--muted); font-size: .8rem; }
