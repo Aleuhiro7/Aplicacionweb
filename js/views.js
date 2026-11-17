@@ -1304,8 +1304,9 @@
 
   /** Colores del PDF según el tipo de alimento, todos dentro del degradado Glaciar (azul → cian → menta). */
   const FOOD_TONES = {
-    carne: '#818cf8', pescado: '#6e8bff', huevo: '#99f6e4', polvo: '#a5b4fc', vegetal: '#38bdf8',
-    hidrato: '#3ee6a0', fruta: '#5eead4', aceite: '#6ee7b7', fruto: '#2dd4bf', queso: '#a7f3d0', lacteo: '#dbeafe', verdura: '#22d3ee',
+    // Carnes en rojo, lácteos en blanco, verdura en verde, hidratos (y fruta) en naranja y grasas en amarillo.
+    carne: '#f87171', pescado: '#6e8bff', huevo: '#99f6e4', polvo: '#a5b4fc', vegetal: '#38bdf8',
+    hidrato: '#fb923c', fruta: '#fb923c', aceite: '#facc15', fruto: '#facc15', queso: '#facc15', lacteo: '#f8fafc', verdura: '#4ade80',
   };
   const BLOCK_TONE = {
     'blk-carnes-magras': 'carne', 'blk-carnes-grasas': 'carne', 'blk-embutidos': 'carne',
@@ -1435,17 +1436,17 @@
     const plate = `<div class="ds-plate">
         <svg viewBox="0 0 200 200" class="ds-plate-svg" aria-hidden="true">
           <circle cx="100" cy="100" r="96" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
-          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#22d3ee"/>
-          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#6e8bff"/>
-          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#3ee6a0"/>
+          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#f87171"/>
+          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#4ade80"/>
+          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#fb923c"/>
           <line x1="100" y1="10" x2="100" y2="190" stroke="#121722" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#121722" stroke-width="3"/>
           <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
         </svg>
         <div class="ds-plate-legend">
-          <div style="--ds-accent:#22d3ee"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
-          <div style="--ds-accent:#6e8bff"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
-          <div style="--ds-accent:#3ee6a0"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
-          <div style="--ds-accent:#6ee7b7"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
+          <div style="--ds-accent:#f87171"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
+          <div style="--ds-accent:#4ade80"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
+          <div style="--ds-accent:#fb923c"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
+          <div style="--ds-accent:#facc15"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
         </div>
       </div>
       <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;

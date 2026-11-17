@@ -1402,3 +1402,10 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds-macrobar span:nth-child(1) { background: #22d3ee !important; }
 .ds-macrobar span:nth-child(2) { background: #8aa2ff !important; }
 .ds-macrobar span:nth-child(3) { background: #3ee6a0 !important; }
+/* PDF: colores por tipo de alimento (carne roja, lácteos blancos, verdura verde, hidratos naranja, grasas amarillas) */
+.ds-page { --ds-p: #f87171; --ds-c: #fb923c; --ds-f: #facc15; }
+.ds-page .ds-veg { background: rgba(74, 222, 128, .12); color: #dcfce7; border-color: rgba(74, 222, 128, .35); }
+.ds-page .ds-veg b { color: #4ade80; }
+.ds-macrobar span:nth-child(1) { background: #f87171 !important; }
+.ds-macrobar span:nth-child(2) { background: #fb923c !important; }
+.ds-macrobar span:nth-child(3) { background: #facc15 !important; }
