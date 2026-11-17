@@ -68,6 +68,7 @@ async function start() {
     const kind = opts.length ? 'choice'
       : /^altura/i.test(text) ? 'height'
       : /^peso/i.test(text) ? 'weight'
+      : /nacimiento/i.test(text) ? 'birth'
       : /tel[eé]fono/i.test(text) ? 'tel'
       : /^nombre/i.test(text) ? 'name' : 'text';
     return { text, opts, kind };
@@ -82,6 +83,20 @@ async function start() {
               <span class="q-letter">${'ABCD'[k]}</span><span class="q-opt-text">${esc(o)}</span></label>`).join('')}
           </div>
         </fieldset>`;
+    }
+    if (q.kind === 'birth') {
+      const [dd, mm, yy] = v.split('/');
+      const year = new Date().getFullYear();
+      const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const sel = (part, label, opts, cur) => `<select id="a${i}${part}" name="a${i}${part}" aria-label="${label}"><option value="">${label}</option>${opts.map(([val, txt]) => `<option value="${val}" ${String(Number(cur)) === String(Number(val)) && cur ? 'selected' : ''}>${txt}</option>`).join('')}</select>`;
+      return `<div class="field q-field" id="f${i}">
+          <label for="a${i}d"><span class="q-num">${i + 1}</span>${esc(q.text)}</label>
+          <div class="q-birth">
+            ${sel('d', 'Día', Array.from({ length: 31 }, (_, k) => [String(k + 1).padStart(2, '0'), k + 1]), dd)}
+            ${sel('m', 'Mes', MONTHS.map((n, k) => [String(k + 1).padStart(2, '0'), n]), mm)}
+            ${sel('y', 'Año', Array.from({ length: 86 }, (_, k) => [year - 14 - k, year - 14 - k]), yy)}
+          </div>
+        </div>`;
     }
     if (q.kind === 'height' || q.kind === 'weight') {
       const h = q.kind === 'height';
@@ -98,6 +113,12 @@ async function start() {
           <input id="a${i}" name="a${i}" type="${type}" maxlength="120" ${type === 'tel' ? 'inputmode="tel" autocomplete="tel"' : 'autocomplete="name"'} value="${esc(v)}"></div>`;
   };
   const valueOf = (i) => {
+    if (parsed[i].kind === 'birth') {
+      const p = ['d', 'm', 'y'].map((k) => (form.elements[`a${i}${k}`] || {}).value || '');
+      if (!p.every(Boolean)) return '';
+      const dt = new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0]));
+      return dt.getDate() === Number(p[0]) ? `${p[0]}/${p[1]}/${p[2]}` : '';
+    }
     const el = form.elements['a' + i];
     if (!el) return '';
     return String(el.value || '').trim();

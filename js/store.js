@@ -42,6 +42,10 @@
       if (Array.isArray(base.settings.questionnaire) && !base.settings.questionnaire.some((q) => String(q).includes('|'))) delete base.settings.questionnaire;
       base.settings.questionnaireV2 = true;
     }
+    // La edad se pide como fecha de nacimiento (para avisar de su cumpleaños).
+    if (Array.isArray(base.settings.questionnaire)) {
+      base.settings.questionnaire = base.settings.questionnaire.map((q) => (/^¿Qué edad tienes\? \| Menos de 25 años/.test(q) ? 'Fecha de nacimiento' : q));
+    }
     seedLibrary(base);
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {

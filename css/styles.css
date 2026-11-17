@@ -871,6 +871,9 @@ body.q-page { min-height: 100vh; }
 .q-measure { display: flex; align-items: center; gap: 10px; max-width: 220px; }
 .q-measure input { font-size: 1.15rem; font-weight: 700; text-align: center; }
 .q-measure span { font-weight: 700; color: var(--muted); }
+.q-birth { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 8px; max-width: 420px; }
+.q-missing select { border-color: var(--danger); }
+.alert-card .task.bday.today { background: var(--primary-soft); border-radius: 12px; padding: 10px 12px; }
 .q-missing .q-opt, .q-missing input, .q-missing textarea { border-color: var(--danger); }
 .q-missing legend, .q-missing > label { color: var(--danger); }
 .q-submit { width: 100%; justify-content: center; padding: 13px; font-size: 1.05rem; margin-top: 6px; }

@@ -1803,6 +1803,26 @@
     });
   }
 
+  /** Días que faltan para su próximo cumpleaños (0 = hoy) y los años que cumple, o null sin fecha. */
+  const BIRTHDAY_NOTICE = 7;
+  function birthdayInfo(c) {
+    if (!c || !c.birthDate || !/^\d{4}-\d{2}-\d{2}/.test(c.birthDate)) return null;
+    const b = U.parseDate(c.birthDate);
+    const now = U.parseDate(today());
+    let next = new Date(now.getFullYear(), b.getMonth(), b.getDate());
+    if (b.getMonth() === 1 && b.getDate() === 29 && next.getMonth() !== 1) next = new Date(now.getFullYear(), 1, 28); // 29 de febrero
+    if (next < now) next = new Date(now.getFullYear() + 1, b.getMonth(), b.getDate());
+    const days = Math.round((next - now) / 86400000);
+    return { days, turns: next.getFullYear() - b.getFullYear(), date: U.toISODate(next), greeted: c.bdayGreeted === U.toISODate(next) };
+  }
+  function birthdayText(bi) {
+    return bi.days === 0 ? `¡Hoy cumple ${bi.turns} años!` : bi.days === 1 ? `Mañana cumple ${bi.turns} años` : `Cumple ${bi.turns} años el ${fmtDate(bi.date)} (en ${bi.days} días)`;
+  }
+  function birthdayWa(c) {
+    const msg = `¡Feliz cumpleaños, ${c.name.split(' ')[0]}! 🎉🎂 Que pases un día genial. Un abrazo, ${coachFirst()}.`;
+    return `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(msg)}`;
+  }
+
   /** Avisos: pagos que vencen pronto o vencidos, seguimientos/revisiones y tareas pendientes. */
   function computeAlerts() {
     const pay = [];
@@ -1822,7 +1842,12 @@
       .filter((c) => c.questionnaire && c.questionnaire.answeredAt && c.questionnaire.linkToken && !c.questionnaire.reviewedAt)
       .sort((a, b) => b.questionnaire.answeredAt.localeCompare(a.questionnaire.answeredAt))
       .map((c) => ({ c, kind: 'cuestionario' }));
-    return pay.concat(answers, reviews, plans, tasks);
+    const birthdays = Store.clients()
+      .filter((c) => clientStatus(c) !== 'inactivo')
+      .map((c) => ({ c, bi: birthdayInfo(c), kind: 'cumple' }))
+      .filter((x) => x.bi && x.bi.days <= BIRTHDAY_NOTICE)
+      .sort((a, b) => a.bi.days - b.bi.days);
+    return pay.concat(birthdays, answers, reviews, plans, tasks);
   }
 
   function incomeChart() {
@@ -1881,6 +1906,7 @@
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
     const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
+    const bdayAlerts = alerts.filter((a) => a.kind === 'cumple');
     const formAlerts = Store.data.forms.filter((f) => f.answeredAt && !f.reviewedAt && !f.clientId);
     const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
     const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
@@ -1907,6 +1933,19 @@
           </section>`,
     });
     const alertSections = [
+      section('cumpleanos', '🎂 Cumpleaños', bdayAlerts.length, '',
+        `<ul class="list task-list">${bdayAlerts.map((a) => `
+          <li class="task review bday${a.bi.days === 0 ? ' today' : ''}">
+            ${avatar(a.c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a>
+              <div class="meta"><span>${esc(birthdayText(a.bi))}</span></div>
+            </div>
+            <div class="review-actions">
+              ${a.bi.greeted ? badge('Felicitado', 'success') : a.bi.days === 0 ? `<a class="btn sm primary wa-solid" href="${birthdayWa(a.c)}" target="_blank" rel="noopener" data-action="bday-greet" data-client="${a.c.id}">${U.icon('message')}Felicitar</a>` : badge(a.bi.days === 1 ? 'Mañana' : `En ${a.bi.days} días`, 'info')}
+            </div>
+          </li>`).join('')}</ul>`,
+        `Ningún cumpleaños en los próximos ${BIRTHDAY_NOTICE} días`),
       section('cuestionarios', 'Cuestionarios respondidos', answerAlerts.length + formAlerts.length, formAlerts.length ? '<a class="btn sm" href="#/formularios">Formularios</a>' : '',
         `<ul class="list task-list">${answerAlerts.map((a) => `
           <li class="task review">
@@ -2842,7 +2881,7 @@
    */
   const DEFAULT_QUESTIONS = [
     'Sexo | Hombre | Mujer',
-    '¿Qué edad tienes? | Menos de 25 años | De 25 a 34 años | De 35 a 44 años | 45 años o más',
+    'Fecha de nacimiento',
     'Altura (cm)',
     'Peso actual (kg)',
     '¿Cuál es tu objetivo principal? | Perder grasa | Ganar músculo | Ganar fuerza o rendimiento | Mejorar mi salud y sentirme mejor',
@@ -3103,6 +3142,17 @@
     return out;
   }
 
+  /** «12/04/1990» (o «1990-04-12») → «1990-04-12»; vacío si no es una fecha válida. */
+  function parseBirth(text) {
+    const t = String(text || '').trim();
+    let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const [y, mo, d] = m ? [m[1], m[2], m[3]] : ((m = t.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$/)) ? [m[3], m[2], m[1]] : []);
+    if (!y) return '';
+    const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dt = U.parseDate(iso);
+    return dt && dt.getDate() === Number(d) && Number(y) > 1900 && iso <= today() ? iso : '';
+  }
+
   function formToClient(id) {
     const f = Store.get('forms', id);
     if (!f) return;
@@ -3111,13 +3161,14 @@
     const phone = f.phone || ans(/^tel[eé]fono/i);
     const sex = ans(/^sexo/i);
     const gender = /^hombre/i.test(sex) ? 'Hombre' : /^mujer/i.test(sex) ? 'Mujer' : '';
+    const birthDate = parseBirth(ans(/nacimiento/i));
     const rate = Number(Store.settings.defaultRate) || 0;
     // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
     const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
     const c = Store.add('clients', Object.assign({
       name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
-    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}));
+    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
     Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
     UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
@@ -3439,12 +3490,12 @@
     try {
       if (!canNotify() || Notification.permission !== 'granted') return;
       if (!force && localStorage.getItem(NOTIFY_KEY) === today()) return;
-      const due = computeAlerts().filter((a) => a.kind === 'pago' || a.kind === 'revision');
+      const due = computeAlerts().filter((a) => a.kind === 'pago' || a.kind === 'revision' || (a.kind === 'cumple' && a.bi.days === 0 && !a.bi.greeted));
       if (!due.length && !force) return;
       const body = due.length
-        ? due.slice(0, 6).map((a) => `${a.c.name}: ${a.kind === 'pago' ? dueText(a.di) : reviewText(a.ri)}`).join('\n')
+        ? due.slice(0, 6).map((a) => (a.kind === 'cumple' ? `🎂 ${a.c.name}: ¡hoy es su cumpleaños! Felicítale.` : `${a.c.name}: ${a.kind === 'pago' ? dueText(a.di) : reviewText(a.ri)}`)).join('\n')
         : `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días.`;
-      new Notification(due.length ? `${plural(due.length, 'aviso', 'avisos')} de pagos y revisiones` : 'Avisos activados', { body, tag: 'pagos' });
+      new Notification(due.length ? (due.every((a) => a.kind === 'cumple') ? '🎂 Cumpleaños hoy' : `${plural(due.length, 'aviso', 'avisos')} de pagos, revisiones y cumpleaños`) : 'Avisos activados', { body, tag: 'pagos' });
       localStorage.setItem(NOTIFY_KEY, today());
     } catch (e) { /* sin notificaciones disponibles */ }
   }
@@ -3527,6 +3578,10 @@
     'export-csv': () => exportCSV(),
     'sample-data': () => loadSample(),
     'enable-notifications': () => enableNotifications(),
+    'bday-greet': (d) => {
+      const bi = birthdayInfo(Store.get('clients', d.client));
+      if (bi) setTimeout(() => { Store.update('clients', d.client, { bdayGreeted: bi.date }); App.render(); }, 300);
+    },
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
@@ -3585,7 +3640,17 @@
     'review-questionnaire': (d) => {
       const c = Store.get('clients', d.client);
       if (!c || !c.questionnaire) return;
-      Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { reviewedAt: today() }) });
+      // Al revisarlo, sus datos del cuestionario rellenan lo que falte en la ficha (no pisa nada).
+      const items = c.questionnaire.items || [];
+      const ans = (re) => ((items.find((x) => re.test(x.q)) || {}).a || '');
+      const hw = items.filter((x) => /altura|peso/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
+      const sex = ans(/^sexo/i);
+      const fill = {};
+      if (!c.birthDate && parseBirth(ans(/nacimiento/i))) fill.birthDate = parseBirth(ans(/nacimiento/i));
+      if (!c.gender && /^(hombre|mujer)/i.test(sex)) fill.gender = /^hombre/i.test(sex) ? 'Hombre' : 'Mujer';
+      if (!c.height && hw.height) fill.height = hw.height;
+      if (hw.weight && !Store.measurementsFor(c.id).length) Store.add('measurements', { clientId: c.id, date: c.questionnaire.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
+      Store.update('clients', c.id, Object.assign({ questionnaire: Object.assign({}, c.questionnaire, { reviewedAt: today() }) }, fill));
       App.render();
       UI.toast(`Cuestionario de ${c.name.split(' ')[0]} revisado`, { label: 'Deshacer', onClick: () => { const cur = Store.get('clients', c.id); Store.update('clients', c.id, { questionnaire: Object.assign({}, cur.questionnaire, { reviewedAt: '' }) }); App.render(); } });
     },
