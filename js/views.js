@@ -1398,7 +1398,7 @@
     const weights = Store.measurementsFor(c.id).filter((m) => Number(m.weight) > 0);
     const hasData = Number(c.height) > 0 || weights.length;
     const extraPages = [hasData ? 'Tus datos' : null, t ? 'Tu plan' : null].filter(Boolean);
-    const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
+    const afterPages = ['Tu plato improvisado', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
     const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><path class="hx-do" fill-rule="evenodd" style="fill:#fff" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
@@ -1502,7 +1502,7 @@
         </div>
       </div>
       <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;
-    out.push(page(++n, 'Para improvisar', 'El plato saludable', plate));
+    out.push(page(++n, 'Para comer fuera o improvisar', 'Tu plato improvisado', plate));
     const L = waterLiters(c.id);
     const lastW = weights[weights.length - 1];
     const waterWhy = lastW ? `Según tu peso (${fmtNum(lastW.weight)} kg)${Number(c.height) > 0 ? ` y tu altura (${fmtNum(c.height, 0)} cm)` : ''}` : '';

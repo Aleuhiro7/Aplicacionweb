@@ -1479,3 +1479,13 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds-weights td b { font-size: 13pt; }
 .ds-data .ds-chart { margin-bottom: 4mm; }
 .ds-data .ds-kpis { margin-bottom: 5mm; }
+/* PDF «Tus datos»: recuadros y tabla centrados */
+.ds-data .ds-kpis { justify-content: center; }
+.ds-data .ds-kpi { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 5mm 3mm; }
+.ds-data .ds-kpi span { white-space: nowrap; font-size: 8pt; letter-spacing: .1em; }
+.ds-data .ds-kpi b { display: flex; align-items: baseline; justify-content: center; gap: 1.5mm; margin-top: 2.5mm; line-height: 1; }
+.ds-data .ds-kpi b small { margin-left: 0; }
+.ds-weights th, .ds-weights td { text-align: center !important; }
+.ds-kpi { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ds-kpi b { display: flex; align-items: baseline; justify-content: center; gap: 1.5mm; }
+.ds-kpi b small { margin-left: 0 !important; }
