@@ -2210,7 +2210,7 @@
 
     return `
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.nextDue ? esc(U.fmtDateShort(c.nextDue)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
+        <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${di ? esc(U.fmtDateShort(di.date)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
         <div class="card stat stat-height"><div class="stat-label">Altura</div><div class="stat-value">${Number(c.height) > 0 ? `${fmtNum(c.height)} cm` : '—'}</div><div class="stat-sub">${imc ? `IMC ${fmtNum(imc)}` : Number(c.height) > 0 ? 'Añade su peso para ver el IMC' : 'Sin altura'}</div><button class="btn sm review-done" data-action="set-height" data-client="${c.id}">${U.icon(Number(c.height) > 0 ? 'edit' : 'plus')}${Number(c.height) > 0 ? 'Cambiar' : 'Añadir'}</button></div>

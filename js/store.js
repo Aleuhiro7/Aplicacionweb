@@ -299,15 +299,19 @@
    * null si el cliente no está activo o no tiene fecha de próximo pago.
    */
   function dueInfo(client) {
-    if (!client || (client.status || 'activo') !== 'activo' || !client.nextDue) return null;
-    const days = U.daysBetween(today(), client.nextDue);
+    if (!client || (client.status || 'activo') !== 'activo') return null;
+    const paidOnce = data.payments.some((p) => p.clientId === client.id && p.status === 'pagado');
+    // Sin fecha de próximo pago y sin ningún pago (p. ej. dado de alta desde el cuestionario): pendiente desde el alta.
+    const due = client.nextDue || (!paidOnce ? (client.startDate && client.startDate < today() ? client.startDate : today()) : '');
+    if (!due) return null;
+    const days = U.daysBetween(today(), due);
     let status = 'al-dia';
     if (days < 0) status = 'vencido';
     else if (days === 0) status = 'hoy';
     else if (days <= REMIND_DAYS) status = 'pronto';
     // Recién dado de alta y todavía sin ningún pago: queda pendiente hasta que se marque el primero.
-    const first = days <= 0 && !data.payments.some((p) => p.clientId === client.id && p.status === 'pagado');
-    return { status, days, first, date: client.nextDue, amount: Number(client.rate) || lastPaidAmount(client.id) || 0 };
+    const first = days <= 0 && !paidOnce;
+    return { status, days, first, date: due, amount: Number(client.rate) || lastPaidAmount(client.id) || 0 };
   }
 
   /** Lo que falta por cobrar: pagos que vencen hoy o ya vencidos, y pagos marcados como pendientes. */
