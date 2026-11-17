@@ -2418,7 +2418,7 @@
   function libraryList() {
     const list = filteredLibrary();
     if (!Store.data.library.length) {
-      return empty('book', '<strong>La biblioteca está vacía.</strong><br>Añade tus ejercicios con «+ Ejercicio».');
+      return empty('book', '<strong>La biblioteca está vacía.</strong>');
     }
     if (!list.length) return empty('search', 'Ningún ejercicio coincide con la búsqueda.');
     const searching = !!state.libSearch.trim();
@@ -2465,7 +2465,6 @@
       </div>` : ''}
       <div class="page-header">
         <div><h1 class="display">Biblioteca de ejercicios</h1><p>${plural(Store.data.library.length, 'ejercicio', 'ejercicios')}</p></div>
-        <button class="btn primary pill" data-action="lib-new">${U.icon('plus')}Ejercicio</button>
       </div>
       <div class="card">
         <div class="toolbar">
@@ -2615,7 +2614,7 @@
 
   function foodList() {
     if (!Store.data.foods.length) {
-      return empty('apple', '<strong>La biblioteca de alimentos está vacía.</strong><br>Añade alimentos con «+ Alimento».');
+      return empty('apple', '<strong>La biblioteca de alimentos está vacía.</strong>');
     }
     const list = filteredFoods();
     if (!list.length) return empty('search', 'Ningún alimento coincide con la búsqueda.');
@@ -2655,7 +2654,6 @@
     return `
       <div class="page-header">
         <div><h1 class="display">Biblioteca de alimentos</h1><p>${plural(Store.data.foods.length, 'alimento', 'alimentos')}</p></div>
-        <button class="btn primary pill" data-action="food-new">${U.icon('plus')}Alimento</button>
       </div>
       ${tabs}
       <div class="card">
