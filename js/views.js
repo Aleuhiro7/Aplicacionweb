@@ -2955,16 +2955,40 @@
   }
 
   /** Da de alta como cliente a quien respondió el formulario (sus respuestas pasan a su ficha). */
+  /**
+   * Altura (cm) y peso (kg) a partir de la respuesta del cuestionario, p. ej. «1,75 y 80 kg»,
+   * «175 cm, 80», «mido 168 y peso 62,5». Devuelve { height, weight } (los que se reconozcan).
+   */
+  function parseHeightWeight(text) {
+    const out = {};
+    const t = String(text || '').toLowerCase().replace(/(\d),(\d)/g, '$1.$2');
+    const nums = [...t.matchAll(/(\d+(?:\.\d+)?)\s*(cm|m|kg|kilos?|metros?)?/g)].map((m) => ({ v: Number(m[1]), u: m[2] || '' }));
+    const asHeight = (n) => (n.v >= 1.2 && n.v <= 2.3 ? Math.round(n.v * 100) : n.v >= 120 && n.v <= 230 ? n.v : null);
+    for (const n of nums) {
+      if (/^(cm|m|metro)/.test(n.u) && out.height === undefined && asHeight(n)) out.height = asHeight(n);
+      else if (/^(kg|kilo)/.test(n.u) && out.weight === undefined && n.v >= 30 && n.v <= 250) out.weight = n.v;
+    }
+    for (const n of nums) {
+      if (/^(cm|m|metro|kg|kilo)/.test(n.u)) continue;
+      if (out.height === undefined && asHeight(n)) { out.height = asHeight(n); continue; }
+      if (out.weight === undefined && n.v >= 30 && n.v <= 250) out.weight = n.v;
+    }
+    return out;
+  }
+
   function formToClient(id) {
     const f = Store.get('forms', id);
     if (!f) return;
     const name = (f.items[0] && f.items[0].a) || f.name || '';
     const phone = f.phone || (f.items[1] && f.items[1].a) || '';
     const rate = Number(Store.settings.defaultRate) || 0;
-    const c = Store.add('clients', {
+    // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
+    const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
+    const c = Store.add('clients', Object.assign({
       name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
-    });
+    }, hw.height ? { height: hw.height } : {}));
+    if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
     Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
     UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
     location.hash = `#/clientes/${c.id}`;
@@ -3435,7 +3459,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, renderFoods, renderForms, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
+    renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();
