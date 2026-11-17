@@ -1416,3 +1416,9 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 /* Logo: una «D» con un botón de play */
 .hexlogo .dl { fill: url(#dograd); }
 .brand-logo { width: 44px; height: 44px; }
+/* Logo «DO» con la D como botón de play (formato apaisado) */
+.brand-logo { width: 78px; height: 42px; }
+.topbar-brand .brand-logo { width: 63px; height: 34px; }
+.q-brand .brand-logo { width: 86px; height: 46px; }
+.ds-logo { width: 74px !important; height: 40px !important; }
+.ds-cover .ds-logo { width: 100px !important; height: 54px !important; }
