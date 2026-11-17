@@ -1237,3 +1237,14 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
 .brand-name small { letter-spacing: .2em; white-space: nowrap; }
 @media (min-width: 761px) { .sidebar { width: 284px; } }
 .sidebar a span:last-child { white-space: nowrap; }
+/* Botón «Nuevo cliente» compacto en el móvil (la mitad que antes). */
+.pill-short { display: none; }
+@media (max-width: 760px) {
+  .topbar .btn.pill { padding: 4px 9px 4px 7px; font-size: .74rem; gap: 3px; min-height: 0; line-height: 1.2; }
+  .topbar .btn.pill .ico { width: 13px; height: 13px; }
+  .topbar .btn.pill .pill-long { display: none; }
+  .topbar .btn.pill .pill-short { display: inline; }
+}
+@media (max-width: 400px) {
+  .topbar .btn.pill { padding: 5px; }
+}
