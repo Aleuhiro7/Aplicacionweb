@@ -855,6 +855,24 @@ body.q-page { min-height: 100vh; }
 .q-field label { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; line-height: 1.4; }
 .q-num { flex-shrink: 0; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: var(--primary-soft); color: var(--primary); font-size: .8rem; font-weight: 800; }
 .q-field textarea { min-height: 52px; resize: none; overflow: hidden; }
+.q-choice { border: 0; padding: 0; margin: 0 0 22px; min-width: 0; }
+.q-choice legend { display: flex; gap: 10px; align-items: flex-start; font-size: .98rem; font-weight: 600; line-height: 1.4; padding: 0; margin-bottom: 10px; }
+.q-opts { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.q-opts.two { grid-template-columns: 1fr 1fr; }
+@media (min-width: 560px) { .q-opts { grid-template-columns: 1fr 1fr; } }
+.q-opt { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; transition: border-color .15s, background .15s; -webkit-tap-highlight-color: transparent; }
+.q-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.q-letter { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: .85rem; background: var(--surface-2, rgba(255,255,255,.06)); color: var(--muted); transition: background .15s, color .15s; }
+.q-opt-text { font-size: .95rem; line-height: 1.3; font-weight: 500; color: var(--text); }
+.q-field .q-opt { display: flex; margin: 0; font-weight: 500; }
+.q-opt:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.q-opt:has(input:checked) .q-letter { background: var(--primary); color: #fff; }
+.q-opt:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+.q-measure { display: flex; align-items: center; gap: 10px; max-width: 220px; }
+.q-measure input { font-size: 1.15rem; font-weight: 700; text-align: center; }
+.q-measure span { font-weight: 700; color: var(--muted); }
+.q-missing .q-opt, .q-missing input, .q-missing textarea { border-color: var(--danger); }
+.q-missing legend, .q-missing > label { color: var(--danger); }
 .q-submit { width: 100%; justify-content: center; padding: 13px; font-size: 1.05rem; margin-top: 6px; }
 .q-note { font-size: .82rem; text-align: center; margin: 12px 0 0; }
 .q-error { color: var(--danger); font-weight: 600; margin: 0 0 10px; }

@@ -37,6 +37,11 @@
     if (Array.isArray(base.settings.questionnaire)) {
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (q === '¿Cuánta agua bebes al día? ¿Consumes alcohol o tabaco?' ? '¿Cuánta agua bebes al día? ¿Consumes alcohol?' : q));
     }
+    // El cuestionario pasa a respuestas marcadas (A, B, C, D): las listas antiguas, todas de texto, se cambian por las nuevas.
+    if (!base.settings.questionnaireV2) {
+      if (Array.isArray(base.settings.questionnaire) && !base.settings.questionnaire.some((q) => String(q).includes('|'))) delete base.settings.questionnaire;
+      base.settings.questionnaireV2 = true;
+    }
     seedLibrary(base);
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {

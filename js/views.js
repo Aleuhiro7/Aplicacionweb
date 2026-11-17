@@ -1921,7 +1921,7 @@
               <button class="btn sm primary" data-action="open-answers" data-client="${a.c.id}">${U.icon('file')}Ver respuestas</button>
             </div>
           </li>`).join('')}${formAlerts.map((f) => {
-          const who = f.name || (f.items[0] && f.items[0].a) || 'Sin nombre';
+          const who = formName(f) || 'Sin nombre';
           return `<li class="task review">
             <span class="avatar">${esc(who.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''))}</span>
             <div class="grow">
@@ -2836,31 +2836,42 @@
    * Cuestionario para conocer al cliente (se envía por WhatsApp)
    * ======================================================= */
 
+  /**
+   * Preguntas del cuestionario. «Pregunta | A | B | C | D» se contesta marcando una opción;
+   * sin opciones (altura y peso) se escribe el número.
+   */
   const DEFAULT_QUESTIONS = [
-    'Nombre completo y edad',
-    'Altura (cm) y peso actual (kg)',
-    '¿Cuál es tu objetivo principal? (perder grasa, ganar músculo, ganar fuerza, mejorar tu salud…)',
-    '¿Tienes alguna lesión, dolor o problema de salud? ¿Tomas alguna medicación?',
-    '¿Qué experiencia tienes entrenando? ¿Entrenas actualmente? ¿Qué tipo de entrenamiento?',
-    '¿Cuántos días a la semana puedes entrenar y cuánto tiempo por sesión?',
-    '¿Dónde vas a entrenar (gimnasio, casa…) y qué material tienes?',
-    '¿A qué te dedicas? ¿Tu trabajo es activo o pasas muchas horas sentado?',
-    '¿Cuántas horas duermes de media y cómo descansas?',
-    '¿Cómo es tu alimentación en un día normal? (comidas, horarios y qué sueles comer)',
-    '¿Tienes alergias o intolerancias? ¿Hay alimentos que no te gusten o no comas?',
-    '¿Cuánta agua bebes al día? ¿Consumes alcohol?',
-    '¿Tomas algún suplemento?',
-    '¿Hay algo más que quieras contarme?',
+    'Sexo | Hombre | Mujer',
+    '¿Qué edad tienes? | Menos de 25 años | De 25 a 34 años | De 35 a 44 años | 45 años o más',
+    'Altura (cm)',
+    'Peso actual (kg)',
+    '¿Cuál es tu objetivo principal? | Perder grasa | Ganar músculo | Ganar fuerza o rendimiento | Mejorar mi salud y sentirme mejor',
+    '¿Tienes alguna lesión o dolor ahora mismo? | No | Sí, leve, no me limita | Sí, me limita al entrenar | Estoy recuperándome de una lesión',
+    '¿Tienes algún problema de salud o tomas medicación? | No | Sí, algún problema de salud | Sí, tomo medicación | Las dos cosas',
+    '¿Qué experiencia tienes entrenando? | Ninguna, empiezo de cero | Menos de 1 año | De 1 a 3 años | Más de 3 años',
+    '¿Cuántos días a la semana puedes entrenar? | 2 días | 3 días | 4 días | 5 días o más',
+    '¿Cuánto tiempo tienes por sesión? | 30–45 minutos | 45–60 minutos | 60–90 minutos | Más de 90 minutos',
+    '¿Dónde vas a entrenar? | Gimnasio | En casa con material | En casa sin material | Al aire libre',
+    '¿Cómo es tu día a día? | Sentado casi todo el día | Me muevo algo, de pie a ratos | Activo, camino mucho | Trabajo físico intenso',
+    '¿Cuántas horas duermes de media? | Menos de 6 horas | De 6 a 7 horas | De 7 a 8 horas | Más de 8 horas',
+    '¿Cuántas comidas haces al día? | 2 o menos | 3 | 4 | 5 o más',
+    '¿Tienes alergias o intolerancias alimentarias? | No | Lactosa | Gluten | Otra (te la comento por WhatsApp)',
+    '¿Cuánta agua bebes al día? | Menos de 1 litro | De 1 a 1,5 litros | De 1,5 a 2 litros | Más de 2 litros',
+    '¿Consumes alcohol? | Nunca | Muy de vez en cuando | Los fines de semana | Varias veces por semana',
+    '¿Tomas algún suplemento? | Ninguno | Proteína | Creatina | Varios',
   ];
+  /** Texto de la pregunta (sin las opciones) y sus opciones de respuesta. */
+  const qText = (q) => String(q || '').split('|')[0].trim();
+  const qOpts = (q) => String(q || '').split('|').slice(1).map((x) => x.trim()).filter(Boolean).slice(0, 4);
 
   const questions = () => (Array.isArray(Store.settings.questionnaire) && Store.settings.questionnaire.length ? Store.settings.questionnaire : DEFAULT_QUESTIONS);
 
   function questionnaireText(c) {
     const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
     return [
-      `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para preparar tu plan necesito conocerte un poco mejor. ¿Me respondes a estas preguntas? Puedes contestar en un solo mensaje poniendo el número de cada pregunta.`,
+      `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para preparar tu plan necesito conocerte un poco mejor. ¿Me respondes a estas preguntas? Puedes contestar en un solo mensaje poniendo el número de cada pregunta y la letra de tu respuesta (por ejemplo: 1A, 2C…).`,
       '',
-      ...questions().map((q, i) => `${i + 1}. ${q}`),
+      ...questions().map((q, i) => `${i + 1}. ${qText(q)}${qOpts(q).length ? '\n' + qOpts(q).map((o, k) => `   ${'ABCD'[k]}) ${o}`).join('\n') : ''}`),
       '',
       '¡Muchas gracias!',
     ].join('\n');
@@ -2943,7 +2954,7 @@
         const doc = await Sync.fetchQuestionnaire(c.questionnaire.linkToken).catch(() => null);
         if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
         const qs = Array.isArray(doc.questions) ? doc.questions : questions();
-        const items = qs.map((q, i) => ({ q, a: (doc.answers[i] || '').trim() }));
+        const items = qs.map((q, i) => ({ q: qText(q), a: (doc.answers[i] || '').trim() }));
         const answeredAt = doc.answeredAt && doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
         Store.update('clients', c.id, { questionnaire: Object.assign({}, c.questionnaire, { items, answeredAt, reviewedAt: '' }) });
         found++;
@@ -2954,10 +2965,11 @@
         const doc = await Sync.fetchQuestionnaire(f.token).catch(() => null);
         if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
         const qs = Array.isArray(doc.questions) ? doc.questions : [];
-        const items = qs.map((q, i) => ({ q, a: (doc.answers[i] || '').trim() }));
+        const items = qs.map((q, i) => ({ q: qText(q), a: (doc.answers[i] || '').trim() }));
         const answeredAt = doc.answeredAt && doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
-        const name = (items[0] && items[0].a) || f.name || 'Alguien';
-        Store.update('forms', f.id, { items, answeredAt, reviewedAt: '', name: f.name || name, phone: f.phone || (items[1] && items[1].a) || '' });
+        const ans = (re) => ((items.find((x) => re.test(x.q)) || {}).a || '');
+        const name = f.name || ans(/^nombre/i) || 'Alguien';
+        Store.update('forms', f.id, { items, answeredAt, reviewedAt: '', name: f.name || name, phone: f.phone || ans(/^tel[eé]fono/i) });
         found++;
         UI.toast(`${name.split(' ')[0]} ha respondido el formulario`);
       }
@@ -2973,12 +2985,11 @@
    * ======================================================= */
 
   const FORM_ID_QUESTIONS = ['Nombre y apellidos', 'Teléfono (WhatsApp)'];
-  /** Preguntas del formulario para alguien nuevo: nombre y teléfono primero, sin repetir el nombre. */
-  const prospectQuestions = () => FORM_ID_QUESTIONS.concat(questions().flatMap((q) => {
-    if (/^\s*nombre( completo)?\s+y\s+edad/i.test(q)) return ['¿Qué edad tienes?'];
-    if (/^\s*(¿\s*)?(cu[aá]l es tu )?nombre/i.test(q)) return [];
-    return [q];
-  }));
+  /** Nombre de quien rellena un formulario: el que pusiste al crearlo o el que respondió. */
+  function formName(f) { return f.name || (((f.items || []).find((x) => /^nombre/i.test(x.q)) || {}).a) || ''; }
+  /** Preguntas del formulario para alguien nuevo: nombre y teléfono solo si no los has puesto tú al crearlo. */
+  const prospectQuestions = (name, phone) => [name ? '' : FORM_ID_QUESTIONS[0], phone ? '' : FORM_ID_QUESTIONS[1]].filter(Boolean)
+    .concat(questions().filter((q) => !/^\s*(¿\s*)?(cu[aá]l es tu )?nombre/i.test(q)));
   const newToken = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
   const formUrl = (token) => new URL(`cuestionario.html?t=${token}`, location.href.split('#')[0]).href;
   const coachFirst = () => (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
@@ -3026,7 +3037,7 @@
     const win = window.open('about:blank', '_blank');
     const token = newToken();
     try {
-      await Sync.createQuestionnaire(token, { clientName: name.trim().split(' ')[0], coach: coachFirst(), questions: prospectQuestions() });
+      await Sync.createQuestionnaire(token, { clientName: name.trim().split(' ')[0], coach: coachFirst(), questions: prospectQuestions(name.trim(), phone.trim()) });
     } catch (e) {
       console.error(e);
       if (win) win.close();
@@ -3055,7 +3066,7 @@
   function formAnswers(id) {
     const f = Store.get('forms', id);
     if (!f) return;
-    const who = f.name || (f.items[0] && f.items[0].a) || 'Sin nombre';
+    const who = formName(f) || 'Sin nombre';
     UI.openModal({
       title: `Respuestas de ${who}`,
       body: `<p class="muted" style="margin-top:0">Respondió el ${esc(fmtDate(f.answeredAt))}.</p>
@@ -3095,15 +3106,18 @@
   function formToClient(id) {
     const f = Store.get('forms', id);
     if (!f) return;
-    const name = (f.items[0] && f.items[0].a) || f.name || '';
-    const phone = f.phone || (f.items[1] && f.items[1].a) || '';
+    const ans = (re) => (((f.items || []).find((x) => re.test(x.q)) || {}).a || '');
+    const name = formName(f);
+    const phone = f.phone || ans(/^tel[eé]fono/i);
+    const sex = ans(/^sexo/i);
+    const gender = /^hombre/i.test(sex) ? 'Hombre' : /^mujer/i.test(sex) ? 'Mujer' : '';
     const rate = Number(Store.settings.defaultRate) || 0;
     // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
     const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
     const c = Store.add('clients', Object.assign({
       name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
-    }, hw.height ? { height: hw.height } : {}));
+    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
     Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
     UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
@@ -3115,7 +3129,7 @@
     const forms = Store.data.forms.slice().sort((a, b) => String(b.answeredAt || b.sentAt).localeCompare(String(a.answeredAt || a.sentAt)));
     const answered = forms.filter((f) => f.answeredAt);
     const pending = forms.filter((f) => !f.answeredAt);
-    const who = (f) => f.name || (f.items && f.items[0] && f.items[0].a) || 'Sin nombre';
+    const who = (f) => formName(f) || 'Sin nombre';
     const initialsOf = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
     const row = (f) => `<li class="form-row">
         <span class="avatar">${esc(initialsOf(who(f)))}</span>
@@ -3161,8 +3175,10 @@
   function splitAnswers(text) {
     const out = {};
     let current = null;
-    for (const line of String(text || '').split(/\r?\n/)) {
-      const m = line.match(/^\s*\*?(\d{1,2})\s*[.)\-:ºª]+\s*\*?\s*(.*)$/);
+    // «1A 2C 3B» o «1A, 2C…» en una sola línea: una respuesta por línea.
+    const lines = String(text || '').split(/\r?\n/).flatMap((l) => l.split(/[\s,;]+(?=\d{1,2}\s*(?:[a-d]\b|[.)]\s))/i));
+    for (const line of lines) {
+      const m = line.match(/^\s*\*?(\d{1,2})\s*(?:[.)\-:ºª]+|(?=[a-d]\b))\s*\*?\s*(.*)$/i);
       if (m) { current = Number(m[1]) - 1; out[current] = m[2].trim(); }
       else if (current !== null && line.trim()) out[current] = `${out[current] ? out[current] + '\n' : ''}${line.trim()}`;
     }
@@ -3173,7 +3189,9 @@
     const c = Store.get('clients', clientId);
     if (!c) return;
     const saved = (c.questionnaire && c.questionnaire.items) || [];
-    const qs = saved.length ? saved.map((x) => x.q) : questions();
+    const all = questions();
+    const qs = saved.length ? saved.map((x) => x.q) : all.map(qText);
+    const optsFor = (q) => qOpts(all.find((x) => qText(x) === q) || '');
     const values = {};
     qs.forEach((q, i) => { values[`q${i}`] = (saved[i] && saved[i].a) || ''; });
     UI.form({
@@ -3181,7 +3199,9 @@
       fields: [
         { name: 'paste', label: 'Pega aquí su respuesta de WhatsApp (opcional)', type: 'textarea', placeholder: '1. …\n2. …', hint: 'Si contestó con el número de cada pregunta, se repartirá solo en las casillas de abajo. Revísalo antes de guardar.' },
         { type: 'section', label: 'Respuestas' },
-        ...qs.map((q, i) => ({ name: `q${i}`, label: `${i + 1}. ${q}`, type: 'textarea' })),
+        ...qs.map((q, i) => (optsFor(q).length
+          ? { name: `q${i}`, label: `${i + 1}. ${q}`, type: 'select', options: ['', ...optsFor(q), ...((saved[i] && saved[i].a && !optsFor(q).includes(saved[i].a)) ? [saved[i].a] : [])].map((o) => ({ value: o, label: o || '—' })) }
+          : { name: `q${i}`, label: `${i + 1}. ${q}`, type: 'textarea' })),
       ],
       values,
       submitLabel: 'Guardar respuestas',
@@ -3190,7 +3210,17 @@
         paste.addEventListener('input', () => {
           const parts = splitAnswers(paste.value);
           let n = 0;
-          Object.entries(parts).forEach(([i, a]) => { const el = dlg.querySelector(`#f-q${i}`); if (el) { el.value = a; n++; } });
+          Object.entries(parts).forEach(([i, a]) => {
+            const el = dlg.querySelector(`#f-q${i}`);
+            if (!el) return;
+            if (el.tagName === 'SELECT') {
+              // «1A», «1 b)», o el texto de la opción.
+              const opts = [...el.options].slice(1).map((o) => o.value);
+              const m = String(a).trim().match(/^([a-d])\b\)?/i);
+              const hit = m ? opts['abcd'.indexOf(m[1].toLowerCase())] : opts.find((o) => o.toLowerCase() === String(a).trim().toLowerCase());
+              if (hit) { el.value = hit; n++; }
+            } else { el.value = a; n++; }
+          });
           paste.closest('.field').querySelector('.hint').textContent = n
             ? `Repartidas ${n} de ${qs.length} respuestas. Revísalas abajo antes de guardar.`
             : 'No he encontrado respuestas numeradas: copia cada respuesta en su casilla.';
@@ -3287,7 +3317,7 @@
       </div>
       <section class="card" style="margin-top:18px">
         <div class="card-header"><h2>Cuestionario para clientes</h2><button class="btn sm" data-action="questionnaire-reset">Restaurar preguntas básicas</button></div>
-        <p class="muted" style="margin:0 0 12px">Estas son las preguntas que se envían por WhatsApp desde la ficha de cada cliente. Escribe una pregunta por línea; se numeran solas.</p>
+        <p class="muted" style="margin:0 0 12px">Estas son las preguntas que se envían por WhatsApp desde la ficha de cada cliente. Una pregunta por línea; se numeran solas. Para que se conteste marcando, pon las opciones (hasta 4) separadas por «|»: <em>¿Entrenas? | Sí | No</em>. Sin opciones, se escribe la respuesta (como la altura y el peso).</p>
         <form id="questionnaire-form">
           <textarea name="questions" rows="${Math.max(8, questions().length + 1)}" aria-label="Preguntas del cuestionario">${esc(questions().join('\n'))}</textarea>
           <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">Guardar preguntas</button></div>
