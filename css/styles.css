@@ -931,7 +931,7 @@ body.q-page { min-height: 100vh; }
 .m-protein .mc-label, .m-protein .mc-grams, .m-protein .mc-kcal { color: var(--m-protein); }
 .m-fat .mc-label, .m-fat .mc-grams, .m-fat .mc-kcal { color: var(--m-fat); }
 .donut { display: block; width: 190px; max-width: 60%; margin: 16px auto 6px; }
-.donut-seg { transition: stroke-dasharray .3s; }
+
 .donut-seg.m-carbs { stroke: var(--m-carbs); }
 .donut-seg.m-protein { stroke: var(--m-protein); }
 .donut-seg.m-fat { stroke: var(--m-fat); }

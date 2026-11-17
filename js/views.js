@@ -748,16 +748,19 @@
   function macroDonut(split) {
     const total = split.reduce((n, m) => n + m.pct, 0) || 1;
     const R = 52;
-    const C = 2 * Math.PI * R;
-    let offset = 0;
+    const pt = (ang) => `${(80 + Math.cos(ang) * R).toFixed(3)} ${(80 + Math.sin(ang) * R).toFixed(3)}`;
+    let start = -Math.PI / 2;
     let labels = '';
-    const segs = split.map((m) => {
-      const frac = m.pct / total;
-      const len = frac * C;
-      const mid = (offset + len / 2) / C * 2 * Math.PI - Math.PI / 2;
+    // Cada macro es un arco propio (no trazos con guiones), así no se solapan en ningún navegador.
+    const segs = split.filter((m) => m.pct > 0).map((m) => {
+      const sweep = (m.pct / total) * 2 * Math.PI;
+      const end = start + sweep;
+      const mid = start + sweep / 2;
       if (m.pct >= 4) labels += `<text x="${80 + Math.cos(mid) * R}" y="${80 + Math.sin(mid) * R + 5}" text-anchor="middle" class="donut-label">${Math.round(m.pct)}</text>`;
-      const seg = `<circle r="${R}" cx="80" cy="80" fill="none" class="donut-seg ${m.cls}" stroke-width="34" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 80 80)"/>`;
-      offset += len;
+      const seg = sweep >= 2 * Math.PI - 1e-6
+        ? `<circle r="${R}" cx="80" cy="80" fill="none" class="donut-seg ${m.cls}" stroke-width="34"/>`
+        : `<path d="M ${pt(start)} A ${R} ${R} 0 ${sweep > Math.PI ? 1 : 0} 1 ${pt(end)}" fill="none" class="donut-seg ${m.cls}" stroke-width="34" stroke-linecap="butt"/>`;
+      start = end;
       return seg;
     }).join('');
     return `<svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Reparto de macronutrientes: ${split.map((m) => `${m.label} ${Math.round(m.pct)} %`).join(', ')}">${segs}${labels}</svg>`;
