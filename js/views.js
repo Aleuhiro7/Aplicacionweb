@@ -1293,13 +1293,49 @@
       for (const g of mealGroups(m)) {
         const many = g.key !== 'extra' && g.rows.length > 1;
         lines.push(`_${ROLE_LABEL[g.key]}${many ? ' (elige una opción)' : ''}:_`);
-        g.rows.forEach((r, i) => lines.push(`${many && i ? '   o ' : '• '}${fmtG(r.it.grams)} ${unitOf(r.f)} de ${r.f.name}`));
+        g.rows.forEach((r, i) => { const ck = cookedGrams(r.f, r.it.grams); lines.push(`${many && i ? '   o ' : '• '}${fmtG(r.it.grams)} ${unitOf(r.f)} de ${r.f.name}${ck ? ` (≈ ${ck} g ya cocinado)` : ''}`); });
       }
       if (m.vegFree) lines.push('🥗 Puedes añadir hasta 150 g de verdura (la que quieras)');
     });
     if ((d.text || '').trim()) lines.push('', '*Indicaciones*', d.text.trim());
     if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
     return lines.join('\n');
+  }
+
+  /**
+   * Peso aproximado ya cocinado de los alimentos que se pesan en crudo. Si la biblioteca tiene la
+   * versión cocinada se usa la relación de sus calorías (las kcal no cambian al cocinar, solo el
+   * agua); si no, un factor de rendimiento habitual.
+   */
+  const COOKED_OF = {
+    'Pechuga de pollo (cruda)': 'Pechuga de pollo a la plancha', 'Muslo de pollo sin piel (crudo)': 'Muslo de pollo sin piel asado',
+    'Pechuga de pavo (cruda)': 'Pechuga de pavo a la plancha', 'Solomillo de cerdo (crudo)': 'Solomillo de cerdo a la plancha',
+    'Lomo de cerdo (crudo)': 'Lomo de cerdo a la plancha', 'Ternera magra (cruda)': 'Ternera magra a la plancha',
+    'Carne picada de vacuno (cruda)': 'Carne picada de vacuno cocinada', 'Hamburguesa de vacuno (cruda)': 'Hamburguesa de vacuno a la plancha',
+    'Hamburguesa de pollo (cruda)': 'Hamburguesa de pollo a la plancha', 'Cordero pierna (crudo)': 'Cordero pierna asado',
+    'Salmón fresco (crudo)': 'Salmón a la plancha / al horno', 'Merluza (cruda)': 'Merluza a la plancha / al horno',
+    'Bacalao fresco (crudo)': 'Bacalao fresco cocinado', 'Lubina (cruda)': 'Lubina al horno', 'Dorada (cruda)': 'Dorada al horno',
+    'Atún fresco (crudo)': 'Atún fresco a la plancha', 'Emperador / pez espada (crudo)': 'Emperador a la plancha',
+    'Gambas peladas congeladas (crudas)': 'Gambas a la plancha', 'Mejillones (crudos)': 'Mejillones cocidos',
+    'Calamar (crudo)': 'Calamar a la plancha', 'Sepia (cruda)': 'Sepia a la plancha', 'Pulpo (crudo)': 'Pulpo cocido',
+    'Arroz blanco (crudo)': 'Arroz blanco cocido', 'Pasta (cruda)': 'Pasta cocida',
+    // Sin versión cocinada en la biblioteca: rendimiento típico (peso cocinado / peso crudo).
+    'Pollo entero con piel (crudo)': 0.7, 'Bacalao desalado (crudo)': 0.8, 'Soja texturizada (seca)': 3,
+    'Arroz integral (crudo)': 2.6, 'Arroz basmati (crudo)': 2.7, 'Pasta integral (cruda)': 2.3, 'Cuscús (crudo)': 2.5,
+    'Quinoa (cruda)': 2.8, 'Fideos de arroz (crudos)': 2.5,
+    'Lentejas (secas)': 2.5, 'Garbanzos (secos)': 2.4, 'Alubias blancas (secas)': 2.5,
+  };
+  function cookedGrams(f, grams) {
+    const ref = COOKED_OF[f.name];
+    if (!ref || !(Number(grams) > 0)) return null;
+    let factor = typeof ref === 'number' ? ref : null;
+    if (!factor) {
+      const cooked = Store.foods().find((x) => x.name === ref);
+      if (!cooked || !(num(cooked.kcal) > 0) || !(num(f.kcal) > 0)) return null;
+      factor = num(f.kcal) / num(cooked.kcal);
+    }
+    if (!(factor > 0.3 && factor < 4)) return null;
+    return Math.max(5, Math.round((Number(grams) * factor) / 5) * 5);
   }
 
   /** Colores del PDF según el tipo de alimento, todos dentro del degradado Glaciar (azul → cian → menta). */
@@ -1384,13 +1420,13 @@
             const tone = groupTone(g);
             return `<div class="ds-group ds-${g.key}" style="--rows:${g.rows.length + 1}${tone ? `;--ds-accent:${tone}` : ''}">
               <div class="ds-glabel"><i></i><b>${ROLE_LABEL[g.key]}</b>${many ? `<em>${g.rows.length} opciones · elige una</em>` : g.key === 'extra' ? '<em>además</em>' : ''}</div>
-              <div class="ds-items">${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}</span></div>`).join('')}</div>
+              <div class="ds-items">${g.rows.map((r, j) => `${many && j ? '<div class="ds-or"><span>o</span></div>' : ''}<div class="ds-item"><span class="ds-g">${fmtNum(Number(r.it.grams) || 0, 0)}<small>${unitOf(r.f)}</small></span><span class="ds-name">${esc(r.f.name)}${cookedGrams(r.f, r.it.grams) ? `<small class="ds-cooked">≈ ${cookedGrams(r.f, r.it.grams)} g ya cocinado</small>` : ''}</span></div>`).join('')}</div>
             </div>`;
           }).join('')}
           ${m.vegFree ? '<div class="ds-veg"><span>🥗</span><div><b>Verdura libre</b>Puedes añadir hasta 150 g de verdura, la que quieras.</div></div>' : ''}
           </div>
         </div>
-        ${foot(firstMeal + i, groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '')}
+        ${foot(firstMeal + i, [groups.some((g) => g.key !== 'extra' && g.rows.length > 1) ? optNote : '', groups.some((g) => g.rows.some((r) => cookedGrams(r.f, r.it.grams))) ? 'Pesa los alimentos en crudo; el peso cocinado es orientativo.' : ''].filter(Boolean).join(' '))}
       </section>`;
     };
     const page = (n, kicker, title, inner, cls = '', footTxt = 'David Orihuela · Entrenador Online') => `<section class="ds-page ${cls}">

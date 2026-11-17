@@ -1424,3 +1424,5 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds-logo { width: 40px !important; height: 40px !important; }
 .ds-cover .ds-logo { width: 58px !important; height: 58px !important; }
 .ds .hexlogo .hx { stroke-width: 9; fill: none; stroke-linejoin: round; }
+/* PDF: peso aproximado ya cocinado bajo cada alimento crudo */
+.ds-name .ds-cooked { display: block; margin-top: 2px; font-size: .7em; font-weight: 600; color: color-mix(in srgb, var(--ds-accent, #fff) 70%, #fff); opacity: .9; letter-spacing: .01em; }
