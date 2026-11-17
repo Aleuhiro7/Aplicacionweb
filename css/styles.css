@@ -1413,3 +1413,6 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .topbar-brand .brand-name { gap: 2px; min-width: 0; }
 .topbar-brand .brand-name > span { font-size: 1.05rem; }
 .topbar-brand .brand-name small { font-size: .56rem; letter-spacing: .18em; }
+/* Logo: una «D» con un botón de play */
+.hexlogo .dl { fill: url(#dograd); }
+.brand-logo { width: 44px; height: 44px; }
