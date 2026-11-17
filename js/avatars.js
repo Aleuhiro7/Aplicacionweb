@@ -390,5 +390,26 @@
   /** Plantilla asignada (o deducida) para un ejercicio. */
   const templateOf = (ex) => (ex ? ex.avatar || BY_ID[ex.id] || '' : '');
 
-  window.Avatar = { svg, templateOf, templates: T, byId: BY_ID };
+  /** Fotogramas (posiciones de las articulaciones) de una plantilla, para el avatar 3D. */
+  function framesOf(key, n) {
+    const tpl = T[key];
+    if (!tpl) return [];
+    const out = [];
+    const steps = n || 12;
+    for (let i = 0; i <= steps; i++) {
+      const t = ease(i / steps);
+      const a = tpl.a, b = tpl.b;
+      const p = {
+        front: !!a.front, hip: lerpP(a.hip, b.hip, t), torso: lerp(a.torso ?? 90, b.torso ?? 90, t), hand: lerpP(a.hand, b.hand, t),
+        ankle: a.ankle && b.ankle ? lerpP(a.ankle, b.ankle, t) : a.ankle, es: t < 0.5 ? a.es : b.es, ks: a.ks, ksF: a.ksF,
+        foot: lerp(a.foot ?? 0, b.foot ?? 0, t), footF: lerp(a.footF ?? a.foot ?? 0, b.footF ?? b.foot ?? 0, t), lift: lerp(a.lift || 0, b.lift || 0, t),
+      };
+      if (a.handF || b.handF) p.handF = lerpP(a.handF || add(a.hand, [-1.5, -0.5]), b.handF || add(b.hand, [-1.5, -0.5]), t);
+      if (a.ankleF || b.ankleF) p.ankleF = lerpP(a.ankleF || add(a.ankle, [-1.5, 0]), b.ankleF || add(b.ankle, [-1.5, 0]), t);
+      out.push(solve(p));
+    }
+    return out;
+  }
+
+  window.Avatar = { svg, templateOf, templates: T, byId: BY_ID, framesOf, loadKind, L };
 })();
