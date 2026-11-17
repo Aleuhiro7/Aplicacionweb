@@ -1,4 +1,5 @@
-/* Ejercicios que vienen de serie en la biblioteca (volcados de los PDF de David).
+/* Ejercicios que vienen de serie en la biblioteca: bíceps y tríceps de los PDF de David; el resto,
+ * catálogo de musculación con mancuernas, barra, máquinas de discos, máquinas guiadas y poleas.
  * Cada ejercicio: { id, name, group, pattern, equipment, sets, reps, rest, tempo, description, video }.
  * Al abrir la app se añaden a la biblioteca de cada usuario los que aún no tenga;
  * si se borra uno de estos, no se vuelve a añadir.
@@ -87,10 +88,383 @@
     ['Patada de tríceps (Kickback) en polea con agarre supino', 'Polea', '3', CERCA(18, 15, 12), 'Tronco inclinado hacia adelante y codo fijado arriba por encima de la línea de la espalda. Gira la palma hacia el techo al bloquear atrás.'],
   ]);
 
+  /* ======================= PECHO ======================= */
+  pattern('Pecho', 'pec-p1', 'Patrón 1 · Press horizontal pesado (Masa y Fuerza)', { rest: '2 a 3 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Press de banca con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Escápulas retraídas y pies firmes. Barra a la parte baja del pecho, codos a unos 45°. El básico de fuerza.'],
+    ['Press de banca con mancuernas', 'Mancuernas', '3', STD(12, 10, 8), 'Mayor recorrido que con barra. Baja hasta notar el estiramiento del pecho sin perder la retracción escapular.'],
+    ['Press plano en máquina de discos (convergente)', 'Máquina de discos', '3', STD(12, 10, 8), 'Trayectoria convergente que acompaña la aducción del brazo. Permite llegar al fallo con seguridad.'],
+    ['Press plano en multipower (Smith)', 'Multipower', '3', STD(10, 8, '6–7'), 'Banco colocado para que la barra caiga a la altura del esternón. Muy útil para sobrecargar sin compañero.'],
+    ['Press de pecho en máquina sentado', 'Máquina', '3', STD(12, 10, 8), 'Asiento a la altura del pecho medio. Empuja sin despegar la espalda del respaldo.'],
+    ['Press con mancuernas agarre neutro (martillo)', 'Mancuernas', '3', CERCA(12, 10, 8), 'Palmas enfrentadas y codos más pegados. Más amable con el hombro y mucho trabajo de pecho y tríceps.'],
+  ]);
+  pattern('Pecho', 'pec-p2', 'Patrón 2 · Porción superior (clavicular)', { rest: '2 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Press inclinado con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Banco a 30°. Barra a la parte alta del pecho, bajo las clavículas. Codos ligeramente cerrados.'],
+    ['Press inclinado con mancuernas', 'Mancuernas', '3', STD(12, 10, 8), 'Banco a 30°. Baja profundo con las mancuernas a la altura del pecho alto y sube convergiendo sin chocar.'],
+    ['Press inclinado en multipower (Smith)', 'Multipower', '3', STD(10, 8, '6–7'), 'Trayectoria fija que permite cargar mucho la porción superior con total estabilidad.'],
+    ['Press inclinado en máquina de discos', 'Máquina de discos', '3', STD(12, 10, 8), 'Convergente e inclinado. Ideal para llevar la porción clavicular al fallo total con seguridad.'],
+    ['Aperturas inclinadas con mancuernas', 'Mancuernas', '3', CERCA(15, 12, 10), 'Codos semiflexionados y fijos. Abre hasta el estiramiento y cierra como si abrazaras un árbol.'],
+    ['Cruce de poleas de abajo arriba (low to high)', 'Polea', '3', CERCA(15, 12, 10), 'Poleas abajo. Lleva las manos hacia arriba y al centro, a la altura de la barbilla, apretando el pecho alto.'],
+  ]);
+  pattern('Pecho', 'pec-p3', 'Patrón 3 · Porción inferior y fondos', { rest: '2 min' }, [
+    ['Press declinado con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Banco declinado 15–20°. Barra a la parte baja del pecho. Mucha carga con poco estrés en el hombro.'],
+    ['Press declinado con mancuernas', 'Mancuernas', '3', STD(12, 10, 8), 'Recorrido amplio y convergencia arriba. Controla la bajada para no perder la posición.'],
+    ['Press declinado en máquina de discos', 'Máquina de discos', '3', STD(12, 10, 8), 'Empuje hacia abajo y adelante. Muy estable para sobrecargar la porción esternal inferior.'],
+    ['Fondos en paralelas (énfasis pecho)', 'Peso corporal', '3', 'Al fallo técnico (Casi-Fallo)', 'Torso inclinado adelante y codos algo abiertos. Baja hasta notar el estiramiento del pecho. Lastra con disco si son fáciles.', { rest: '90 s' }],
+    ['Fondos en máquina (asistida o de discos)', 'Máquina', '3', CERCA(12, 10, 8), 'Inclina el tronco adelante para cargar el pecho más que el tríceps.'],
+    ['Cruce de poleas de arriba abajo (high to low)', 'Polea', '3', CERCA(15, 12, 10), 'Poleas altas. Lleva las manos hacia abajo y al centro, a la altura de la cadera, apretando 1 s.'],
+  ]);
+  pattern('Pecho', 'pec-p4', 'Patrón 4 · Aislamiento y estiramiento (aperturas)', { rest: '90 s', tempo: '2 s excéntrica / 1 s de estiramiento abajo / 1 s concéntrica' }, [
+    ['Aperturas con mancuernas en banco plano', 'Mancuernas', '3', CERCA(15, 12, 10), 'Codos semiflexionados fijos. Baja hasta la línea del pecho y vuelve sin chocar las mancuernas.'],
+    ['Aperturas en máquina (contractor / pec deck)', 'Máquina', '3', STD(15, 12, 10), 'Asiento con los manerales a la altura del pecho medio. Aprieta 1 s cuando las manos se juntan.'],
+    ['Cruce de poleas a media altura', 'Polea', '3', STD(15, 12, 10), 'Paso adelante y ligera inclinación. Cierra las manos al frente del esternón con tensión constante.'],
+    ['Aperturas en polea baja tumbado en banco', 'Polea y banco', '3', CERCA(15, 12, 10), 'Banco plano entre dos poleas bajas. Tensión máxima en el estiramiento, donde la mancuerna no llega.'],
+    ['Aperturas unilaterales en polea', 'Polea', '3', CERCA(15, 12, 10), 'Un brazo cada vez para cruzar la línea media y acortar al máximo. Corrige asimetrías.'],
+    ['Pullover con mancuerna (énfasis pecho)', 'Mancuerna', '3', CERCA(15, 12, 10), 'Tumbado transversal o a lo largo del banco. Codos ligeramente flexionados y baja por detrás de la cabeza.'],
+  ]);
+  pattern('Pecho', 'pec-p5', 'Patrón 5 · Finisher (congestión)', { rest: '30 a 45 s' }, [
+    ['Flexiones (push-ups)', 'Peso corporal', '2', 'Al fallo (Fallo-Total)', 'Cuerpo en bloque, pecho al suelo y bloqueo arriba. Eleva los pies para cargar la porción superior.'],
+    ['Flexiones con déficit (manos sobre discos o agarres)', 'Peso corporal y discos', '2', 'Al fallo (Fallo-Total)', 'Las manos elevadas permiten bajar más y estirar el pecho al máximo.'],
+    ['Press con mancuernas juntas (squeeze press)', 'Mancuernas', '2', '15–20 (Fallo-Agotamiento)', 'Aprieta las mancuernas una contra otra durante todo el recorrido. Peso ligero, máxima contracción.'],
+    ['Press Svend con disco', 'Disco', '2', '20 (Fallo-Agotamiento)', 'Disco entre las palmas a la altura del pecho; empuja al frente apretándolo con fuerza.'],
+  ]);
+
+  /* ======================= ESPALDA ======================= */
+  pattern('Espalda', 'esp-p1', 'Patrón 1 · Tracción vertical (amplitud del dorsal)', { rest: '2 a 3 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Dominadas pronas (lastradas si es posible)', 'Peso corporal', '3', STD(10, 8, '6–7'), 'Agarre algo más ancho que los hombros. Lleva el pecho a la barra y baja hasta extender los brazos.'],
+    ['Dominadas neutras o supinas', 'Peso corporal', '3', STD(10, 8, '6–7'), 'Agarre estrecho; el dorsal trabaja con más recorrido. Codos hacia las costillas al subir.'],
+    ['Jalón al pecho agarre prono abierto', 'Polea', '3', STD(12, 10, 8), 'Pecho alto, ligera inclinación atrás. Tira con los codos hacia abajo, no con las manos.'],
+    ['Jalón al pecho agarre neutro estrecho', 'Polea con triángulo', '3', STD(12, 10, 8), 'Mayor recorrido y más fuerza. Lleva el triángulo a la parte alta del pecho.'],
+    ['Jalón en máquina de discos (convergente)', 'Máquina de discos', '3', STD(12, 10, 8), 'Trayectoria en arco que sigue la del dorsal. Se puede hacer a una mano.'],
+    ['Jalón unilateral en polea alta (de rodillas o sentado)', 'Polea', '3', CERCA(12, 10, 8), 'Un brazo cada vez, tirando del codo hacia la cadera. Máximo estiramiento arriba.'],
+    ['Jalón supino (agarre invertido)', 'Polea', '3', CERCA(12, 10, 8), 'Agarre a la anchura de los hombros con las palmas hacia ti. Mucho dorsal bajo.'],
+  ]);
+  pattern('Espalda', 'esp-p2', 'Patrón 2 · Remo horizontal pesado (grosor)', { rest: '2 a 3 min', tempo: '2 s excéntrica / 1 s de contracción arriba' }, [
+    ['Remo con barra (torso inclinado)', 'Barra', '3', STD(10, 8, '6–7'), 'Torso a unos 45°, espalda neutra. Barra al ombligo y escápulas juntas arriba.'],
+    ['Remo Pendlay', 'Barra', '3', STD(8, 6, 5), 'Torso paralelo al suelo; la barra vuelve al suelo en cada repetición. Tirón explosivo.'],
+    ['Remo con barra en T (landmine o máquina de discos)', 'Máquina de discos', '3', STD(10, 8, '6–7'), 'Pecho apoyado si la máquina lo permite. Agarre neutro y tirón hacia el abdomen.'],
+    ['Remo con mancuerna a una mano (apoyado en banco)', 'Mancuerna', '3', STD(12, 10, 8), 'Rodilla y mano en el banco. Lleva el codo hacia la cadera y estira bien abajo.'],
+    ['Remo en máquina de discos con apoyo pectoral', 'Máquina de discos', '3', STD(12, 10, 8), 'El pecho apoyado anula el impulso. Ideal para llegar al fallo sin cargar la zona lumbar.'],
+    ['Remo sentado en polea baja (triángulo)', 'Polea', '3', STD(12, 10, 8), 'Torso erguido; estira adelante sin redondear y tira del triángulo hasta el abdomen.'],
+    ['Remo con pecho apoyado en banco inclinado (mancuernas)', 'Mancuernas y banco inclinado', '3', CERCA(12, 10, 8), 'Banco a 30–45°. Sin balanceo posible: trabajo estricto de dorsal y espalda media.'],
+    ['Remo Meadows (landmine a una mano)', 'Barra (landmine)', '3', CERCA(12, 10, 8), 'De lado a la barra, agarre por el extremo. Gran estiramiento y tirón hacia la cadera.'],
+    ['Remo en multipower', 'Multipower', '3', STD(10, 8, '6–7'), 'Trayectoria fija; permite concentrarse en tirar con los codos sin preocuparse del equilibrio.'],
+  ]);
+  pattern('Espalda', 'esp-p3', 'Patrón 3 · Dorsal en aislamiento y estiramiento', { rest: '90 s', tempo: '2 s excéntrica / 1 s de estiramiento / 1 s de contracción' }, [
+    ['Pullover en polea alta con brazos rectos (cuerda o barra)', 'Polea', '3', STD(15, 12, 10), 'Brazos casi extendidos; lleva las manos de la altura de la cabeza a los muslos sin mover el torso.'],
+    ['Pullover con mancuerna (énfasis dorsal)', 'Mancuerna', '3', CERCA(12, 10, 8), 'Codos más cerrados y cadera algo baja para estirar el dorsal en la bajada.'],
+    ['Pullover en máquina', 'Máquina', '3', STD(12, 10, 8), 'Dorsal aislado sin intervención del bíceps. Recorrido completo.'],
+    ['Remo unilateral en polea baja hacia la cadera', 'Polea', '3', CERCA(15, 12, 10), 'Tira en arco del codo hacia el bolsillo trasero. Énfasis en la parte baja del dorsal.'],
+    ['Jalón unilateral con brazo estirado en polea', 'Polea', '3', CERCA(15, 12, 10), 'De lado a la polea; baja el brazo recto en arco hacia la cadera. Conexión mente-músculo máxima.'],
+  ]);
+  pattern('Espalda', 'esp-p4', 'Patrón 4 · Espalda alta y trapecio', { rest: '90 s', tempo: '1 s de contracción arriba (encogimientos 2 s)' }, [
+    ['Encogimientos con barra', 'Barra', '3', STD(15, 12, 10), 'Sube los hombros hacia las orejas sin rotarlos y aguanta arriba 2 s.'],
+    ['Encogimientos con mancuernas', 'Mancuernas', '3', STD(15, 12, 10), 'Mancuernas a los lados permiten un recorrido más natural.'],
+    ['Encogimientos en multipower o máquina de discos', 'Multipower', '3', STD(15, 12, 10), 'Mucha carga con estabilidad. Ligera inclinación adelante para el trapecio medio.'],
+    ['Encogimientos en polea baja', 'Polea', '3', CERCA(15, 12, 10), 'Tensión constante, sobre todo en la parte baja del recorrido.'],
+    ['Remo con codos abiertos en máquina o polea (espalda alta)', 'Máquina', '3', CERCA(12, 10, 8), 'Codos a la altura de los hombros: romboides, trapecio medio y deltoides posterior.'],
+  ]);
+  pattern('Espalda', 'esp-p5', 'Patrón 5 · Zona lumbar (erectores)', { rest: '2 a 3 min' }, [
+    ['Peso muerto convencional', 'Barra', '3', STD(8, 6, 5), 'Barra pegada a las piernas, espalda neutra y empuje del suelo con las piernas. El básico de la cadena posterior.'],
+    ['Rack pull (peso muerto desde soportes)', 'Barra', '3', STD(8, 6, 5), 'Desde la altura de la rodilla. Mucha carga para erectores y trapecio con menos fatiga.'],
+    ['Hiperextensiones en banco romano (con disco)', 'Banco romano y disco', '3', CERCA(15, 12, 10), 'Sube hasta alinear el cuerpo, sin hiperextender. Disco al pecho para progresar.', { rest: '90 s' }],
+    ['Buenos días con barra', 'Barra', '3', CERCA(12, 10, 8), 'Barra en la espalda, rodillas algo flexionadas. Bisagra de cadera con espalda neutra.'],
+  ]);
+
+  /* ======================= HOMBROS ======================= */
+  pattern('Hombros', 'hom-p1', 'Patrón 1 · Press vertical pesado (Masa y Fuerza)', { rest: '2 a 3 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Press militar con barra de pie', 'Barra', '3', STD(10, 8, '6–7'), 'Glúteos y abdomen apretados. Barra desde las clavículas hasta encima de la cabeza.'],
+    ['Press militar sentado en multipower', 'Multipower', '3', STD(10, 8, '6–7'), 'Respaldo casi vertical. Baja hasta la barbilla y empuja sin bloquear del todo.'],
+    ['Press con mancuernas sentado', 'Mancuernas', '3', STD(12, 10, 8), 'Codos ligeramente por delante del cuerpo. Baja hasta la altura de las orejas.'],
+    ['Press Arnold', 'Mancuernas', '3', CERCA(12, 10, 8), 'Empieza con las palmas hacia ti y rota mientras subes. Mucho trabajo del deltoides anterior.'],
+    ['Press de hombro en máquina de discos', 'Máquina de discos', '3', STD(12, 10, 8), 'Trayectoria convergente y estable para llegar al fallo con seguridad.'],
+    ['Press de hombro en máquina sentado', 'Máquina', '3', STD(12, 10, 8), 'Ajusta el asiento para que los manerales queden a la altura de los hombros.'],
+    ['Press landmine a una mano', 'Barra (landmine)', '3', CERCA(12, 10, 8), 'Empuje en diagonal, muy amable con el hombro. Bueno si hay molestias en el press vertical.'],
+  ]);
+  pattern('Hombros', 'hom-p2', 'Patrón 2 · Deltoides lateral (anchura)', { rest: '60 a 90 s', tempo: '2 s excéntrica / 1 s arriba' }, [
+    ['Elevaciones laterales con mancuernas', 'Mancuernas', '3', STD(15, 12, 10), 'Codos ligeramente flexionados y por delante del cuerpo. Sube hasta la altura de los hombros, sin trampas.'],
+    ['Elevación lateral unilateral en polea baja', 'Polea', '3', STD(15, 12, 10), 'Cable por detrás o por delante del cuerpo. Tensión constante desde el inicio del recorrido.'],
+    ['Elevaciones laterales en máquina', 'Máquina', '3', STD(15, 12, 10), 'Hombro alineado con el eje de la máquina. Empuja con el codo, no con la mano.'],
+    ['Elevación lateral inclinada apoyado (lean-away)', 'Mancuerna', '3', CERCA(15, 12, 10), 'Agárrate a un soporte e inclínate hacia el lado contrario: más tensión abajo.'],
+    ['Elevación en Y con poleas cruzadas', 'Polea', '3', CERCA(15, 12, 10), 'Cables cruzados delante del cuerpo; sube en diagonal hacia arriba y afuera.'],
+    ['Remo al mentón con agarre abierto (barra o polea)', 'Barra', '3', CERCA(12, 10, 8), 'Agarre ancho; lleva los codos hacia los lados hasta la altura de los hombros, no más arriba.'],
+  ]);
+  pattern('Hombros', 'hom-p3', 'Patrón 3 · Deltoides posterior', { rest: '60 a 90 s', tempo: '2 s excéntrica / 1 s de contracción' }, [
+    ['Pájaros con mancuernas (torso inclinado)', 'Mancuernas', '3', STD(15, 12, 10), 'Torso casi paralelo al suelo. Abre los brazos hacia los lados sin juntar las escápulas.'],
+    ['Pájaro en máquina (contractor invertido)', 'Máquina', '3', STD(15, 12, 10), 'De cara al respaldo; abre los brazos con los codos altos. Muy estricto.'],
+    ['Face pull con cuerda', 'Polea con cuerda', '3', STD(15, 12, 10), 'Polea a la altura de la cara. Tira hacia los ojos abriendo la cuerda y rotando los hombros hacia fuera.'],
+    ['Cruce invertido en poleas (de pie)', 'Polea', '3', CERCA(15, 12, 10), 'Cada mano coge el cable contrario a la altura de los hombros y abre en cruz.'],
+    ['Pájaro tumbado en banco inclinado', 'Mancuernas y banco inclinado', '3', CERCA(15, 12, 10), 'Pecho apoyado: elimina el impulso y aísla el posterior.'],
+  ]);
+  pattern('Hombros', 'hom-p4', 'Patrón 4 · Deltoides anterior (opcional)', { rest: '60 a 90 s' }, [
+    ['Elevaciones frontales con mancuernas', 'Mancuernas', '3', CERCA(12, 10, 8), 'Sube hasta la altura de los ojos, alternando o a la vez. Sin balanceo.'],
+    ['Elevación frontal con disco', 'Disco', '3', CERCA(12, 10, 8), 'Agarre en los laterales del disco. Sube y baja controlando.'],
+    ['Elevación frontal en polea baja', 'Polea', '3', CERCA(15, 12, 10), 'De espaldas a la polea con el cable entre las piernas. Tensión constante.'],
+  ]);
+  pattern('Hombros', 'hom-p5', 'Patrón 5 · Finisher (congestión)', { rest: '30 a 45 s' }, [
+    ['Elevaciones laterales en serie descendente', 'Mancuernas', '2', '12 + 10 + 10 (Fallo-Agotamiento)', 'Al llegar al fallo, baja el peso un 20–30 % y sigue sin descanso dos veces.'],
+    ['Elevación lateral parcial pesada (medio recorrido)', 'Mancuernas', '2', '20–25 (Fallo-Agotamiento)', 'Solo la mitad inferior del recorrido con más peso de lo normal. Quemazón extrema.'],
+  ]);
+
+  /* ======================= CUÁDRICEPS ======================= */
+  pattern('Cuádriceps', 'cua-p1', 'Patrón 1 · Sentadilla pesada (Masa y Fuerza)', { rest: '2 a 3 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Sentadilla trasera con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Pies a la anchura de los hombros, rodillas en la línea de los pies. Baja al menos hasta la paralela.'],
+    ['Sentadilla frontal con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Barra sobre los deltoides, codos altos. Torso más vertical y más cuádriceps.'],
+    ['Sentadilla en multipower', 'Multipower', '3', STD(10, 8, '6–7'), 'Pies algo adelantados. Permite ir al fallo con seguridad.'],
+    ['Sentadilla hack (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Espalda apoyada y pies en la mitad baja de la plataforma para cargar el cuádriceps. Baja profundo.'],
+    ['Sentadilla péndulo (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Recorrido en arco muy profundo con la espalda apoyada. Una de las mejores para cuádriceps.'],
+    ['Sentadilla con cinturón (belt squat)', 'Máquina de discos', '3', STD(12, 10, 8), 'La carga va a la cadera: cero carga en la columna. Ideal si hay molestias lumbares.'],
+    ['Prensa inclinada 45° (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Pies a la anchura de la cadera en la mitad de la plataforma. Baja sin que la pelvis se despegue.'],
+  ]);
+  pattern('Cuádriceps', 'cua-p2', 'Patrón 2 · Prensa y unilaterales', { rest: '2 min', tempo: '2 s excéntrica / concéntrica controlada' }, [
+    ['Prensa horizontal', 'Máquina', '3', STD(15, 12, 10), 'Pies bajos en la plataforma para más cuádriceps. Recorrido completo sin bloquear las rodillas.'],
+    ['Prensa unilateral', 'Máquina de discos', '3', CERCA(12, 10, 8), 'Una pierna cada vez para corregir asimetrías.'],
+    ['Sentadilla búlgara con mancuernas', 'Mancuernas y banco', '3', CERCA(12, 10, 8), 'Pie de atrás en el banco, torso erguido y rodilla adelante para cargar el cuádriceps.'],
+    ['Sentadilla búlgara en multipower', 'Multipower y banco', '3', CERCA(12, 10, 8), 'La estabilidad de la máquina permite meter más carga.'],
+    ['Zancadas caminando con mancuernas', 'Mancuernas', '3', '12 / 10 / 10 por pierna (Cerca-del-Fallo)', 'Paso medio y rodilla de atrás casi al suelo. Empuja con el talón de delante.'],
+    ['Subida al cajón (step-up) con mancuernas', 'Mancuernas y cajón', '3', '12 / 10 / 8 por pierna (Cerca-del-Fallo)', 'Cajón a la altura de la rodilla. Sube sin impulsarte con la pierna de atrás.'],
+    ['Sentadilla goblet con talones elevados', 'Mancuerna', '3', CERCA(15, 12, 10), 'Talones sobre un disco o cuña; las rodillas avanzan más y el cuádriceps trabaja más.'],
+  ]);
+  pattern('Cuádriceps', 'cua-p3', 'Patrón 3 · Aislamiento', { rest: '60 a 90 s', tempo: '2 s excéntrica / 1 s de contracción arriba' }, [
+    ['Extensiones de cuádriceps en máquina', 'Máquina', '3', STD(15, 12, 10), 'Respaldo algo inclinado atrás para estirar el recto femoral. Aguanta 1 s arriba.'],
+    ['Extensión de cuádriceps unilateral', 'Máquina', '3', CERCA(15, 12, 10), 'Una pierna cada vez. Muy útil para corregir diferencias.'],
+    ['Sissy squat (asistida o en máquina)', 'Peso corporal', '3', 'Al fallo técnico (Casi-Fallo)', 'Rodillas adelante y cadera extendida. Estiramiento intenso del cuádriceps.'],
+    ['Extensión de rodilla en polea baja (con tobillera)', 'Polea', '3', CERCA(15, 12, 10), 'Alternativa si no hay máquina. Tensión constante.'],
+  ]);
+  pattern('Cuádriceps', 'cua-p4', 'Patrón 4 · Finisher (congestión)', { rest: '30 a 45 s' }, [
+    ['Prensa en serie larga', 'Máquina', '2', '30 (Fallo-Agotamiento)', 'Peso moderado y sin bloquear las rodillas. Quemazón máxima.'],
+    ['Extensiones con pausas (descanso-pausa)', 'Máquina', '2', '15 + 6 + 4 (Fallo-Agotamiento)', 'Al fallo, descansa 15 s y saca más repeticiones con el mismo peso, dos veces.'],
+  ]);
+
+  /* ======================= ISQUIOTIBIALES ======================= */
+  pattern('Isquiotibiales', 'isq-p1', 'Patrón 1 · Bisagra de cadera (estiramiento)', { rest: '2 a 3 min', tempo: '3 s excéntrica / concéntrica explosiva' }, [
+    ['Peso muerto rumano con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Rodillas algo flexionadas y fijas. Lleva la cadera atrás con la barra pegada a las piernas hasta notar el estiramiento.'],
+    ['Peso muerto rumano con mancuernas', 'Mancuernas', '3', STD(12, 10, 8), 'Mancuernas delante de los muslos. Espalda neutra y cadera atrás.'],
+    ['Peso muerto con piernas rígidas', 'Barra', '3', CERCA(10, 8, '6–7'), 'Rodillas casi extendidas: más estiramiento del isquio. Solo hasta donde mantengas la espalda neutra.'],
+    ['Peso muerto rumano en multipower', 'Multipower', '3', STD(12, 10, 8), 'Trayectoria fija para centrarse en el estiramiento.'],
+    ['Peso muerto rumano a una pierna con mancuerna', 'Mancuerna', '3', CERCA(12, 10, 8), 'Pierna libre atrás alineada con el tronco. Equilibrio y gran estiramiento.'],
+    ['Pull-through en polea baja', 'Polea con cuerda', '3', CERCA(15, 12, 10), 'De espaldas a la polea con la cuerda entre las piernas. Bisagra pura de cadera.'],
+  ]);
+  pattern('Isquiotibiales', 'isq-p2', 'Patrón 2 · Flexión de rodilla (curl femoral)', { rest: '90 s', tempo: '3 s excéntrica / 1 s de contracción' }, [
+    ['Curl femoral tumbado', 'Máquina', '3', STD(12, 10, 8), 'Cadera pegada al banco. Lleva los talones a los glúteos y baja lento.'],
+    ['Curl femoral sentado', 'Máquina', '3', STD(12, 10, 8), 'La cadera flexionada estira el isquio: es la variante con más estímulo. Torso algo inclinado adelante.'],
+    ['Curl femoral de pie unilateral', 'Máquina', '3', CERCA(12, 10, 8), 'Una pierna cada vez, cadera quieta.'],
+    ['Curl femoral en máquina de discos', 'Máquina de discos', '3', STD(12, 10, 8), 'Recorrido completo y mucha carga con estabilidad.'],
+    ['Curl femoral en polea baja con tobillera', 'Polea', '3', CERCA(15, 12, 10), 'De pie o tumbado. Alternativa cuando no hay máquina.'],
+    ['Curl femoral con mancuerna tumbado', 'Mancuerna', '3', CERCA(12, 10, 8), 'Mancuerna entre los pies. Controla mucho la bajada.'],
+    ['Curl nórdico', 'Peso corporal', '3', 'Al fallo técnico (Casi-Fallo)', 'Talones sujetos; déjate caer lo más lento posible. Excéntrica brutal y protector de lesiones.', { rest: '2 min' }],
+  ]);
+  pattern('Isquiotibiales', 'isq-p3', 'Patrón 3 · Finisher', { rest: '30 a 45 s' }, [
+    ['Curl femoral sentado con descanso-pausa', 'Máquina', '2', '12 + 5 + 3 (Fallo-Agotamiento)', 'Al fallo, descansa 15 s y repite dos veces con el mismo peso.'],
+    ['Hiperextensión con énfasis en isquios', 'Banco romano', '2', '20 (Fallo-Agotamiento)', 'Espalda neutra y bisagra desde la cadera, con el apoyo un poco más bajo de lo normal.'],
+  ]);
+
+  /* ======================= GLÚTEOS ======================= */
+  pattern('Glúteos', 'glu-p1', 'Patrón 1 · Empuje de cadera pesado', { rest: '2 a 3 min', tempo: '2 s excéntrica / 2 s de contracción arriba' }, [
+    ['Hip thrust con barra', 'Barra y banco', '3', STD(12, 10, 8), 'Espalda alta en el banco y barbilla al pecho. Sube hasta alinear tronco y muslos y aprieta 2 s.'],
+    ['Hip thrust en máquina de discos', 'Máquina de discos', '3', STD(12, 10, 8), 'Mucha carga sin tener que colocar la barra. Pelvis en retroversión arriba.'],
+    ['Hip thrust en multipower', 'Multipower y banco', '3', STD(12, 10, 8), 'Estable y fácil de cargar. Pies a la altura que haga trabajar más el glúteo.'],
+    ['Puente de glúteo con barra (en el suelo)', 'Barra', '3', CERCA(15, 12, 10), 'Recorrido más corto pero mucha contracción. Bueno como segundo ejercicio.'],
+    ['Hip thrust unilateral con mancuerna', 'Mancuerna y banco', '3', CERCA(12, 10, 8), 'Mancuerna sobre la cadera de la pierna que trabaja. Corrige asimetrías.'],
+  ]);
+  pattern('Glúteos', 'glu-p2', 'Patrón 2 · Estiramiento y unilaterales', { rest: '2 min', tempo: '3 s excéntrica / concéntrica controlada' }, [
+    ['Sentadilla búlgara con énfasis glúteo', 'Mancuernas y banco', '3', CERCA(12, 10, 8), 'Paso largo y torso inclinado adelante; baja profundo para estirar el glúteo.'],
+    ['Zancada hacia atrás con déficit', 'Mancuernas y disco', '3', '12 / 10 / 8 por pierna (Cerca-del-Fallo)', 'Pie de delante sobre un disco. Más recorrido y más glúteo.'],
+    ['Peso muerto sumo con barra', 'Barra', '3', STD(10, 8, '6–7'), 'Pies muy abiertos y puntas afuera. Glúteo y aductores con mucha carga.'],
+    ['Subida al cajón alto (step-up) con énfasis glúteo', 'Mancuernas y cajón', '3', '12 / 10 / 8 por pierna (Cerca-del-Fallo)', 'Cajón alto y torso inclinado. Empuja con el talón.'],
+    ['Prensa con pies altos y abiertos', 'Máquina de discos', '3', STD(12, 10, 8), 'Pies en la parte alta de la plataforma: más cadera y glúteo.'],
+    ['Hiperextensión 45° con énfasis glúteo', 'Banco romano y disco', '3', CERCA(15, 12, 10), 'Espalda alta redondeada, puntas afuera y aprieta glúteos para subir.'],
+  ]);
+  pattern('Glúteos', 'glu-p3', 'Patrón 3 · Glúteo medio y patadas', { rest: '60 a 90 s', tempo: '1 s de contracción' }, [
+    ['Abducción de cadera en máquina (torso inclinado)', 'Máquina', '3', STD(20, 15, 12), 'Inclínate adelante para cargar el glúteo mayor superior y medio. Aguanta 1 s abierto.'],
+    ['Abducción de cadera en polea baja de pie', 'Polea con tobillera', '3', CERCA(15, 12, 10), 'Pierna recta hacia el lado sin inclinar el tronco.'],
+    ['Patada de glúteo en polea (kickback)', 'Polea con tobillera', '3', CERCA(15, 12, 10), 'Torso inclinado y apoyo firme. Lleva el talón atrás y arriba sin arquear la lumbar.'],
+    ['Patada de glúteo en máquina', 'Máquina', '3', STD(15, 12, 10), 'Recorrido guiado; aprieta arriba 1 s.'],
+  ]);
+  pattern('Glúteos', 'glu-p4', 'Patrón 4 · Finisher', { rest: '30 a 45 s' }, [
+    ['Abducción en máquina en 3 posiciones', 'Máquina', '2', '15 + 15 + 15 (Fallo-Agotamiento)', 'Torso inclinado, recto y reclinado sin descanso entre posiciones.'],
+    ['Puente de glúteo con banda elástica (altas repeticiones)', 'Banda elástica', '2', '30–50 (Fallo-Agotamiento)', 'Banda sobre las rodillas, abriéndolas arriba. Solo congestión.'],
+  ]);
+
+  /* ======================= ADUCTORES ======================= */
+  pattern('Aductores', 'adu-p1', 'Patrón 1 · Aducción y sentadilla abierta', { rest: '90 s', tempo: '2 s excéntrica / 1 s de contracción' }, [
+    ['Aducción de cadera en máquina', 'Máquina', '3', STD(15, 12, 10), 'Abre hasta notar el estiramiento y cierra apretando 1 s.'],
+    ['Aducción en polea baja de pie', 'Polea con tobillera', '3', CERCA(15, 12, 10), 'Cruza la pierna por delante de la de apoyo.'],
+    ['Sentadilla sumo con mancuerna (goblet)', 'Mancuerna', '3', CERCA(15, 12, 10), 'Pies muy abiertos y bajada profunda.'],
+    ['Plancha de Copenhague', 'Peso corporal', '3', '20–40 s por lado (Casi-Fallo)', 'Pierna de arriba sobre un banco y cuerpo en línea.'],
+  ]);
+
+  /* ======================= GEMELOS ======================= */
+  pattern('Gemelos', 'gem-p1', 'Patrón 1 · Gemelo (rodilla extendida)', { rest: '60 a 90 s', tempo: '2 s de estiramiento abajo / 1 s arriba' }, [
+    ['Elevación de talones de pie en máquina', 'Máquina', '3', STD(15, 12, 10), 'Rodillas extendidas. Baja hasta el estiramiento completo y aguanta 2 s abajo.'],
+    ['Elevación de talones en multipower (con escalón)', 'Multipower y escalón', '3', STD(15, 12, 10), 'Puntas en un escalón o disco para ganar recorrido.'],
+    ['Elevación de talones en prensa', 'Máquina de discos', '3', STD(15, 12, 10), 'Puntas en el borde de la plataforma y rodillas extendidas.'],
+    ['Gemelo tipo burro (donkey) en máquina', 'Máquina de discos', '3', STD(15, 12, 10), 'Cadera flexionada: máximo estiramiento del gemelo.'],
+    ['Elevación de talones a una pierna con mancuerna', 'Mancuerna y escalón', '3', CERCA(15, 12, 10), 'Apóyate con la mano libre. Recorrido completo.'],
+  ]);
+  pattern('Gemelos', 'gem-p2', 'Patrón 2 · Sóleo (rodilla flexionada)', { rest: '60 s', tempo: '2 s de estiramiento abajo / 1 s arriba' }, [
+    ['Elevación de talones sentado en máquina', 'Máquina de discos', '3', STD(20, 15, 12), 'Rodillas a 90°: trabaja sobre todo el sóleo. Recorrido completo y lento.'],
+    ['Elevación de talones sentado con mancuernas o barra', 'Mancuernas', '3', CERCA(20, 15, 12), 'Peso sobre las rodillas y puntas en un disco.'],
+    ['Elevación de talones sentado en multipower', 'Multipower', '3', CERCA(20, 15, 12), 'Barra sobre los muslos con almohadilla.'],
+  ]);
+  pattern('Gemelos', 'gem-p3', 'Patrón 3 · Tibial y finisher', { rest: '30 a 45 s' }, [
+    ['Elevación de punteras (tibial anterior)', 'Disco o máquina', '2', '20–25 (Cerca-del-Fallo)', 'Espalda en la pared y talones adelantados, o con disco en los pies.'],
+    ['Gemelos en escalón sin peso (altas repeticiones)', 'Peso corporal', '2', '50 (Fallo-Agotamiento)', 'Rápidas y continuas. Solo congestión.'],
+  ]);
+
+  /* ======================= CORE / ABDOMEN ======================= */
+  pattern('Core / Abdomen', 'abd-p1', 'Patrón 1 · Flexión de tronco con carga', { rest: '60 a 90 s', tempo: '2 s excéntrica / 1 s de contracción' }, [
+    ['Crunch en polea alta de rodillas (cuerda)', 'Polea con cuerda', '3', STD(15, 12, 10), 'Cadera quieta; enrolla el tronco llevando los codos a las rodillas.'],
+    ['Crunch en máquina', 'Máquina', '3', STD(15, 12, 10), 'Enrolla la columna en lugar de tirar con los brazos.'],
+    ['Crunch en banco declinado con disco', 'Banco declinado y disco', '3', CERCA(15, 12, 10), 'Disco al pecho. Sube enrollando, no con la cadera.'],
+  ]);
+  pattern('Core / Abdomen', 'abd-p2', 'Patrón 2 · Elevación de piernas (zona inferior)', { rest: '60 a 90 s' }, [
+    ['Elevación de piernas colgado', 'Barra de dominadas', '3', 'Al fallo técnico (Casi-Fallo)', 'Sin balanceo; lleva la pelvis hacia arriba al final. Rodillas flexionadas si es muy duro.'],
+    ['Elevación de rodillas en silla romana (paralelas)', 'Silla romana', '3', CERCA(15, 12, 10), 'Espalda pegada al respaldo; enrolla la pelvis arriba.'],
+    ['Crunch inverso en banco declinado', 'Banco declinado', '3', CERCA(15, 12, 10), 'Sujétate al banco y lleva las rodillas al pecho despegando la cadera.'],
+    ['Rueda abdominal (ab wheel)', 'Rueda abdominal', '3', 'Al fallo técnico (Casi-Fallo)', 'Rodillas en el suelo y abdomen apretado; no dejes que se hunda la lumbar.'],
+  ]);
+  pattern('Core / Abdomen', 'abd-p3', 'Patrón 3 · Oblicuos y antirrotación', { rest: '60 s' }, [
+    ['Pallof press en polea', 'Polea', '3', '12 / 10 / 10 por lado (Cerca-del-Fallo)', 'De lado a la polea; empuja al frente y resiste la rotación 2 s.'],
+    ['Leñador en polea (de arriba abajo)', 'Polea', '3', '12 / 10 / 10 por lado (Cerca-del-Fallo)', 'Gira el tronco desde arriba hacia la cadera contraria con los brazos firmes.'],
+    ['Inclinación lateral con mancuerna', 'Mancuerna', '3', '15 / 12 / 12 por lado (Cerca-del-Fallo)', 'Una sola mancuerna; inclínate hacia el lado contrario sin girar.'],
+    ['Plancha con disco', 'Disco', '3', '30–60 s (Casi-Fallo)', 'Disco sobre la espalda; cuerpo en línea y glúteos apretados.'],
+  ]);
+
+  /* ======================= ANTEBRAZO ======================= */
+  pattern('Antebrazo', 'ant-p1', 'Patrón 1 · Flexores, extensores y agarre', { rest: '60 s' }, [
+    ['Curl de muñeca con barra (palmas arriba)', 'Barra', '3', STD(20, 15, 12), 'Antebrazos apoyados en el banco; deja rodar la barra hasta los dedos y sube.'],
+    ['Extensión de muñeca con barra (palmas abajo)', 'Barra', '3', CERCA(20, 15, 12), 'Antebrazos apoyados; sube los nudillos sin mover el codo.'],
+    ['Curl inverso con barra Z', 'Barra Z', '3', CERCA(15, 12, 10), 'Agarre prono; braquiorradial y extensores.'],
+    ['Paseo del granjero con mancuernas', 'Mancuernas', '3', '30–40 m (Casi-Fallo)', 'Mancuernas pesadas, hombros atrás y pasos cortos.'],
+  ]);
+
   window.LIBRARY_DEFAULT = list;
 
   /* Pautas de cada grupo muscular (se muestran en la biblioteca). */
   window.LIBRARY_GUIDES = {
+    'Pecho': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (press horizontal) + uno del Patrón 2 (porción superior) + uno del Patrón 3 o 4. El Patrón 5 es un finisher opcional.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana.',
+        'Técnica: escápulas retraídas y deprimidas en todos los presses; el pecho empuja, el hombro acompaña.',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: rotaciones de hombro y aperturas con banda.',
+        'Activación: 2 series × 12 de aperturas en polea o press con peso muy ligero.',
+      ] },
+      { title: 'Patrón 1 · Press horizontal pesado', items: ['Objetivo: masa y fuerza base del pecho.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Porción superior', items: ['Objetivo: llenar la parte alta del pecho (bajo la clavícula).', 'Mecánica: banco a 30°; más inclinación carga el hombro.', 'Descanso: 2 minutos.'] },
+      { title: 'Patrón 3 · Porción inferior y fondos', items: ['Objetivo: densidad del borde inferior del pecho.', 'Mecánica: declinados, fondos con torso inclinado y cruces de arriba abajo.'] },
+      { title: 'Patrón 4 · Aislamiento y estiramiento', items: ['Objetivo: máxima tensión en el estiramiento con aperturas y poleas.', 'Tempo: 2 s excéntrica / 1 s de estiramiento / 1 s concéntrica.', 'Descanso: 90 segundos.'] },
+      { title: 'Patrón 5 · Finisher', items: ['Objetivo: congestión final con flexiones o presses de apretar.', 'Descanso: 30 a 45 segundos.'] },
+    ],
+    'Espalda': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (tracción vertical) + uno del Patrón 2 (remo) + uno del Patrón 3 o 4. El Patrón 5 (lumbar) según el objetivo.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana.',
+        'Técnica: tira con los codos, no con las manos. Las correas de agarre están permitidas en las series pesadas.',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: colgarse de la barra 20–30 s y rotaciones de hombro.',
+        'Activación: 2 series × 12 de pullover en polea con peso ligero.',
+      ] },
+      { title: 'Patrón 1 · Tracción vertical (amplitud)', items: ['Objetivo: anchura del dorsal.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Remo horizontal (grosor)', items: ['Objetivo: densidad de la espalda media.', 'Mecánica: aprieta las escápulas 1 s arriba en cada repetición.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 3 · Dorsal en aislamiento', items: ['Objetivo: tensión en el dorsal sin bíceps (brazos rectos o tirones hacia la cadera).', 'Descanso: 90 segundos.'] },
+      { title: 'Patrón 4 · Espalda alta y trapecio', items: ['Objetivo: trapecio, romboides y espalda alta.', 'Mecánica: encogimientos sin rotar los hombros, con 2 s de pausa arriba.'] },
+      { title: 'Patrón 5 · Zona lumbar', items: ['Objetivo: fuerza de la cadena posterior y los erectores.', 'Regla de oro: espalda siempre neutra; si se redondea, se acaba la serie.'] },
+    ],
+    'Hombros': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (press) + uno del Patrón 2 (lateral) + uno del Patrón 3 (posterior). El anterior (Patrón 4) ya trabaja en los presses: solo si se busca específicamente.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana (el lateral y el posterior toleran más frecuencia).',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: rotaciones externas e internas con banda o polea ligera.',
+        'Activación: 2 series × 15 de face pull ligero.',
+      ] },
+      { title: 'Patrón 1 · Press vertical pesado', items: ['Objetivo: masa y fuerza del deltoides.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Deltoides lateral', items: ['Objetivo: anchura de hombros.', 'Volumen: 3 series × 15 / 12 / 10 reps.', 'Regla de oro: peso moderado y sin impulso; el codo sube, la mano lo acompaña.'] },
+      { title: 'Patrón 3 · Deltoides posterior', items: ['Objetivo: hombro redondo y salud postural.', 'Mecánica: no juntes las escápulas: el trabajo es del hombro, no de la espalda.'] },
+      { title: 'Patrón 5 · Finisher', items: ['Objetivo: congestión del lateral con series descendentes o parciales.', 'Descanso: 30 a 45 segundos.'] },
+    ],
+    'Cuádriceps': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (sentadilla) + uno del Patrón 2 (prensa o unilateral) + uno del Patrón 3 (aislamiento). Finisher opcional.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana.',
+        'Técnica: rodillas en la línea de los pies y recorrido completo.',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: tobillo y cadera (sentadilla profunda sin peso, zancadas dinámicas).',
+        'Activación: 2 series × 15 de extensiones de cuádriceps ligeras + series de aproximación en el primer ejercicio.',
+      ] },
+      { title: 'Patrón 1 · Sentadilla pesada', items: ['Objetivo: masa y fuerza.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Prensa y unilaterales', items: ['Objetivo: volumen de calidad con menos fatiga de la columna y corrección de asimetrías.', 'Descanso: 2 minutos.'] },
+      { title: 'Patrón 3 · Aislamiento', items: ['Objetivo: tensión directa en el cuádriceps (recto femoral incluido).', 'Tempo: 2 s excéntrica / 1 s arriba.'] },
+    ],
+    'Isquiotibiales': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (bisagra de cadera) + uno del Patrón 2 (curl femoral). Finisher opcional.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana.',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: balanceos de pierna y buenos días sin peso.',
+        'Activación: 2 series × 12 de curl femoral ligero.',
+      ] },
+      { title: 'Patrón 1 · Bisagra de cadera', items: ['Objetivo: estiramiento bajo carga (el mayor estímulo para el isquio).', 'Regla de oro: la cadera va atrás, la espalda no se redondea.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Curl femoral', items: ['Objetivo: flexión de rodilla. El curl sentado es la variante con más estímulo.', 'Tempo: 3 s excéntrica / 1 s de contracción.', 'Descanso: 90 segundos.'] },
+    ],
+    'Glúteos': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (empuje de cadera) + uno del Patrón 2 (estiramiento o unilateral) + uno del Patrón 3 (glúteo medio o patadas). Finisher opcional.',
+        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Frecuencia: 1–2 veces por semana.',
+      ] },
+      { title: 'Calentamiento y activación', items: [
+        'Movilidad: aperturas de cadera y puente de glúteo sin peso.',
+        'Activación: 2 series × 15–20 de abducción con banda o en máquina ligera.',
+      ] },
+      { title: 'Patrón 1 · Empuje de cadera', items: ['Objetivo: máxima contracción del glúteo mayor con mucha carga.', 'Mecánica: barbilla al pecho y pelvis en retroversión arriba; aguanta 2 s.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Estiramiento y unilaterales', items: ['Objetivo: trabajar el glúteo estirado (búlgaras, zancadas con déficit, sumo).', 'Mecánica: torso inclinado adelante para cargar más el glúteo.'] },
+      { title: 'Patrón 3 · Glúteo medio y patadas', items: ['Objetivo: parte alta y lateral del glúteo.', 'Volumen: rangos altos (15–20 reps).'] },
+    ],
+    'Aductores': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: 1 ejercicio de 3 series al final del día de pierna.',
+        'Volumen: 3 series × 15 / 12 / 10 reps.',
+        'Útil para estabilidad de rodilla y cadera y para completar el volumen de la pierna.',
+      ] },
+    ],
+    'Gemelos': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (gemelo) + uno del Patrón 2 (sóleo).',
+        'Volumen: 3 series por ejercicio, rangos altos.',
+        'Frecuencia: 2 veces por semana (se recuperan rápido).',
+        'Regla de oro: 2 s de pausa en el estiramiento abajo. Sin rebotes.',
+      ] },
+      { title: 'Patrón 1 · Gemelo (rodilla extendida)', items: ['Objetivo: gastrocnemio, la parte visible del gemelo.', 'Volumen: 3 series × 15 / 12 / 10 reps.'] },
+      { title: 'Patrón 2 · Sóleo (rodilla flexionada)', items: ['Objetivo: sóleo, que da grosor a la pierna.', 'Volumen: 3 series × 20 / 15 / 12 reps.'] },
+    ],
+    'Core / Abdomen': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: un ejercicio del Patrón 1 (flexión) + uno del Patrón 2 (piernas) + uno del Patrón 3 (oblicuos o antirrotación).',
+        'Volumen: 3 series por ejercicio.',
+        'Frecuencia: 2–3 veces por semana, al final del entreno.',
+        'Regla de oro: el abdomen se entrena con carga y progresión, como cualquier músculo.',
+      ] },
+    ],
+    'Antebrazo': [
+      { title: 'Pautas básicas', items: [
+        'Estructura: 1–2 ejercicios al final del día de brazo o espalda.',
+        'Volumen: 3 series × 20 / 15 / 12 reps.',
+        'Los remos pesados y el peso muerto sin correas ya trabajan el agarre.',
+      ] },
+    ],
     'Bíceps': [
       { title: 'Pautas básicas', items: [
         'Estructura: selecciona un solo ejercicio de cada patrón de movimiento (Patrón 1 + Patrón 2 + Patrón 3). Añade el Finisher de forma opcional al final para agotamiento completo.',

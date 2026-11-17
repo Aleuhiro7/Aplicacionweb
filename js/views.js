@@ -2105,7 +2105,7 @@
    * Biblioteca de ejercicios
    * ======================================================= */
 
-  const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Gemelos', 'Core / Abdomen', 'Cuerpo completo', 'Cardio', 'Movilidad / Estiramientos', 'Otros'];
+  const MUSCLE_GROUPS = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Gemelos', 'Aductores', 'Antebrazo', 'Core / Abdomen', 'Cuerpo completo', 'Cardio', 'Movilidad / Estiramientos', 'Otros'];
 
   function libraryGroups() {
     const used = new Set(Store.data.library.map((x) => x.group).filter(Boolean));
