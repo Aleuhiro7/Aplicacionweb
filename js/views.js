@@ -932,11 +932,12 @@
    * se reparte a partes iguales entre las que no tengan porcentaje.
    */
   function mealShares(meals) {
-    const set = meals.filter((m) => Number(m.pct) > 0);
+    const has = (m) => m.pct != null && m.pct !== '' && Number(m.pct) >= 0;
+    const set = meals.filter(has);
     const used = set.reduce((t, m) => t + Number(m.pct), 0);
     const free = meals.length - set.length;
     const each = free ? Math.max(0, 100 - used) / free : 0;
-    return new Map(meals.map((m) => [m.id, Number(m.pct) > 0 ? Number(m.pct) : each]));
+    return new Map(meals.map((m) => [m.id, has(m) ? Number(m.pct) : each]));
   }
   /** Objetivo de una comida: su porcentaje de las calorías y macros del día. */
   function mealTargets(d, mealId) {
@@ -1173,12 +1174,13 @@
     const day = dayTargets(d);
     const total = [...shares.values()].reduce((a, b) => a + b, 0);
     const ok = Math.abs(total - 100) < 0.5;
-    const custom = meals.some((m) => Number(m.pct) > 0);
+    const gap = Math.round(100 - total);
+    const custom = meals.some((m) => m.pct != null && m.pct !== '');
     return `<div class="meal-shares">
         <div class="meal-shares-head"><h3 class="meal-day-title">Reparto por comida</h3>
-          <span class="${ok ? 'muted' : 'share-bad'}">Total ${fmtNum(total, 0)} %${ok ? '' : ' · debe sumar 100 %'}</span>
+          <span class="share-total ${ok ? 'share-ok' : 'share-bad'}">${ok ? U.icon('check') : ''}Total ${fmtNum(total, 0)} %${ok ? '' : ` · ${gap > 0 ? `faltan ${gap} %` : `sobran ${-gap} %`}`}</span>
           ${custom ? `<button class="btn sm" data-action="meal-pct-equal" data-client="${c.id}">Repartir igual</button>` : ''}</div>
-        <div class="meal-share-list">${meals.map((m) => `<label class="meal-share${Number(m.pct) > 0 ? ' fixed' : ''}">
+        <div class="meal-share-list">${meals.map((m) => `<label class="meal-share${m.pct != null && m.pct !== '' ? ' fixed' : ''}">
             <span class="ms-name">${esc(m.name)}</span>
             <span class="ms-ctrl">
               <button type="button" class="ms-btn" data-action="meal-pct-step" data-client="${c.id}" data-meal="${m.id}" data-dir="-1" aria-label="Bajar el porcentaje de ${esc(m.name)}">−</button>
@@ -1187,30 +1189,19 @@
             </span>
             <span class="ms-kcal">${fmtNum((day.kcal * shares.get(m.id)) / 100, 0)} kcal</span>
           </label>`).join('')}</div>
-        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Con − y + subes o bajas una comida de 5 en 5 % (o escribe el número) y las demás se ajustan solas, en proporción, para que siempre sume 100 %. Las cantidades de los alimentos se recalculan.</p>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Con − y + subes o bajas una comida de 5 en 5 % (o escribe el número). Las demás no se tocan: el total te avisa en verde cuando suma 100 % y en rojo si faltan o sobran. Las cantidades de los alimentos se recalculan.</p>
       </div>`;
   }
   /**
-   * Fija el % de una comida y reajusta las demás en proporción a lo que tenían, para que el
-   * total siga siendo 100 % (en números enteros). Cada comida queda con al menos un 5 %.
+   * Fija el % de una comida sin tocar las demás: las que aún no tenían porcentaje propio
+   * se quedan con el que mostraban, para que no cambien solas.
    */
-  function redistribute(meals, id, value) {
+  function setShare(meals, id, value) {
     const shares = mealShares(meals);
-    const others = meals.filter((m) => m.id !== id);
-    const min = 5;
-    const v = Math.min(100 - min * others.length, Math.max(min, Math.round(value)));
-    const restCur = others.reduce((t, m) => t + shares.get(m.id), 0);
-    const left = 100 - v;
-    const raw = others.map((m) => ({ m, x: restCur > 0 ? (left * shares.get(m.id)) / restCur : left / others.length }));
-    raw.forEach((r) => { r.i = Math.max(min, Math.floor(r.x)); });
-    let diff = left - raw.reduce((t, r) => t + r.i, 0);
-    raw.slice().sort((a, b) => (b.x - Math.floor(b.x)) - (a.x - Math.floor(a.x))).forEach((r) => { if (diff > 0) { r.i++; diff--; } });
-    while (diff < 0) { const r = raw.filter((q) => q.i > min).sort((a, b) => b.i - a.i)[0]; if (!r) break; r.i--; diff++; }
-    raw.forEach((r) => { r.m.pct = r.i; });
+    meals.forEach((m) => { m.pct = Math.round(shares.get(m.id)); });
     const me = meals.find((m) => m.id === id);
-    if (me) me.pct = v;
+    if (me) me.pct = Math.min(100, Math.max(0, Math.round(value)));
   }
-
   /** Aplica un cambio de reparto y recalcula todas las comidas. */
   function setMealShares(clientId, fn) {
     const d = Store.dietFor(clientId);
@@ -3507,10 +3498,10 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
-    'meal-pct': (d, el) => setMealShares(d.client, (meals) => redistribute(meals, d.meal, Number(el.value) || 0)),
+    'meal-pct': (d, el) => setMealShares(d.client, (meals) => setShare(meals, d.meal, Number(el.value) || 0)),
     'meal-pct-step': (d) => setMealShares(d.client, (meals) => {
       const cur = mealShares(meals).get(d.meal) || 0;
-      redistribute(meals, d.meal, Math.round(cur) + 5 * Number(d.dir));
+      setShare(meals, d.meal, Math.round(cur) + 5 * Number(d.dir));
     }),
     'meal-pct-equal': (d) => { setMealShares(d.client, (meals) => meals.forEach((m) => { delete m.pct; })); UI.toast('Calorías repartidas a partes iguales'); },
     'set-height': (d) => {
