@@ -2163,56 +2163,24 @@
     if (Avatar.byId[ex.id]) return Avatar.byId[ex.id];
     return ex.builtIn || ex.avatarOff ? '' : guessTemplate(ex.name, ex.group);
   }
-  const has3D = () => !!(window.Avatar3D && Avatar3D.supported());
-  const exFor3D = (ex) => Object.assign({}, ex, { template: templateOf(ex) });
-  /**
-   * Ilustración del ejercicio (posición final) para listas: figura 3D con los músculos marcados.
-   * Se dibuja al hacerse visible (ver hydrateAvatars); sin WebGL, se usa el muñeco animado.
-   */
+  const exForDraw = (ex) => Object.assign({}, ex, { template: templateOf(ex) });
+  /** Dibujo del ejercicio (posición final) para listas. */
   function exThumb(ex, cls = '') {
     const tpl = templateOf(ex);
-    if (!tpl) return '';
-    if (!has3D()) return `<span class="ex-thumb ${cls}" aria-hidden="true">${Avatar.svg(ex, { template: tpl })}</span>`;
-    return `<span class="ex-thumb ex-ill ${cls}" aria-hidden="true"><img data-av="${esc(ex.id)}" alt=""></span>`;
+    if (!tpl || !window.Drawing) return '';
+    return `<span class="ex-thumb ex-ill ${cls}" aria-hidden="true">${Drawing.draw(exForDraw(ex), 'end')}</span>`;
   }
-  let avObserver = null;
-  /** Dibuja las ilustraciones que van apareciendo en pantalla. */
-  function hydrateAvatars(root) {
-    const imgs = [...(root || document).querySelectorAll('img[data-av]:not([src])')];
-    if (!imgs.length || !has3D()) return;
-    const paintOne = (img) => {
-      const ex = Store.get('library', img.dataset.av);
-      if (ex) img.src = Avatar3D.image(exFor3D(ex), img.dataset.which || 'end');
-    };
-    if (!('IntersectionObserver' in window)) { imgs.forEach(paintOne); return; }
-    if (!avObserver) {
-      avObserver = new IntersectionObserver((entries) => {
-        for (const e of entries) if (e.isIntersecting) { avObserver.unobserve(e.target); paintOne(e.target); }
-      }, { rootMargin: '300px 0px' });
-    }
-    imgs.forEach((i) => avObserver.observe(i));
-  }
-  /** Bloque del detalle: inicio y final del ejercicio + músculos trabajados. */
+  /** Bloque del detalle: dibujo en posición inicial y final. */
   function exIllustration(ex) {
     const tpl = templateOf(ex);
-    if (!tpl) return '';
-    if (!has3D()) return `<div class="ex-avatar-big">${Avatar.svg(ex, { template: tpl })}</div>`;
-    const e3 = exFor3D(ex);
-    const m = window.Muscles && Muscles.musclesOf(ex);
-    const map = Avatar3D.muscleMap(e3);
-    const list = (keys) => keys.map((k) => `<li>${esc(Muscles.LABELS[k] || k)}</li>`).join('');
+    if (!tpl || !window.Drawing) return '';
+    const e = exForDraw(ex);
     return `<div class="ex-ill-pair">
-        <figure><img src="${Avatar3D.image(e3, 'start')}" alt="${esc(ex.name)}: posición inicial"><figcaption>Inicio</figcaption></figure>
-        <figure><img src="${Avatar3D.image(e3, 'end')}" alt="${esc(ex.name)}: posición final"><figcaption>Final</figcaption></figure>
-      </div>
-      ${m ? `<div class="ex-muscles">
-        <div class="ex-muscle-map"><img src="${map.front}" alt="Músculos, vista de frente"><img src="${map.back}" alt="Músculos, vista de espaldas"></div>
-        <div class="ex-muscle-list">
-          <h4><i class="mp"></i>Principales</h4><ul>${list(m.p)}</ul>
-          ${m.s && m.s.length ? `<h4><i class="ms"></i>Secundarios</h4><ul>${list(m.s)}</ul>` : ''}
-        </div>
-      </div>` : ''}`;
+        <figure>${Drawing.draw(e, 'start')}<figcaption>Inicio</figcaption></figure>
+        <figure>${Drawing.draw(e, 'end')}<figcaption>Final</figcaption></figure>
+      </div>`;
   }
+  function hydrateAvatars() { /* los dibujos se generan directamente en el HTML */ }
 
   /** «3 × 12 (Casi-Fallo) / 10 (Fallo)…» */
   const libSeries = (ex) => [ex.sets && `${ex.sets} series`, ex.reps].filter(Boolean).join(' × ');
@@ -2325,9 +2293,8 @@
           const group = dlg.querySelector('#f-group').value;
           const tpl = sel.value === '__none' ? '' : sel.value || guessTemplate(name, group);
           const eq = dlg.querySelector('#f-equipment').value;
-          prev.innerHTML = !tpl ? '<span class="muted">Sin ilustración</span>' : has3D()
-            ? `<img src="${Avatar3D.image({ name, equipment: eq, group, template: tpl }, 'start')}" alt=""><img src="${Avatar3D.image({ name, equipment: eq, group, template: tpl }, 'end')}" alt="">`
-            : Avatar.svg({ name, equipment: eq }, { template: tpl });
+          prev.innerHTML = !tpl ? '<span class="muted">Sin ilustración</span>'
+            : `${Drawing.draw({ name, equipment: eq, template: tpl }, 'start')}${Drawing.draw({ name, equipment: eq, template: tpl }, 'end')}`;
         };
         sel.addEventListener('change', paint);
         dlg.querySelector('#f-name').addEventListener('change', paint);

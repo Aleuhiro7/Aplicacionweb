@@ -272,9 +272,9 @@
   function loadKind(eq) {
     const e = String(eq || '').toLowerCase();
     if (/polea|cable/.test(e)) return 'cable';
+    if (/máquina|maquina/.test(e)) return 'machine';
     if (/mancuern|kettle/.test(e)) return 'db';
     if (/barra|multipower|landmine|disco/.test(e)) return 'plate';
-    if (/máquina|maquina/.test(e)) return 'machine';
     return 'none';
   }
 
