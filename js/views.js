@@ -3397,15 +3397,7 @@
             <button class="btn danger" data-action="reset-data">Borrar todos los datos</button>
           </div>
         </section>
-      </div>
-      <section class="card" style="margin-top:18px">
-        <div class="card-header"><h2>Cuestionario para clientes</h2><button class="btn sm" data-action="questionnaire-reset">Restaurar preguntas básicas</button></div>
-        <p class="muted" style="margin:0 0 12px">Estas son las preguntas que se envían por WhatsApp desde la ficha de cada cliente. Una pregunta por línea; se numeran solas. Para que se conteste marcando, pon las opciones (hasta 4) separadas por «|»: <em>¿Entrenas? | Sí | No</em>. Sin opciones, se escribe la respuesta (como la altura y el peso).</p>
-        <form id="questionnaire-form">
-          <textarea name="questions" rows="${Math.max(8, questions().length + 1)}" aria-label="Preguntas del cuestionario">${esc(questions().join('\n'))}</textarea>
-          <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">Guardar preguntas</button></div>
-        </form>
-      </section>`;
+      </div>`;
   }
 
   function saveSettings(formEl) {
