@@ -1249,46 +1249,71 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
   .topbar .btn.pill { padding: 5px; }
 }
 
-/* ---------- Paleta unificada: amarillo, negro y grises (rojo solo para lo vencido o borrar) ---------- */
+/* ---------- Paleta «Gym Pop»: el amarillo de la marca con coral, mandarina, menta, cielo y lila ---------- */
 :root {
-  --success: #0b0b0b; --success-soft: rgba(245, 217, 10, .35);
-  --warning: #0b0b0b; --warning-soft: rgba(245, 217, 10, .35);
-  --info: #3f3f46; --info-soft: rgba(0, 0, 0, .06);
-  --violet: #8a8a85; --violet-soft: rgba(0, 0, 0, .05);
-  --danger: #c62828; --danger-soft: rgba(198, 40, 40, .08);
-  --accent-fill: #f5d90a; --accent-ink: #0b0b0b;
-  --avatar-bg: #0b0b0b; --avatar-ink: #f5d90a;
+  --danger: #e5484d; --danger-soft: rgba(229, 72, 77, .1);
+  --warning: #e8590c; --warning-soft: rgba(232, 89, 12, .1);
+  --success: #0ca678; --success-soft: rgba(12, 166, 120, .1);
+  --info: #1c7ed6; --info-soft: rgba(28, 126, 214, .1);
+  --violet: #7950f2; --violet-soft: rgba(121, 80, 242, .1);
+  --pink: #d6336c; --pink-soft: rgba(214, 51, 108, .1);
+  --m-protein-c: #e8590c; --m-fat-c: #7950f2;
+  --wa: #12b886;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --success: #f5d90a; --success-soft: rgba(245, 217, 10, .13);
-    --warning: #f5d90a; --warning-soft: rgba(245, 217, 10, .13);
-    --info: #e7e5e4; --info-soft: rgba(255, 255, 255, .08);
-    --violet: #a3a39e; --violet-soft: rgba(255, 255, 255, .06);
-    --danger: #ef5350; --danger-soft: rgba(239, 83, 80, .12);
-    --avatar-bg: #232323; --avatar-ink: #f5d90a;
+    --danger: #ff6b6b; --danger-soft: rgba(255, 107, 107, .13);
+    --warning: #ffa94d; --warning-soft: rgba(255, 169, 77, .13);
+    --success: #5ee6a8; --success-soft: rgba(94, 230, 168, .12);
+    --info: #5bc8ff; --info-soft: rgba(91, 200, 255, .12);
+    --violet: #b49cff; --violet-soft: rgba(180, 156, 255, .13);
+    --pink: #ff8ac0; --pink-soft: rgba(255, 138, 192, .12);
+    --m-protein-c: #ff7a6b; --m-fat-c: #b49cff;
+    --wa: #3ddc97;
   }
 }
 :root[data-theme="dark"] {
-  --success: #f5d90a; --success-soft: rgba(245, 217, 10, .13);
-  --warning: #f5d90a; --warning-soft: rgba(245, 217, 10, .13);
-  --info: #e7e5e4; --info-soft: rgba(255, 255, 255, .08);
-  --violet: #a3a39e; --violet-soft: rgba(255, 255, 255, .06);
-  --danger: #ef5350; --danger-soft: rgba(239, 83, 80, .12);
-  --avatar-bg: #232323; --avatar-ink: #f5d90a;
+  --danger: #ff6b6b; --danger-soft: rgba(255, 107, 107, .13);
+  --warning: #ffa94d; --warning-soft: rgba(255, 169, 77, .13);
+  --success: #5ee6a8; --success-soft: rgba(94, 230, 168, .12);
+  --info: #5bc8ff; --info-soft: rgba(91, 200, 255, .12);
+  --violet: #b49cff; --violet-soft: rgba(180, 156, 255, .13);
+  --pink: #ff8ac0; --pink-soft: rgba(255, 138, 192, .12);
+  --m-protein-c: #ff7a6b; --m-fat-c: #b49cff;
+  --wa: #3ddc97;
 }
-.avatar { background: var(--avatar-bg) !important; color: var(--avatar-ink); box-shadow: inset 0 0 0 1px rgba(245, 217, 10, .25); }
-/* Avisos del panel: todos con el mismo acento amarillo */
-.alert-card.has-items, #proximos-pagos.has-items, #tareas-pendientes.has-items, #revisiones.has-items, #sin-rutina.has-items, #sin-dieta.has-items, #cuestionarios.has-items {
-  border-color: color-mix(in srgb, var(--accent-fill) 40%, var(--border)); box-shadow: inset 3px 0 0 var(--accent-fill);
-}
-.count, .tab-count, #proximos-pagos .count, #tareas-pendientes .count, #sin-rutina .count, #sin-dieta .count, #cuestionarios .count { background: var(--accent-fill); color: var(--accent-ink); }
-/* WhatsApp con los colores de la marca */
-.wa-link .ico, .btn.wa-btn .ico, .form-hero h2 .form-hero-title .ico { color: var(--primary); }
-.wa-link:hover { color: var(--primary); }
-.btn.wa-btn { color: var(--text); border-color: var(--border); }
-.btn.wa-btn:hover { background: var(--primary-soft); }
-.btn.wa-solid { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+:root { --m-protein: var(--m-protein-c); --m-fat: var(--m-fat-c); }
+/* Avatares con degradados de la paleta */
+.avatar { color: #141414; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); text-shadow: none; }
+/* Cada aviso del panel con su color */
+.alert-card.has-items { --tone: var(--warning); }
+#proximos-pagos.has-items { --tone: var(--danger); }
+#revisiones.has-items { --tone: var(--warning); }
+#sin-rutina.has-items { --tone: var(--violet); }
+#sin-dieta.has-items { --tone: var(--success); }
+#tareas-pendientes.has-items { --tone: var(--info); }
+#cuestionarios.has-items { --tone: var(--pink); }
+.alert-card.has-items { border-color: color-mix(in srgb, var(--tone) 38%, var(--border)); box-shadow: inset 3px 0 0 var(--tone); background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 6%, var(--surface)), var(--surface) 40%); }
+.alert-card.has-items .count { background: var(--tone); color: #141414; }
+.count, .tab-count { color: #141414; }
+/* WhatsApp en menta */
+.wa-link .ico, .btn.wa-btn .ico, .form-hero h2 .form-hero-title .ico { color: var(--wa); }
+.wa-link:hover { color: var(--wa); }
+.btn.wa-btn { color: var(--wa); border-color: color-mix(in srgb, var(--wa) 40%, var(--border)); }
+.btn.wa-btn:hover { background: color-mix(in srgb, var(--wa) 12%, transparent); }
+.btn.wa-solid { background: var(--wa); border-color: var(--wa); color: #0b0b0b; }
 .btn.light:hover { background: #fffbe0; }
-/* PDF: macros en amarillo, blanco y gris */
-.ds-page { --ds-p: #f5f5f4; --ds-c: #f5d90a; --ds-f: #a3a39e; --ds-x: #f5d90a; }
+/* Portada de la ficha del cliente con degradado de marca */
+.profile-cover { background: linear-gradient(110deg, color-mix(in srgb, #f5d90a 55%, var(--surface)) 0%, color-mix(in srgb, #ffa94d 45%, var(--surface)) 45%, color-mix(in srgb, #ff7a6b 40%, var(--surface)) 75%, color-mix(in srgb, #b49cff 35%, var(--surface)) 100%); }
+/* PDF: macros en coral, amarillo y lila */
+.ds-page { --ds-p: #ff7a6b; --ds-c: #f5d90a; --ds-f: #b49cff; --ds-x: #ffa94d; }
+#proximos-pagos.has-items, #revisiones.has-items, #sin-rutina.has-items, #sin-dieta.has-items, #tareas-pendientes.has-items, #cuestionarios.has-items { border-color: color-mix(in srgb, var(--tone) 38%, var(--border)); box-shadow: inset 3px 0 0 var(--tone); }
+#proximos-pagos .count, #revisiones .count, #sin-rutina .count, #sin-dieta .count, #tareas-pendientes .count, #cuestionarios .count { background: var(--tone, var(--warning)); color: #141414; }
+/* Tarjetas de cifras: cada una con su color */
+.stats .stat, .stat { overflow: hidden; }
+.stat::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--tone, var(--primary)); }
+.stat:nth-child(4n+1) { --tone: var(--success); }
+.stat:nth-child(4n+2) { --tone: var(--danger); }
+.stat:nth-child(4n+3) { --tone: var(--info); }
+.stat:nth-child(4n+4) { --tone: var(--violet); }
+.stat .stat-value { color: color-mix(in srgb, var(--tone, var(--text)) 70%, var(--text)); }
