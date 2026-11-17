@@ -3246,7 +3246,6 @@
         </div>
         <div class="actions">
           <button class="btn primary wa-solid" data-action="form-send">${U.icon('message')}Enviar por WhatsApp</button>
-          <button class="btn" data-action="form-new">${U.icon('plus')}Con nombre y teléfono</button>
           <a class="btn" href="#/ajustes">${U.icon('edit')}Editar preguntas</a>
           ${window.Sync && Sync.state.user ? `<button class="btn" data-action="form-check">${U.icon('activity')}Comprobar respuestas</button>` : ''}
         </div>
