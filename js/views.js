@@ -1192,7 +1192,7 @@
             </span>
             <span class="ms-kcal">${fmtNum((day.kcal * shares.get(m.id)) / 100, 0)} kcal</span>
           </label>`).join('')}</div>
-        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Con − y + subes o bajas una comida de 5 en 5 % (o escribe el número). Las demás no se tocan: el total te avisa en verde cuando suma 100 % y en rojo si faltan o sobran. Las cantidades de los alimentos se recalculan.</p>
+        <p class="muted" style="font-size:.8rem;margin:6px 0 0">Con − y + subes o bajas una comida de 1 en 1 % (o escribe el número). Las demás no se tocan: el total te avisa en verde cuando suma 100 % y en rojo si faltan o sobran. Las cantidades de los alimentos se recalculan.</p>
       </div>`;
   }
   /**
@@ -3504,7 +3504,7 @@
     'meal-pct': (d, el) => setMealShares(d.client, (meals) => setShare(meals, d.meal, Number(el.value) || 0)),
     'meal-pct-step': (d) => setMealShares(d.client, (meals) => {
       const cur = mealShares(meals).get(d.meal) || 0;
-      setShare(meals, d.meal, Math.round(cur) + 5 * Number(d.dir));
+      setShare(meals, d.meal, Math.round(cur) + Number(d.dir));
     }),
     'meal-pct-equal': (d) => { setMealShares(d.client, (meals) => meals.forEach((m) => { delete m.pct; })); UI.toast('Calorías repartidas a partes iguales'); },
     'set-height': (d) => {
