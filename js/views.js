@@ -2912,6 +2912,7 @@
    * sin opciones (altura y peso) se escribe el número.
    */
   const DEFAULT_QUESTIONS = [
+    'Correo electrónico',
     'Sexo | Hombre | Mujer',
     'Fecha de nacimiento',
     'Altura (cm)',
@@ -3177,6 +3178,7 @@
     return out;
   }
 
+  const cleanEmail = (t) => { const m = String(t || '').trim().toLowerCase().match(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/); return m ? m[0] : ''; };
   /** «12/04/1990» (o «1990-04-12») → «1990-04-12»; vacío si no es una fecha válida. */
   function parseBirth(text) {
     const t = String(text || '').trim();
@@ -3197,13 +3199,14 @@
     const sex = ans(/^sexo/i);
     const gender = /^hombre/i.test(sex) ? 'Hombre' : /^mujer/i.test(sex) ? 'Mujer' : '';
     const birthDate = parseBirth(ans(/nacimiento/i));
+    const email = cleanEmail(ans(/correo|e-?mail/i));
     const rate = Number(Store.settings.defaultRate) || 0;
     // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
     const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
     const c = Store.add('clients', Object.assign({
       name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate,
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
-    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}));
+    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}, email ? { email } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
     Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
     UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
@@ -3687,6 +3690,7 @@
       const sex = ans(/^sexo/i);
       const fill = {};
       if (!c.birthDate && parseBirth(ans(/nacimiento/i))) fill.birthDate = parseBirth(ans(/nacimiento/i));
+      if (!c.email && cleanEmail(ans(/correo|e-?mail/i))) fill.email = cleanEmail(ans(/correo|e-?mail/i));
       if (!c.gender && /^(hombre|mujer)/i.test(sex)) fill.gender = /^hombre/i.test(sex) ? 'Hombre' : 'Mujer';
       if (!c.height && hw.height) fill.height = hw.height;
       if (hw.weight && !Store.measurementsFor(c.id).length) Store.add('measurements', { clientId: c.id, date: c.questionnaire.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });

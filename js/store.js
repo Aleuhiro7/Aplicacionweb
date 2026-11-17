@@ -42,6 +42,11 @@
       if (Array.isArray(base.settings.questionnaire) && !base.settings.questionnaire.some((q) => String(q).includes('|'))) delete base.settings.questionnaire;
       base.settings.questionnaireV2 = true;
     }
+    // Se añade el correo electrónico al cuestionario (una sola vez).
+    if (!base.settings.questionnaireEmail) {
+      if (Array.isArray(base.settings.questionnaire) && !base.settings.questionnaire.some((q) => /correo|e-?mail/i.test(q))) base.settings.questionnaire.unshift('Correo electrónico');
+      base.settings.questionnaireEmail = true;
+    }
     // La edad se pide como fecha de nacimiento (para avisar de su cumpleaños).
     if (Array.isArray(base.settings.questionnaire)) {
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (/^¿Qué edad tienes\? \| Menos de 25 años/.test(q) ? 'Fecha de nacimiento' : q));

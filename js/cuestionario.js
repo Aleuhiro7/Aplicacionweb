@@ -70,6 +70,7 @@ async function start() {
       : /^peso/i.test(text) ? 'weight'
       : /nacimiento/i.test(text) ? 'birth'
       : /tel[eé]fono/i.test(text) ? 'tel'
+      : /correo|e-?mail/i.test(text) ? 'email'
       : /^nombre/i.test(text) ? 'name' : 'text';
     return { text, opts, kind };
   });
@@ -105,12 +106,12 @@ async function start() {
           <div class="q-measure"><input id="a${i}" name="a${i}" type="number" inputmode="decimal" step="${h ? 1 : 0.1}" min="${h ? 120 : 30}" max="${h ? 230 : 250}" placeholder="${h ? 'Ej.: 175' : 'Ej.: 78,5'}" value="${esc(v)}"><span>${h ? 'cm' : 'kg'}</span></div>
         </div>`;
     }
-    const type = q.kind === 'tel' ? 'tel' : 'text';
+    const type = q.kind === 'tel' ? 'tel' : q.kind === 'email' ? 'email' : 'text';
     return q.kind === 'text'
       ? `<div class="field q-field" id="f${i}"><label for="a${i}"><span class="q-num">${i + 1}</span>${esc(q.text)}</label>
           <textarea id="a${i}" name="a${i}" rows="2" maxlength="${MAX}">${esc(v)}</textarea></div>`
       : `<div class="field q-field" id="f${i}"><label for="a${i}"><span class="q-num">${i + 1}</span>${esc(q.text)}</label>
-          <input id="a${i}" name="a${i}" type="${type}" maxlength="120" ${type === 'tel' ? 'inputmode="tel" autocomplete="tel"' : 'autocomplete="name"'} value="${esc(v)}"></div>`;
+          <input id="a${i}" name="a${i}" type="${type}" maxlength="120" ${type === 'tel' ? 'inputmode="tel" autocomplete="tel"' : type === 'email' ? 'inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="tucorreo@ejemplo.com"' : 'autocomplete="name"'} value="${esc(v)}"></div>`;
   };
   const valueOf = (i) => {
     if (parsed[i].kind === 'birth') {
@@ -167,11 +168,12 @@ async function start() {
       return v;
     });
     // Hay que marcar todas las opciones y poner altura y peso (lo escrito a mano es opcional).
-    const missing = parsed.map((q, i) => (q.kind !== 'text' && !answers[i] ? i : -1)).filter((i) => i >= 0);
+    const badEmail = (q, a) => q.kind === 'email' && a && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(a);
+    const missing = parsed.map((q, i) => (q.kind !== 'text' && (!answers[i] || badEmail(q, answers[i])) ? i : -1)).filter((i) => i >= 0);
     form.querySelectorAll('.q-missing').forEach((x) => x.classList.remove('q-missing'));
     if (missing.length) {
       missing.forEach((i) => document.getElementById('f' + i).classList.add('q-missing'));
-      err.textContent = missing.length === 1 ? `Te falta la pregunta ${missing[0] + 1}.` : `Te faltan ${missing.length} preguntas (marcadas en rojo).`;
+      err.textContent = missing.length === 1 ? (badEmail(parsed[missing[0]], answers[missing[0]]) ? 'Revisa tu correo electrónico: no parece correcto.' : `Te falta la pregunta ${missing[0] + 1}.`) : `Te faltan ${missing.length} preguntas (marcadas en rojo).`;
       err.hidden = false;
       document.getElementById('f' + missing[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
