@@ -145,6 +145,23 @@
     if (e.key && e.key.startsWith('entrenapro:')) { Store.load(); applyTheme(); render(); }
   });
 
+  /* Suplementación en la dieta: al marcar se rellena la dosis propuesta; al escribir la dosis se marca. */
+  main.addEventListener('change', (e) => {
+    const cb = e.target.closest('.supp-item input[type=checkbox]');
+    if (!cb) return;
+    const row = cb.closest('.supp-item');
+    const dose = row.querySelector('.supp-dose');
+    row.classList.toggle('on', cb.checked);
+    if (cb.checked && !dose.value) dose.value = dose.placeholder;
+    if (cb.checked) dose.focus();
+  });
+  main.addEventListener('input', (e) => {
+    if (!e.target.matches('.supp-dose')) return;
+    const row = e.target.closest('.supp-item');
+    const cb = row.querySelector('input[type=checkbox]');
+    if (e.target.value.trim() && !cb.checked) { cb.checked = true; row.classList.add('on'); }
+  });
+
   window.App = { render, applyTheme };
 
   document.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = U.icon(el.dataset.icon); });

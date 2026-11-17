@@ -1250,7 +1250,7 @@
   function clientDiet(c) {
     const d = Store.dietFor(c.id);
     if (!state.mealCount) state.mealCount = 5;
-    const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim() || (d.supps || '').trim());
+    const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim() || (d.supps || '').trim() || (d.suppList || []).length);
     return `<section class="card diet-panel">
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
@@ -1262,8 +1262,11 @@
       <form class="diet-form" data-client="${c.id}">
         <textarea name="text" rows="5" placeholder="Recomendaciones para ${esc(c.name.split(' ')[0])}: horarios, cómo cocinar, sustituciones…" aria-label="Indicaciones de la dieta">${esc(d ? d.text : '')}</textarea>
         <h3 class="diet-subtitle">Suplementación</h3>
-        <textarea name="supps" rows="4" placeholder="Ej.: Creatina monohidrato · 5 g al día, cualquier hora&#10;Whey · 30 g después de entrenar&#10;Vitamina D · 2000 UI con el desayuno" aria-label="Suplementación">${esc(d ? d.supps || '' : '')}</textarea>
-        <div class="hint" style="margin-top:6px">Una línea por suplemento. En el PDF también salen los consejos de agua (unos ${fmtNum(waterLiters(c.id), 1)} L al día para ${esc(c.name.split(' ')[0])}) y el plato saludable para improvisar.</div>
+        <p class="muted" style="margin:0 0 8px;font-size:.88rem">Marca los que tome y ajusta la dosis o la porción (gramos, cápsulas, cacitos, momento del día).</p>
+        ${suppChecklist(d)}
+        <label class="muted" for="supps-other" style="display:block;margin:12px 0 6px;font-size:.88rem">Otros suplementos (uno por línea)</label>
+        <textarea id="supps-other" name="supps" rows="2" placeholder="Ej.: Hierro · 1 comprimido con la comida" aria-label="Otros suplementos">${esc(d ? d.supps || '' : '')}</textarea>
+        <div class="hint" style="margin-top:6px">En el PDF también salen los consejos de agua (unos ${fmtNum(waterLiters(c.id), 1)} L al día para ${esc(c.name.split(' ')[0])}) y el plato saludable para improvisar.</div>
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
     </div>
@@ -1298,6 +1301,7 @@
       }
       if (m.vegFree) lines.push('🥗 Puedes añadir hasta 150 g de verdura (la que quieras)');
     });
+    if (suppLines(d).length) lines.push('', '*Suplementación*', ...suppLines(d).map((x) => `• ${x}`));
     if ((d.text || '').trim()) lines.push('', '*Indicaciones*', d.text.trim());
     if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
     return lines.join('\n');
@@ -1380,7 +1384,7 @@
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
     const notes = (d.text || '').trim();
-    const supps = (d.supps || '').split('\n').map((x) => x.trim()).filter(Boolean);
+    const supps = suppLines(d);
     const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
     // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
     const extraPages = [t ? 'Tu plan' : null].filter(Boolean);
@@ -1555,13 +1559,56 @@
       });
   }
 
+  /** Suplementos habituales para marcar en la dieta, con la dosis propuesta. */
+  const SUPPLEMENTS = [
+    { k: 'whey', n: 'Proteína whey', d: '30 g después de entrenar' },
+    { k: 'creatina', n: 'Creatina monohidrato', d: '5 g al día' },
+    { k: 'eaa', n: 'Aminoácidos esenciales (EAA)', d: '10 g durante el entreno' },
+    { k: 'bcaa', n: 'BCAA', d: '5–10 g durante el entreno' },
+    { k: 'glutamina', n: 'Glutamina', d: '5 g al día' },
+    { k: 'multi', n: 'Multivitamínico', d: '1 cápsula con el desayuno' },
+    { k: 'omega3', n: 'Omega 3', d: '2 cápsulas con la comida' },
+    { k: 'vitd', n: 'Vitamina D3', d: '2000 UI con el desayuno' },
+    { k: 'magnesio', n: 'Magnesio', d: '300 mg antes de dormir' },
+    { k: 'zinc', n: 'Zinc', d: '15 mg con la cena' },
+    { k: 'cafeina', n: 'Cafeína', d: '200 mg antes de entrenar' },
+    { k: 'pre', n: 'Preentreno', d: '1 cacito 20 min antes de entrenar' },
+    { k: 'betaalanina', n: 'Beta-alanina', d: '3 g al día' },
+    { k: 'citrulina', n: 'Citrulina malato', d: '6 g antes de entrenar' },
+    { k: 'carbos', n: 'Carbohidratos intraentreno', d: '30 g durante el entreno' },
+    { k: 'electrolitos', n: 'Electrolitos', d: '1 sobre durante el entreno' },
+    { k: 'colageno', n: 'Colágeno', d: '10 g al día' },
+    { k: 'melatonina', n: 'Melatonina', d: '1 mg antes de dormir' },
+    { k: 'ashwagandha', n: 'Ashwagandha', d: '300 mg al día' },
+  ];
+  /** Líneas de suplementación de la dieta: las marcadas y las escritas a mano. */
+  function suppLines(d) {
+    if (!d) return [];
+    const marked = (d.suppList || []).map((x) => { const s = SUPPLEMENTS.find((y) => y.k === x.k); return s ? `${s.n} · ${(x.dose || s.d).trim()}` : ''; }).filter(Boolean);
+    const other = (d.supps || '').split('\n').map((x) => x.trim()).filter(Boolean);
+    return marked.concat(other);
+  }
+  function suppChecklist(d) {
+    const chosen = new Map(((d && d.suppList) || []).map((x) => [x.k, x.dose]));
+    return `<div class="supp-list">${SUPPLEMENTS.map((sp) => {
+      const on = chosen.has(sp.k);
+      return `<label class="supp-item${on ? ' on' : ''}">
+          <input type="checkbox" name="supp-${sp.k}" ${on ? 'checked' : ''} data-supp="${sp.k}">
+          <span class="supp-name">${esc(sp.n)}</span>
+          <input type="text" class="supp-dose" name="dose-${sp.k}" value="${esc(on ? chosen.get(sp.k) || sp.d : '')}" placeholder="${esc(sp.d)}" aria-label="Dosis de ${esc(sp.n)}">
+        </label>`;
+    }).join('')}</div>`;
+  }
+
   function submitDietForm(form) {
     const clientId = form.dataset.client;
     const text = form.elements.text.value;
     const supps = form.elements.supps ? form.elements.supps.value : '';
+    const suppList = SUPPLEMENTS.filter((sp) => form.elements[`supp-${sp.k}`] && form.elements[`supp-${sp.k}`].checked)
+      .map((sp) => ({ k: sp.k, dose: (form.elements[`dose-${sp.k}`].value || '').trim() || sp.d }));
     const d = Store.dietFor(clientId);
-    if (d) Store.update('diets', d.id, { text, supps });
-    else Store.add('diets', { clientId, text, supps });
+    if (d) Store.update('diets', d.id, { text, supps, suppList });
+    else Store.add('diets', { clientId, text, supps, suppList });
     UI.toast('Indicaciones guardadas');
     App.render();
   }

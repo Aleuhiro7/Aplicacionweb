@@ -1449,3 +1449,16 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 @media (max-width: 560px) { .lib-card.has-img { grid-template-columns: 96px minmax(0, 1fr); } .lib-card.has-img .lib-desc { display: none; } }
 .ex-photo-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .ex-photo-preview img { width: 100%; border-radius: 10px; background: #fff; display: block; }
+
+/* Suplementación por casillas */
+.supp-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px; }
+.supp-item { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "cb name" "cb dose"; column-gap: 10px; row-gap: 4px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); cursor: pointer; }
+.supp-item input[type=checkbox] { grid-area: cb; width: 20px; height: 20px; accent-color: var(--primary); }
+.supp-item .supp-name { grid-area: name; font-weight: 600; font-size: .92rem; }
+.supp-item .supp-dose { grid-area: dose; padding: 6px 9px; font-size: .85rem; min-width: 0; }
+.supp-item:not(.on) .supp-dose { opacity: .55; }
+.supp-item.on { border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); background: var(--primary-soft); }
+.supp-item:not(.on) { grid-template-areas: "cb name"; padding: 9px 10px; }
+.supp-item:not(.on) .supp-dose { display: none; }
+@media (max-width: 560px) { .supp-list { grid-template-columns: 1fr 1fr; } .supp-item.on { grid-column: 1 / -1; } .supp-item .supp-name { font-size: .85rem; } }
+.supp-list { grid-auto-flow: dense; }
