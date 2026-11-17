@@ -1334,7 +1334,14 @@
     return `<section class="card diet-panel">
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
-
+    <div class="diet-sec">
+      <div class="card-header"><h2>Suplementación</h2></div>
+      <form class="diet-form" data-client="${c.id}">
+        <p class="muted" style="margin:0 0 8px;font-size:.88rem">Marca los que tome y ajusta la dosis o la porción (gramos, cápsulas, cacitos, momento del día).</p>
+        ${suppChecklist(d)}
+        <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
+      </form>
+    </div>
     ${dietSendable(d) ? `<div class="diet-sec diet-send">
       <div class="card-header"><h2>PDF para el cliente</h2></div>
       <p class="muted" style="margin:0 0 12px">Una portada, una página por comida y las indicaciones al final. Descárgalo y mándaselo.</p>
@@ -1356,6 +1363,7 @@
   function dietText(c, d) {
     const fmtG = (g) => fmtNum(Number(g) || 0, 0);
     const lines = [`*Dieta — ${c.name}*`];
+    const addSupps = () => { if (suppLines(d).length) lines.push('', '*Suplementación*', ...suppLines(d).map((x) => `• ${x}`)); };
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     meals.forEach((m) => {
       lines.push('', `*${m.name}*`);
@@ -1367,6 +1375,7 @@
       if (m.vegFree) lines.push('🥗 Puedes añadir hasta 150 g de verdura (la que quieras)');
     });
 
+    addSupps();
     if (meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1))) lines.push('', '_Donde hay varias opciones, elige solo una: las cantidades ya están ajustadas para que sean equivalentes._');
     return lines.join('\n');
   }
@@ -1448,7 +1457,7 @@
     const meals = (d.meals || []).filter((m) => (m.items || []).length || m.vegFree);
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
     const notes = '';
-    const supps = [];
+    const supps = suppLines(d);
     const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
     // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
     const weights = Store.measurementsFor(c.id).filter((m) => Number(m.weight) > 0);
@@ -1701,8 +1710,7 @@
   function suppLines(d) {
     if (!d) return [];
     const marked = (d.suppList || []).map((x) => { const s = SUPPLEMENTS.find((y) => y.k === x.k); return s ? `${s.n} · ${(x.dose || s.d).trim()}` : ''; }).filter(Boolean);
-    const other = (d.supps || '').split('\n').map((x) => x.trim()).filter(Boolean);
-    return marked.concat(other);
+    return marked;
   }
   function suppChecklist(d) {
     const chosen = new Map(((d && d.suppList) || []).map((x) => [x.k, x.dose]));
@@ -1718,14 +1726,12 @@
 
   function submitDietForm(form) {
     const clientId = form.dataset.client;
-    const text = form.elements.text.value;
-    const supps = form.elements.supps ? form.elements.supps.value : '';
     const suppList = SUPPLEMENTS.filter((sp) => form.elements[`supp-${sp.k}`] && form.elements[`supp-${sp.k}`].checked)
       .map((sp) => ({ k: sp.k, dose: (form.elements[`dose-${sp.k}`].value || '').trim() || sp.d }));
     const d = Store.dietFor(clientId);
-    if (d) Store.update('diets', d.id, { text, supps, suppList });
-    else Store.add('diets', { clientId, text, supps, suppList });
-    UI.toast('Indicaciones guardadas');
+    if (d) Store.update('diets', d.id, { suppList });
+    else Store.add('diets', { clientId, text: '', suppList });
+    UI.toast('Suplementación guardada');
     App.render();
   }
 
