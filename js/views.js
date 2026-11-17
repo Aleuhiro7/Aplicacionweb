@@ -1302,10 +1302,10 @@
     return lines.join('\n');
   }
 
-  /** Colores del PDF según el tipo de alimento: carne roja, fruto seco marrón, hidrato trigo… */
+  /** Colores del PDF según el tipo de alimento, todos dentro del degradado Aurora (violeta → rosa → mandarina). */
   const FOOD_TONES = {
-    carne: '#f87171', pescado: '#7dd3fc', huevo: '#fdba74', polvo: '#c4b5fd', vegetal: '#a3e635',
-    hidrato: '#f2d27a', fruta: '#fb923c', aceite: '#cfd96a', fruto: '#b8794a', queso: '#facc15', lacteo: '#e2e8f0', verdura: '#4ade80',
+    carne: '#ff6f8e', pescado: '#8b7cff', huevo: '#ffb877', polvo: '#c49cff', vegetal: '#b57cf0',
+    hidrato: '#ffa94d', fruta: '#ff8a80', aceite: '#ffc27a', fruto: '#e88a6a', queso: '#ffcf8a', lacteo: '#d9d2ff', verdura: '#ff6fb5',
   };
   const BLOCK_TONE = {
     'blk-carnes-magras': 'carne', 'blk-carnes-grasas': 'carne', 'blk-embutidos': 'carne',
@@ -1435,17 +1435,17 @@
     const plate = `<div class="ds-plate">
         <svg viewBox="0 0 200 200" class="ds-plate-svg" aria-hidden="true">
           <circle cx="100" cy="100" r="96" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
-          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#f87171"/>
-          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#4ade80"/>
-          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#f2d27a"/>
-          <line x1="100" y1="10" x2="100" y2="190" stroke="#0b0b0b" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#0b0b0b" stroke-width="3"/>
+          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#ff6fb5"/>
+          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#8b7cff"/>
+          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#ffa94d"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="#1b1726" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#1b1726" stroke-width="3"/>
           <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
         </svg>
         <div class="ds-plate-legend">
-          <div style="--ds-accent:#f87171"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
-          <div style="--ds-accent:#4ade80"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
-          <div style="--ds-accent:#f2d27a"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
-          <div style="--ds-accent:#cfd96a"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
+          <div style="--ds-accent:#ff6fb5"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
+          <div style="--ds-accent:#8b7cff"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
+          <div style="--ds-accent:#ffa94d"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
+          <div style="--ds-accent:#ffc27a"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
         </div>
       </div>
       <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;

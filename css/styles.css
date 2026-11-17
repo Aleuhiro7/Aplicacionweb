@@ -1346,3 +1346,59 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(139, 124, 255,
 .ds { --ds-navy: #1b1726; }
 .ds-page, .ds-cover { background: radial-gradient(130mm 130mm at 100% 0%, rgba(139, 124, 255, .22), transparent 70%), radial-gradient(110mm 110mm at 0% 100%, rgba(255, 111, 181, .14), transparent 70%), #1b1726 !important; }
 .ds-cover-in { background: none !important; }
+
+/* ---------- Solo la paleta Aurora (los tonos del logo): violeta, orquídea, rosa, salmón y mandarina ---------- */
+:root {
+  --au-1: #5b47ff; --au-2: #9a3df0; --au-3: #e0368a; --au-4: #e8505b; --au-5: #e06a00;
+  --info: var(--au-1); --info-soft: rgba(91, 71, 255, .1);
+  --violet: var(--au-2); --violet-soft: rgba(154, 61, 240, .1);
+  --success: var(--au-3); --success-soft: rgba(224, 54, 138, .1);
+  --pink: var(--au-3); --pink-soft: rgba(224, 54, 138, .1);
+  --danger: var(--au-4); --danger-soft: rgba(232, 80, 91, .1);
+  --warning: var(--au-5); --warning-soft: rgba(224, 106, 0, .1);
+  --wa: var(--au-3);
+  --m-carbs-c: var(--au-1); --m-protein-c: var(--au-3); --m-fat-c: var(--au-5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --au-1: #9d90ff; --au-2: #c08cff; --au-3: #ff6fb5; --au-4: #ff7a8a; --au-5: #ffa94d;
+    --info-soft: rgba(157, 144, 255, .13); --violet-soft: rgba(192, 140, 255, .13); --success-soft: rgba(255, 111, 181, .13);
+    --pink-soft: rgba(255, 111, 181, .13); --danger-soft: rgba(255, 122, 138, .13); --warning-soft: rgba(255, 169, 77, .13);
+    --info: var(--au-1); --violet: var(--au-2); --success: var(--au-3); --pink: var(--au-3); --danger: var(--au-4); --warning: var(--au-5); --wa: var(--au-3);
+    --m-carbs-c: var(--au-1); --m-protein-c: var(--au-3); --m-fat-c: var(--au-5);
+  }
+}
+:root[data-theme="dark"] {
+  --au-1: #9d90ff; --au-2: #c08cff; --au-3: #ff6fb5; --au-4: #ff7a8a; --au-5: #ffa94d;
+  --info-soft: rgba(157, 144, 255, .13); --violet-soft: rgba(192, 140, 255, .13); --success-soft: rgba(255, 111, 181, .13);
+  --pink-soft: rgba(255, 111, 181, .13); --danger-soft: rgba(255, 122, 138, .13); --warning-soft: rgba(255, 169, 77, .13);
+  --info: var(--au-1); --violet: var(--au-2); --success: var(--au-3); --pink: var(--au-3); --danger: var(--au-4); --warning: var(--au-5); --wa: var(--au-3);
+  --m-carbs-c: var(--au-1); --m-protein-c: var(--au-3); --m-fat-c: var(--au-5);
+}
+#proximos-pagos.has-items { --tone: var(--au-4); }
+#revisiones.has-items { --tone: var(--au-5); }
+#sin-rutina.has-items { --tone: var(--au-2); }
+#sin-dieta.has-items { --tone: var(--au-3); }
+#tareas-pendientes.has-items { --tone: var(--au-1); }
+#cuestionarios.has-items { --tone: var(--au-3); }
+.stat:nth-child(4n+1) { --tone: var(--au-3); }
+.stat:nth-child(4n+2) { --tone: var(--au-5); }
+.stat:nth-child(4n+3) { --tone: var(--au-1); }
+.stat:nth-child(4n+4) { --tone: var(--au-2); }
+.stat::before { background: var(--brand-grad); opacity: .9; }
+.profile-cover { background: linear-gradient(110deg, color-mix(in srgb, #8b7cff 60%, var(--surface)) 0%, color-mix(in srgb, #ff6fb5 50%, var(--surface)) 55%, color-mix(in srgb, #ffa94d 45%, var(--surface)) 100%); }
+/* PDF */
+.ds-page { --ds-p: #ff6fb5; --ds-c: #9d90ff; --ds-f: #ffa94d; --ds-x: #ffa94d; }
+.ds-page .ds-veg { background: rgba(255, 111, 181, .12); color: #ffd1e6; border-color: rgba(255, 111, 181, .3); }
+.ds-page .ds-veg b { color: #ff8ac0; }
+.ds-water-big { background: linear-gradient(180deg, rgba(139, 124, 255, .3), rgba(139, 124, 255, .08)); border-color: rgba(139, 124, 255, .5); }
+.ds-water-big b { color: #c4bcff; }
+.ds-tips li::before { background: var(--brand-grad); }
+.ds-supps li { background: rgba(192, 140, 255, .1); border-color: rgba(192, 140, 255, .3); }
+.ds-supps b { color: #d4b8ff; }
+.ds-kpi-superavit { background: rgba(255, 169, 77, .12); border-color: rgba(255, 169, 77, .4); }
+.ds-kpi-superavit b, .ds-kpi-superavit span { color: #ffa94d; }
+.ds-kpi-deficit { background: rgba(139, 124, 255, .14); border-color: rgba(139, 124, 255, .45); }
+.ds-macrobar span:nth-child(1) { background: #ff6fb5 !important; }
+.ds-macrobar span:nth-child(2) { background: #9d90ff !important; }
+.ds-macrobar span:nth-child(3) { background: #ffa94d !important; }
