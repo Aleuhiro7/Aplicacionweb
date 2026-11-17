@@ -169,4 +169,24 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) Views.checkQuestionnaireLinks(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGreeting(); });
   window.addEventListener('focus', refreshGreeting);
+
+  /* Actualización automática: si la web publicada tiene una versión más nueva que la que
+   * muestra el navegador (copia guardada), se recarga con la nueva sin perder los datos. */
+  const currentVersion = (document.querySelector('script[src*="app.js?v="]')?.getAttribute('src') || '').split('v=')[1] || '';
+  async function checkForUpdate() {
+    if (location.protocol === 'file:' || !currentVersion) return;
+    try {
+      const res = await fetch(`${location.pathname}?nocache=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const html = await res.text();
+      const m = html.match(/app\.js\?v=([\w.\-]+)/);
+      if (m && m[1] !== currentVersion) {
+        const busy = document.getElementById('modal').open;
+        if (busy) return;
+        location.replace(`${location.pathname}?v=${encodeURIComponent(m[1])}${location.hash}`);
+      }
+    } catch (e) { /* sin conexión: se comprueba la próxima vez */ }
+  }
+  setTimeout(checkForUpdate, 1500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 })();
