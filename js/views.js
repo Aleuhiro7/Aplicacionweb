@@ -2134,10 +2134,33 @@
   }
 
   /** Fotos del ejercicio (inicio y final del movimiento), si las tiene. */
-  const exImg = (ex, n) => (ex && ex.img ? `img/ejercicios/${ex.img}_${n}.webp` : '');
+  const STOP = new Set(['con', 'de', 'del', 'en', 'a', 'al', 'la', 'el', 'los', 'las', 'y', 'o', 'por', 'para', 'sin', 'una', 'un']);
+  const words = (t) => normalizeText(t).replace(/[^a-z0-9ñ ]+/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !STOP.has(w));
+  const guessCache = new Map();
+  /** Foto para un ejercicio añadido a mano: la del ejercicio de serie con el nombre más parecido. */
+  function guessImg(name, group) {
+    const key = `${name}|${group}`;
+    if (guessCache.has(key)) return guessCache.get(key);
+    const a = new Set(words(name));
+    let best = '', score = 0;
+    for (const b of window.LIBRARY_DEFAULT || []) {
+      if (!b.img) continue;
+      const w = new Set(words(b.name));
+      const inter = [...a].filter((x) => w.has(x)).length;
+      if (!inter) continue;
+      const sc = inter / new Set([...a, ...w]).size + (group && b.group === group ? 0.15 : 0);
+      if (sc > score) { score = sc; best = b.img; }
+    }
+    const out = score >= 0.45 ? best : '';
+    guessCache.set(key, out);
+    return out;
+  }
+  /** Foto de un ejercicio: la suya, la elegida a mano o, si no, la del ejercicio más parecido. */
+  const imgOf = (ex) => (!ex ? '' : ex.img || (ex.builtIn || ex.imgOff ? '' : guessImg(ex.name, ex.group)));
+  const exImg = (ex, n) => (imgOf(ex) ? `img/ejercicios/${imgOf(ex)}_${n}.webp` : '');
   /** Miniatura animada: alterna la posición inicial y la final para ver el movimiento. */
   function exThumb(ex, cls = '') {
-    if (!ex || !ex.img) return '';
+    if (!imgOf(ex)) return '';
     return `<span class="ex-thumb ${cls}" aria-hidden="true"><img src="${exImg(ex, 0)}" alt="" loading="lazy" decoding="async"><img class="ex-thumb-b" src="${exImg(ex, 1)}" alt="" loading="lazy" decoding="async"></span>`;
   }
 
@@ -2179,7 +2202,7 @@
       ${g.patterns.map((p) => `
         ${p.name ? `<div class="lib-pattern"><span>${esc(p.name)}</span>${p.items[0].rest ? `<span class="muted">Descanso ${esc(p.items[0].rest)}</span>` : ''}</div>` : ''}
         <div class="lib-grid">${p.items.map((ex) => `
-          <button class="lib-card${ex.img ? ' has-img' : ''}" data-action="lib-open" data-id="${ex.id}">
+          <button class="lib-card${imgOf(ex) ? ' has-img' : ''}" data-action="lib-open" data-id="${ex.id}">
             ${exThumb(ex)}
             <span class="lib-name">${esc(ex.name)}</span>
             ${ex.equipment ? `<span class="badge">${esc(ex.equipment)}</span>` : ''}
@@ -2239,8 +2262,24 @@
         { name: 'tempo', label: 'Tempo', placeholder: 'Ej.: 3 s excéntrica / concéntrica explosiva' },
         { name: 'description', label: 'Notas / técnica', type: 'textarea', placeholder: 'Ejecución, puntos clave, errores comunes…' },
         { name: 'video', label: 'Enlace a vídeo (opcional)', type: 'url', full: true, placeholder: 'https://…' },
+        { name: 'img', label: 'Foto', type: 'select', full: true, options: photoOptions(), hint: 'Elige la foto de un ejercicio de la biblioteca, o deja «Automática» para usar la del más parecido por nombre.' },
       ],
-      values: existing || (state.libGroup !== 'todos' ? { group: state.libGroup } : {}),
+      values: existing ? Object.assign({}, existing, { img: existing.imgOff ? '__none' : existing.img || '' }) : (state.libGroup !== 'todos' ? { group: state.libGroup } : {}),
+      onReady: (dlg) => {
+        const sel = dlg.querySelector('#f-img');
+        const prev = document.createElement('div');
+        prev.className = 'ex-photo-preview';
+        sel.closest('.field').appendChild(prev);
+        const paint = () => {
+          const name = dlg.querySelector('#f-name').value;
+          const group = dlg.querySelector('#f-group').value;
+          const img = sel.value === '__none' ? '' : sel.value || guessImg(name, group);
+          prev.innerHTML = img ? `<img src="img/ejercicios/${img}_0.webp" alt=""><img src="img/ejercicios/${img}_1.webp" alt="">` : '<span class="muted">Sin foto</span>';
+        };
+        sel.addEventListener('change', paint);
+        dlg.querySelector('#f-name').addEventListener('change', paint);
+        paint();
+      },
       submitLabel: existing ? 'Guardar' : 'Añadir',
       onDelete: existing ? async () => {
         const ok = await UI.confirm({ title: 'Eliminar ejercicio', message: `¿Eliminar «${esc(existing.name)}» de la biblioteca? Las rutinas que ya lo usan no cambian.` });
@@ -2250,12 +2289,26 @@
         App.render();
       } : null,
       onSubmit: (v) => {
+        v.imgOff = v.img === '__none';
+        if (v.imgOff) v.img = '';
         if (existing) Store.update('library', id, v);
         else Store.add('library', v);
         UI.toast(existing ? 'Ejercicio actualizado' : 'Ejercicio añadido');
         App.render();
       },
     });
+  }
+
+  /** Opciones del selector de foto: las fotos de los ejercicios de serie, por grupo. */
+  function photoOptions() {
+    const seen = new Set();
+    const opts = [{ value: '', label: 'Automática (según el nombre)' }, { value: '__none', label: 'Sin foto' }];
+    for (const b of window.LIBRARY_DEFAULT || []) {
+      if (!b.img || seen.has(b.img)) continue;
+      seen.add(b.img);
+      opts.push({ value: b.img, label: `${b.group} · ${b.name}` });
+    }
+    return opts;
   }
 
   function openLibraryExercise(id) {
@@ -2265,7 +2318,7 @@
     UI.openModal({
       title: ex.name,
       body: `<div class="lib-detail">
-        ${ex.img ? `<div class="ex-photos"><figure><img src="${exImg(ex, 0)}" alt="${esc(ex.name)}: posición inicial"><figcaption>Inicio</figcaption></figure><figure><img src="${exImg(ex, 1)}" alt="${esc(ex.name)}: posición final"><figcaption>Final</figcaption></figure></div>` : ''}
+        ${imgOf(ex) ? `<div class="ex-photos"><figure><img src="${exImg(ex, 0)}" alt="${esc(ex.name)}: posición inicial"><figcaption>Inicio</figcaption></figure><figure><img src="${exImg(ex, 1)}" alt="${esc(ex.name)}: posición final"><figcaption>Final</figcaption></figure></div>` : ''}
         <div class="actions" style="margin-bottom:14px">${ex.group ? badge(ex.group, 'primary') : ''}${ex.equipment ? badge(ex.equipment) : ''}</div>
         <dl class="dl">
           ${row('Patrón', ex.pattern)}

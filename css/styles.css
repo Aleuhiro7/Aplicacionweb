@@ -1447,3 +1447,5 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .lib-card.has-img .ex-thumb { grid-column: 1; grid-row: 1 / span 4; margin: 0; align-self: start; }
 .lib-card.has-img .badge { justify-self: start; }
 @media (max-width: 560px) { .lib-card.has-img { grid-template-columns: 96px minmax(0, 1fr); } .lib-card.has-img .lib-desc { display: none; } }
+.ex-photo-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.ex-photo-preview img { width: 100%; border-radius: 10px; background: #fff; display: block; }
