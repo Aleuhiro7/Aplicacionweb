@@ -1502,3 +1502,13 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .meal-share .ms-input { grid-area: input; position: relative; width: 64px; }
 .meal-share .ms-input input { width: 100%; padding: 6px 20px 6px 8px; text-align: right; font-weight: 700; }
 .meal-share .ms-input i { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--muted); font-size: .8rem; }
+.meal-share { grid-template-columns: minmax(0, 1fr); grid-template-areas: "name" "kcal" "ctrl"; }
+.meal-share .ms-ctrl { grid-area: ctrl; display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.meal-share .ms-btn { appearance: none; width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: 700 1.2rem/1 inherit; cursor: pointer; display: grid; place-items: center; }
+.meal-share .ms-btn:hover { border-color: var(--primary); color: var(--primary); }
+.meal-share .ms-btn:active { transform: scale(.95); }
+.meal-share .ms-input { flex: 1; width: auto; }
+.meal-share-list { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.meal-share-list { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
+.meal-share .ms-input input { text-align: center; padding: 6px 16px 6px 6px; }
+.meal-share .ms-btn { width: 32px; height: 32px; }
