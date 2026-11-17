@@ -1868,6 +1868,36 @@
       </div>`).join('')}</div>`;
   }
 
+  /** Aviso grande arriba del panel: personas que han rellenado el cuestionario y aún no son clientes. */
+  function newFormsBanner() {
+    const list = Store.data.forms.filter((f) => f.answeredAt && !f.clientId && !f.dismissed)
+      .sort((a, b) => (b.answeredAt || '').localeCompare(a.answeredAt || ''));
+    if (!list.length) return '';
+    return `<section class="card new-forms" id="nuevos-cuestionarios">
+        <div class="nf-head">
+          <span class="nf-icon">${U.icon('file')}</span>
+          <div><h2>${list.length === 1 ? '¡Te han rellenado el cuestionario!' : `¡${list.length} personas han rellenado el cuestionario!`}</h2>
+          <p class="muted">Revisa sus respuestas y dalo de alta como cliente.</p></div>
+        </div>
+        <ul class="nf-list">${list.map((f) => {
+          const who = formName(f) || 'Sin nombre';
+          const goal = ((f.items || []).find((x) => /objetivo/i.test(x.q)) || {}).a;
+          return `<li class="nf-item">
+            <span class="avatar">${esc(who.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''))}</span>
+            <div class="grow">
+              <strong>${esc(who)}</strong>
+              <div class="meta">Respondió el ${esc(fmtDate(f.answeredAt))}${goal ? ` · ${esc(goal)}` : ''}</div>
+            </div>
+            <div class="nf-actions">
+              <button class="btn sm" data-action="form-answers" data-id="${f.id}">${U.icon('file')}Ver respuestas</button>
+              <button class="btn sm primary" data-action="form-client" data-id="${f.id}">${U.icon('plus')}Dar de alta</button>
+              <button class="icon-btn" data-action="form-dismiss" data-id="${f.id}" aria-label="Quitar el aviso de ${esc(who)}" title="Quitar aviso (no se da de alta)">${U.icon('close')}</button>
+            </div>
+          </li>`;
+        }).join('')}</ul>
+      </section>`;
+  }
+
   function renderPanel() {
     const t = today();
     const d = Store.data;
@@ -1878,6 +1908,7 @@
     if (!d.clients.length) {
       return `
         <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido, ${esc(firstName)}!</h1><p>Tu centro de control de asesorías online.</p></div></div>
+        ${newFormsBanner()}
         <div class="card">
           ${empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
             `<div class="actions" style="justify-content:center;margin-top:16px">
@@ -1907,7 +1938,7 @@
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
     const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
     const bdayAlerts = alerts.filter((a) => a.kind === 'cumple');
-    const formAlerts = Store.data.forms.filter((f) => f.answeredAt && !f.reviewedAt && !f.clientId);
+    const formAlerts = []; // los formularios de personas nuevas van en el aviso grande de arriba
     const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
     const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
     const planItem = (c, tab, text, label) => `
@@ -1999,6 +2030,7 @@
         </div>
       </div>
 
+      ${newFormsBanner()}
       <div class="alerts-stack">
         ${alertSections.map((x) => x.html).join('')}
       </div>
@@ -3010,7 +3042,10 @@
         const name = f.name || ans(/^nombre/i) || 'Alguien';
         Store.update('forms', f.id, { items, answeredAt, reviewedAt: '', name: f.name || name, phone: f.phone || ans(/^tel[eé]fono/i) });
         found++;
-        UI.toast(`${name.split(' ')[0]} ha respondido el formulario`);
+        UI.toast(`${name.split(' ')[0]} ha rellenado el cuestionario: dale de alta desde el panel`);
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') new Notification('📝 Cuestionario rellenado', { body: `${name} ha rellenado el cuestionario. Ábrelo para darle de alta.`, tag: 'form-' + f.id });
+        } catch (e) { /* sin notificaciones */ }
       }
     } finally {
       checkingLinks = false;
@@ -3630,6 +3665,11 @@
     'form-share': (d) => { const f = Store.get('forms', d.id); if (f) formShare(f); },
     'form-answers': (d) => formAnswers(d.id),
     'form-client': (d) => formToClient(d.id),
+    'form-dismiss': (d) => {
+      Store.update('forms', d.id, { dismissed: true, reviewedAt: Store.get('forms', d.id).reviewedAt || today() });
+      App.render();
+      UI.toast('Aviso quitado (sigue en Formularios)', { label: 'Deshacer', onClick: () => { Store.update('forms', d.id, { dismissed: false }); App.render(); } });
+    },
     'form-check': () => checkQuestionnaireLinks(null, true),
     'form-delete': (d) => {
       const f = Store.get('forms', d.id);

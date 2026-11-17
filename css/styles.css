@@ -1536,3 +1536,20 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .meal-share-list { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
 .meal-share .ms-input input { text-align: center; padding: 6px 16px 6px 6px; }
 .meal-share .ms-btn { width: 32px; height: 32px; }
+
+/* Aviso de cuestionarios rellenados (panel) */
+.new-forms { border: 1.5px solid var(--primary); background: linear-gradient(135deg, var(--primary-soft), transparent 70%), var(--surface); margin-bottom: 18px; animation: nf-in .35s ease-out; }
+@keyframes nf-in { from { opacity: 0; transform: translateY(-6px); } }
+.nf-head { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; }
+.nf-head h2 { margin: 0 0 2px; font-size: 1.15rem; }
+.nf-head p { margin: 0; font-size: .88rem; }
+.nf-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--primary); color: #fff; }
+.nf-icon svg { width: 22px; height: 22px; }
+.nf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.nf-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); flex-wrap: wrap; }
+.nf-item .grow { flex: 1 1 140px; min-width: 0; }
+.nf-item .meta { font-size: .82rem; color: var(--muted); }
+.nf-actions { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) { .nf-actions { width: 100%; padding-left: 48px; } .nf-actions .btn { flex: 1; justify-content: center; } }
+.nf-item, .nf-actions { box-sizing: border-box; min-width: 0; }
+.nf-item .avatar { background: linear-gradient(135deg, var(--primary), #22d3ee); color: #fff; border: 0; }
