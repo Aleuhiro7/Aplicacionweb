@@ -94,12 +94,12 @@
       { name: 'phone', label: 'Teléfono / WhatsApp', type: 'tel' },
       { name: 'birthDate', label: 'Fecha de nacimiento', type: 'date' },
       { name: 'gender', label: 'Sexo', type: 'select', options: ['', 'Mujer', 'Hombre', 'Otro'].map((o) => ({ value: o, label: o || '—' })) },
+      { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.5', min: 100, max: 230, placeholder: 'Ej.: 175' },
       { type: 'section', label: 'Asesoría' },
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío: el próximo aniversario del alta. Te avisaré ${Store.REMIND_DAYS} días antes.` },
-      { name: 'height', label: 'Altura (cm)', type: 'number', step: '0.1', min: 0 },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
       { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Horarios, material disponible, preferencias, motivación…' },
@@ -2035,7 +2035,7 @@
             ${row('Teléfono', c.phone ? esc(c.phone) : '')}
             ${row('Nacimiento', c.birthDate ? fmtDate(c.birthDate) : '')}
             ${row('Sexo', esc(c.gender || ''))}
-            ${row('Altura', c.height ? fmtNum(c.height) + ' cm' : '')}
+            <dt>Altura</dt><dd>${Number(c.height) > 0 ? `${fmtNum(c.height)} cm <button class="link-btn" data-action="set-height" data-client="${c.id}">Cambiar</button>` : `<button class="btn sm" data-action="set-height" data-client="${c.id}">${U.icon('plus')}Añadir altura</button>`}</dd>
             ${row('Alta', c.startDate ? fmtDate(c.startDate) : '')}
             ${row('Notas', esc(c.notes || ''))}
           </dl>
@@ -3361,6 +3361,17 @@
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),
+    'set-height': (d) => {
+      const c = Store.get('clients', d.client);
+      if (!c) return;
+      UI.form({
+        title: `Altura de ${c.name.split(' ')[0]}`,
+        fields: [{ name: 'height', label: 'Altura (cm)', type: 'number', step: '0.5', min: 100, max: 230, required: true, placeholder: 'Ej.: 175', full: true, hint: 'Se usa para el IMC y para estimar sus calorías de mantenimiento en la dieta.' }],
+        values: { height: c.height || '' },
+        submitLabel: 'Guardar',
+        onSubmit: (v) => { Store.update('clients', c.id, { height: v.height }); UI.toast('Altura guardada'); App.render(); },
+      });
+    },
     'diet-pdf': (d) => printDiet(d.client),
     'diet-copy': (d) => { const c = Store.get('clients', d.client); const dt = Store.dietFor(d.client); if (c && dt) copyText(dietText(c, dt), 'Dieta copiada: pégala donde quieras'); },
     'equiv-by': (d) => setEquivBy(d.value),
