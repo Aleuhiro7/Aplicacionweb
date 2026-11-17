@@ -1302,10 +1302,10 @@
     return lines.join('\n');
   }
 
-  /** Colores del PDF según el tipo de alimento, todos dentro del degradado Aurora (violeta → rosa → mandarina). */
+  /** Colores del PDF según el tipo de alimento, todos dentro del degradado Glaciar (azul → cian → menta). */
   const FOOD_TONES = {
-    carne: '#ff6f8e', pescado: '#8b7cff', huevo: '#ffb877', polvo: '#c49cff', vegetal: '#b57cf0',
-    hidrato: '#ffa94d', fruta: '#ff8a80', aceite: '#ffc27a', fruto: '#e88a6a', queso: '#ffcf8a', lacteo: '#d9d2ff', verdura: '#ff6fb5',
+    carne: '#818cf8', pescado: '#6e8bff', huevo: '#99f6e4', polvo: '#a5b4fc', vegetal: '#38bdf8',
+    hidrato: '#3ee6a0', fruta: '#5eead4', aceite: '#6ee7b7', fruto: '#2dd4bf', queso: '#a7f3d0', lacteo: '#dbeafe', verdura: '#22d3ee',
   };
   const BLOCK_TONE = {
     'blk-carnes-magras': 'carne', 'blk-carnes-grasas': 'carne', 'blk-embutidos': 'carne',
@@ -1349,7 +1349,7 @@
     const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
-    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cff"/><stop offset=".55" stop-color="#ff6fb5"/><stop offset="1" stop-color="#ffa94d"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><text class="hx-in" x="50" y="63.5" text-anchor="middle">DO</text></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
+    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><text class="hx-in" x="50" y="63.5" text-anchor="middle">DO</text></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';
@@ -1435,17 +1435,17 @@
     const plate = `<div class="ds-plate">
         <svg viewBox="0 0 200 200" class="ds-plate-svg" aria-hidden="true">
           <circle cx="100" cy="100" r="96" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
-          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#ff6fb5"/>
-          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#8b7cff"/>
-          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#ffa94d"/>
-          <line x1="100" y1="10" x2="100" y2="190" stroke="#1b1726" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#1b1726" stroke-width="3"/>
+          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#22d3ee"/>
+          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#6e8bff"/>
+          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#3ee6a0"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="#121722" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#121722" stroke-width="3"/>
           <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
         </svg>
         <div class="ds-plate-legend">
-          <div style="--ds-accent:#ff6fb5"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
-          <div style="--ds-accent:#8b7cff"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
-          <div style="--ds-accent:#ffa94d"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
-          <div style="--ds-accent:#ffc27a"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
+          <div style="--ds-accent:#22d3ee"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
+          <div style="--ds-accent:#6e8bff"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
+          <div style="--ds-accent:#3ee6a0"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
+          <div style="--ds-accent:#6ee7b7"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
         </div>
       </div>
       <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;

@@ -2,7 +2,7 @@
 
 Aplicación web para gestionar los clientes de asesoría online: cuotas mensuales, progreso físico y cobros.
 
-Identidad: logo del hexágono «DO» en degradado violeta → rosa → mandarina sobre negro, con coral, cielo, menta y lila como colores de apoyo; tipografías Anton, Barlow Condensed y Archivo, y el lema «Lo simple funciona.» (app, cuestionario, PDF de la dieta, icono y vista previa de WhatsApp).
+Identidad: logo del hexágono «DO» en degradado azul eléctrico → cian → menta («Glaciar») sobre fondo pizarra, y solo esos tonos en toda la app; tipografías Anton, Barlow Condensed y Archivo, y el lema «Lo simple funciona.» (app, cuestionario, PDF de la dieta, icono y vista previa de WhatsApp).
 
 ## Funcionalidades
 

@@ -133,11 +133,11 @@
       .toUpperCase();
   }
 
-  // Degradados con los tonos del logo (Aurora: violeta → rosa → mandarina).
+  // Degradados con los tonos del logo (Glaciar: azul → cian → menta).
   const AVATAR_COLORS = [
-    'linear-gradient(135deg, #8b7cff, #ff6fb5)', 'linear-gradient(135deg, #ff6fb5, #ffa94d)', 'linear-gradient(135deg, #8b7cff, #c49cff)',
-    'linear-gradient(135deg, #b57cf0, #ff6fb5)', 'linear-gradient(135deg, #ffa94d, #ff8a80)', 'linear-gradient(135deg, #8b7cff, #ffa94d)',
-    'linear-gradient(135deg, #ff6fb5, #ff8a80)', 'linear-gradient(135deg, #b57cf0, #ffa94d)',
+    'linear-gradient(135deg, #6e8bff, #22d3ee)', 'linear-gradient(135deg, #22d3ee, #3ee6a0)', 'linear-gradient(135deg, #6e8bff, #a5b4fc)',
+    'linear-gradient(135deg, #38bdf8, #22d3ee)', 'linear-gradient(135deg, #3ee6a0, #5eead4)', 'linear-gradient(135deg, #6e8bff, #3ee6a0)',
+    'linear-gradient(135deg, #22d3ee, #5eead4)', 'linear-gradient(135deg, #38bdf8, #3ee6a0)',
   ];
   function avatarColor(seed) {
     let h = 0;
