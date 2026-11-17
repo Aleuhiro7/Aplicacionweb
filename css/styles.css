@@ -1463,3 +1463,19 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 @media (max-width: 560px) { .supp-list { grid-template-columns: 1fr 1fr; } .supp-item.on { grid-column: 1 / -1; } .supp-item .supp-name { font-size: .85rem; } }
 .supp-list { grid-auto-flow: dense; }
 @media (max-width: 760px) { .stats > .stat:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
+/* PDF: página «Tus datos» */
+.ds-data .ds-kpis { flex-wrap: wrap; }
+.ds-data .ds-kpi { min-width: 30mm; }
+.ds-chart { width: 100%; height: auto; display: block; margin: 0 0 6mm; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); }
+.ds-chart .ds-axis { fill: #94a3b8; font: 600 13px 'Archivo', sans-serif; }
+.ds-chart .ds-val { fill: #fff; font: 700 15px 'Archivo', sans-serif; }
+.ds-weights td.down { color: #3ee6a0; font-weight: 700; } .ds-weights td.up { color: #fbbf24; font-weight: 700; }
+.ds-weights td, .ds-weights th { text-align: left !important; }
+.ds-water-big em { display: block; margin-top: 3mm; padding: 0 3mm; text-align: center; font-style: normal; font-size: 8.5pt; color: #94a3b8; }
+.ds-weights { font-size: 11pt; }
+.ds-weights td { padding: 2.4mm 5mm; }
+.ds-weights th { padding: 2.6mm 5mm; }
+.ds-weights td b { font-size: 13pt; }
+.ds-data .ds-chart { margin-bottom: 4mm; }
+.ds-data .ds-kpis { margin-bottom: 5mm; }

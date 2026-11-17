@@ -724,11 +724,19 @@
       : { kind: 'superavit', diff, pct, label: 'Superávit', text: `Superávit de ${fmtNum(-diff, 0)} kcal al día (+${pct} %)` };
   }
 
-  /** Agua recomendada al día: unos 35 ml por kg (mínimo 2 L), redondeada a medio litro. */
+  /**
+   * Agua recomendada al día según el peso y la altura: 35 ml por kg de peso, ajustado por la
+   * altura (las personas más altas tienen más superficie corporal y pierden más agua).
+   * Entre 1,8 y 5 L, redondeado a 0,1 L. Sin peso, 2,5 L.
+   */
   function waterLiters(clientId) {
     const w = Store.lastMeasurement(clientId);
     const kg = w && Number(w.weight) > 0 ? Number(w.weight) : null;
-    return kg ? Math.max(2, Math.round(kg * 0.035 * 2) / 2) : 2.5;
+    if (!kg) return 2.5;
+    const c = Store.get('clients', clientId);
+    const cm = c && Number(c.height) > 0 ? Number(c.height) : null;
+    const liters = kg * 0.035 * (cm ? Math.sqrt(cm / 170) : 1);
+    return Math.min(5, Math.max(1.8, Math.round(liters * 10) / 10));
   }
 
   function presetName(t) {
@@ -1387,7 +1395,9 @@
     const supps = suppLines(d);
     const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
     // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
-    const extraPages = [t ? 'Tu plan' : null].filter(Boolean);
+    const weights = Store.measurementsFor(c.id).filter((m) => Number(m.weight) > 0);
+    const hasData = Number(c.height) > 0 || weights.length;
+    const extraPages = [hasData ? 'Tus datos' : null, t ? 'Tu plan' : null].filter(Boolean);
     const afterPages = ['Plato saludable', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
@@ -1446,6 +1456,7 @@
       </section>`;
     let n = 1;
     const out = [cover];
+    if (hasData) out.push(page(++n, 'Tu progreso', 'Tus datos', dataPage(c, weights)));
     if (t) {
       const split = macroSplit(t);
       const w = Store.lastMeasurement(c.id);
@@ -1493,8 +1504,10 @@
       <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;
     out.push(page(++n, 'Para improvisar', 'El plato saludable', plate));
     const L = waterLiters(c.id);
+    const lastW = weights[weights.length - 1];
+    const waterWhy = lastW ? `Según tu peso (${fmtNum(lastW.weight)} kg)${Number(c.height) > 0 ? ` y tu altura (${fmtNum(c.height, 0)} cm)` : ''}` : '';
     const water = `<div class="ds-water">
-        <div class="ds-water-big"><b>${fmtNum(L, 1)} L</b><span>de agua al día</span></div>
+        <div class="ds-water-big"><b>${fmtNum(L, 1)} L</b><span>de agua al día</span>${waterWhy ? `<em>${esc(waterWhy)}</em>` : ''}</div>
         <ul class="ds-tips">
           <li>Empieza el día con un vaso de agua al levantarte.</li>
           <li>Ten siempre una botella a mano y rellénala.</li>
@@ -1511,6 +1524,53 @@
     out.push(page(++n, supps.length ? 'Hábitos' : 'Hábitos', supps.length ? 'Agua y suplementación' : 'Hidratación', water + suppsBox, supps.length ? 'ds-dense-info' : ''));
     if (notes) out.push(page(++n, 'Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(notes).replace(/\n/g, '<br>')}</div>`));
     return `<article class="ds">${out.join('')}</article>`;
+  }
+
+  /** Página «Tus datos» del PDF: altura, peso, IMC y evolución del peso con gráfica. */
+  function dataPage(c, weights) {
+    const cm = Number(c.height) > 0 ? Number(c.height) : null;
+    const last = weights[weights.length - 1], first = weights[0];
+    const kg = last ? Number(last.weight) : null;
+    const imc = kg && cm ? kg / Math.pow(cm / 100, 2) : null;
+    const diff = weights.length >= 2 ? Number(last.weight) - Number(first.weight) : null;
+    const kpi = (label, val, unit, cls = '') => `<div class="ds-kpi ${cls}"><span>${label}</span><b>${val}${unit ? `<small>${unit}</small>` : ''}</b></div>`;
+    const kpis = [
+      cm ? kpi('Altura', fmtNum(cm, 0), 'cm') : '',
+      kg ? kpi('Peso actual', fmtNum(kg), 'kg') : '',
+      imc ? kpi('IMC', fmtNum(imc, 1), '') : '',
+      diff !== null ? kpi(`Desde el ${esc(U.fmtDateShort(first.date))}`, `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${fmtNum(Math.abs(diff))}`, 'kg', diff < 0 ? 'ds-kpi-deficit' : diff > 0 ? 'ds-kpi-superavit' : '') : '',
+    ].filter(Boolean).join('');
+    let chart = '';
+    if (weights.length >= 2) {
+      const Wd = 600, Hd = 205, padL = 46, padR = 18, padT = 18, padB = 34;
+      const vals = weights.map((m) => Number(m.weight));
+      let lo = Math.min(...vals), hi = Math.max(...vals);
+      const span = Math.max(2, hi - lo); lo -= span * 0.2; hi += span * 0.2;
+      const t0 = U.parseDate(first.date).getTime(), t1 = U.parseDate(last.date).getTime();
+      const X = (m) => padL + (t1 > t0 ? ((U.parseDate(m.date).getTime() - t0) / (t1 - t0)) : 0.5) * (Wd - padL - padR);
+      const Y = (v) => padT + (1 - (v - lo) / (hi - lo)) * (Hd - padT - padB);
+      const pts = weights.map((m) => [X(m), Y(Number(m.weight))]);
+      const ticks = [lo + (hi - lo) * 0.15, (lo + hi) / 2, hi - (hi - lo) * 0.15];
+      const showLabel = (i) => weights.length <= 7 || i === 0 || i === weights.length - 1 || i % Math.ceil(weights.length / 6) === 0;
+      chart = `<svg class="ds-chart" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true">
+        <defs><linearGradient id="dsline" x1="0" x2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient>
+        <linearGradient id="dsarea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".28"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>
+        ${ticks.map((v) => `<line x1="${padL}" x2="${Wd - padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(255,255,255,.08)"/><text x="${padL - 8}" y="${(Y(v) + 4).toFixed(1)}" text-anchor="end" class="ds-axis">${fmtNum(v, 0)}</text>`).join('')}
+        <path d="M${pts.map((p) => p.map((x) => x.toFixed(1)).join(' ')).join('L')}L${pts[pts.length - 1][0].toFixed(1)} ${Hd - padB}L${pts[0][0].toFixed(1)} ${Hd - padB}Z" fill="url(#dsarea)"/>
+        <path d="M${pts.map((p) => p.map((x) => x.toFixed(1)).join(' ')).join('L')}" fill="none" stroke="url(#dsline)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+        ${pts.map((p, i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="5" fill="#121722" stroke="#22d3ee" stroke-width="2.5"/>${showLabel(i) ? `<text x="${p[0].toFixed(1)}" y="${(p[1] - 11).toFixed(1)}" text-anchor="middle" class="ds-val">${fmtNum(vals[i])}</text><text x="${p[0].toFixed(1)}" y="${Hd - 12}" text-anchor="middle" class="ds-axis">${esc(U.fmtDateShort(weights[i].date))}</text>` : ''}`).join('')}
+      </svg>`;
+    }
+    const rows = weights.slice(-5).map((m, i, arr) => {
+      const prev = i > 0 ? arr[i - 1] : weights[weights.length - arr.length - 1];
+      const d = prev ? Number(m.weight) - Number(prev.weight) : null;
+      return `<tr><td>${esc(fmtDate(m.date))}</td><td><b>${fmtNum(m.weight)} kg</b></td><td class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${d === null ? '—' : `${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))} kg`}</td></tr>`;
+    }).reverse().join('');
+    return `<div class="ds-plan ds-data">
+        ${kpis ? `<div class="ds-kpis">${kpis}</div>` : ''}
+        ${chart ? `<h3 class="ds-sub">Evolución de tu peso</h3>${chart}` : weights.length === 1 ? '<p class="ds-plan-note">Este es tu punto de partida. En las próximas revisiones verás aquí tu evolución.</p>' : ''}
+        ${weights.length >= 2 ? `<table class="ds-table ds-weights"><thead><tr><th>Fecha</th><th>Peso</th><th>Cambio</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+      </div>`;
   }
 
   /** Abre el diálogo de impresión con la hoja de la dieta (desde ahí se guarda como PDF). */
