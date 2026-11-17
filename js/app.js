@@ -45,7 +45,7 @@
 
   /** Título de la pestaña. */
   function updateChrome() {
-    const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', biblioteca: 'Biblioteca', alimentos: 'Alimentos', formularios: 'Formularios', ajustes: 'Ajustes' };
+    const labels = { panel: 'Panel', clientes: 'Clientes', pagos: 'Pagos', biblioteca: 'Biblioteca', alimentos: 'Alimentos', formularios: 'Formularios', ajustes: 'Ajustes y copias de seguridad' };
     document.title = `${labels[parseRoute().section] || 'Panel'} · David Orihuela Entrenador Online`;
   }
 

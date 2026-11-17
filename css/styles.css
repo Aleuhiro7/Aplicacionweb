@@ -1257,7 +1257,8 @@ h1.display { font: 400 3.1rem/1.02 "Anton", "Barlow Condensed", Impact, sans-ser
 .q-tagline { margin: -10px 0 20px; font: 400 1.3rem/1 "Anton", Impact, sans-serif; text-transform: uppercase; color: var(--primary); letter-spacing: .01em; }
 .brand-name small { letter-spacing: .2em; white-space: nowrap; }
 @media (min-width: 761px) { .sidebar { width: 284px; } }
-.sidebar a span:last-child { white-space: nowrap; }
+.sidebar a span:last-child { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sidebar a[data-nav="ajustes"] span:last-child { white-space: normal; line-height: 1.25; }
 /* Botón «Nuevo cliente» compacto en el móvil (la mitad que antes). */
 .pill-short { display: none; }
 @media (max-width: 760px) {

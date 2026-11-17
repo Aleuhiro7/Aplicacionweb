@@ -3363,7 +3363,7 @@
     const s = Store.settings;
     const d = Store.data;
     return `
-      <div class="page-header"><div><h1 class="display">Ajustes</h1><p>Preferencias y copias de seguridad</p></div></div>
+      <div class="page-header"><div><h1 class="display">Ajustes y copias de seguridad</h1><p>Preferencias, sincronización y copias de seguridad de tus datos</p></div></div>
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Preferencias</h2></div>
