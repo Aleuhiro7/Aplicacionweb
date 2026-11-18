@@ -561,16 +561,7 @@
     "ant-p1-3": "Reverse_Barbell_Curl",
     "ant-p1-4": "Farmers_Walk"
     };
-  /* Ilustraciones propias (mismo estilo para todos): sustituyen a la foto. */
-  const ILLUSTRATED = new Set([
-    'cua-p1-1', 'cua-p1-2', 'cua-p1-3', 'cua-p1-4', 'cua-p1-5', 'cua-p1-6', 'cua-p1-7',
-    'cua-p2-1', 'cua-p2-2', 'cua-p2-3', 'cua-p2-4', 'cua-p2-5', 'cua-p2-6', 'cua-p2-7',
-    'cua-p3-1', 'cua-p3-2', 'cua-p3-3', 'cua-p3-4', 'cua-p4-1', 'cua-p4-2',
-  ]);
-  list.forEach((e) => {
-    if (ILLUSTRATED.has(e.id)) e.img = `ill_${e.id}`;
-    else if (IMAGES[e.id]) e.img = IMAGES[e.id];
-  });
+  list.forEach((e) => { if (IMAGES[e.id]) e.img = IMAGES[e.id]; });
 
   window.LIBRARY_DEFAULT = list;
 
