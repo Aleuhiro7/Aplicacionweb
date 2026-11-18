@@ -1671,3 +1671,17 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .rs-series { font-size: 9.5pt; line-height: 1.3; margin-top: .6mm; }
 .rs-meta { font-size: 9pt; margin-top: .6mm; }
 .rs-notes { font-size: 8.5pt; line-height: 1.35; margin-top: .8mm; }
+/* Una página por día: todo escala con --k (lo calcula la app para que el día quepa entero). */
+.rs-page { --k: 1; }
+.rs-page .rs-groups { gap: calc(4mm * var(--k)); }
+.rs-page .rs-group { padding: calc(3.5mm * var(--k)) calc(5mm * var(--k)); border-radius: calc(14px * min(1, var(--k))); }
+.rs-page .rs-group .ds-glabel { font-size: calc(10pt * var(--k)); margin-bottom: calc(2mm * var(--k)); }
+.rs-page .rs-group .ds-glabel em { font-size: calc(10pt * var(--k)); }
+.rs-page .rs-ex { gap: calc(4mm * var(--k)); padding: calc(2.2mm * var(--k)) 0; }
+.rs-page .rs-num { width: calc(8mm * var(--k)); height: calc(8mm * var(--k)); margin-top: calc(5mm * var(--k)); font-size: calc(13pt * var(--k)); border-radius: calc(8px * var(--k)); }
+.rs-page .rs-photos { gap: calc(1.5mm * var(--k)); }
+.rs-page .rs-photos img { width: calc(26mm * var(--k)); height: calc(17.5mm * var(--k)); }
+.rs-page .rs-name { font-size: calc(12pt * var(--k)); }
+.rs-page .rs-series { font-size: calc(9.5pt * var(--k)); margin-top: calc(.6mm * var(--k)); }
+.rs-page .rs-meta { font-size: calc(9pt * var(--k)); margin-top: calc(.6mm * var(--k)); }
+.rs-page .rs-notes { font-size: calc(8.5pt * var(--k)); margin-top: calc(.8mm * var(--k)); }

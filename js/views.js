@@ -1910,48 +1910,19 @@
   }
 
   /**
-   * Reparte los ejercicios de cada día en páginas midiendo de verdad lo que ocupan:
-   * si uno no cabe (respetando el margen de abajo), pasa a una página de «continuación».
+   * Cada día en una sola página: se busca el tamaño (--k) más grande con el que todos sus
+   * ejercicios caben respetando el margen de abajo. Con pocos ejercicios se agranda un poco
+   * para llenar bien la hoja; con muchos se reduce lo necesario.
    */
   function paginateRoutine(stage) {
-    const main = (pg) => pg.querySelector('.ds-main');
-    const overflows = (pg) => main(pg).scrollHeight > main(pg).clientHeight + 1;
-    for (const page of [...stage.querySelectorAll('.rs-page')]) {
-      const groups = [...page.querySelectorAll('.rs-group')];
-      const items = [];
-      groups.forEach((g) => g.querySelectorAll('.rs-ex').forEach((ex) => items.push({ g, ex })));
-      const empty = (g) => { const t = g.cloneNode(true); t.querySelectorAll('.rs-ex').forEach((e) => e.remove()); return t; };
-      const tplGroup = new Map(groups.map((g) => [g, empty(g)]));
-      const tplPage = page.cloneNode(true);
-      tplPage.querySelector('.rs-groups').innerHTML = '';
-      const kick = tplPage.querySelector('.ds-kicker');
-      kick.textContent = `${kick.textContent} · continuación`;
-      page.querySelector('.rs-groups').innerHTML = '';
-      let cur = page, last = page, inPage = new Map();
-      const addGroup = (pg, g, cont) => {
-        const el = tplGroup.get(g).cloneNode(true);
-        if (cont) el.querySelector('.ds-glabel em').textContent = 'continuación';
-        pg.querySelector('.rs-groups').appendChild(el);
-        inPage.set(g, el);
-        return el;
-      };
-      const started = new Set();
-      for (const { g, ex } of items) {
-        let el = inPage.get(g), created = false;
-        if (!el) { el = addGroup(cur, g, started.has(g)); created = true; }
-        el.appendChild(ex);
-        if (overflows(cur) && cur.querySelectorAll('.rs-ex').length > 1) {
-          ex.remove();
-          if (created) el.remove();
-          const np = tplPage.cloneNode(true);
-          last.after(np); last = np; cur = np; inPage = new Map();
-          addGroup(np, g, started.has(g)).appendChild(ex);
-        }
-        started.add(g);
-      }
+    for (const page of stage.querySelectorAll('.rs-page')) {
+      const main = page.querySelector('.ds-main');
+      const fits = (k) => { page.style.setProperty('--k', k); return main.scrollHeight <= main.clientHeight + 1; };
+      let lo = 0.3, hi = 1.6;
+      if (fits(hi)) continue;
+      for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+      fits(lo);
     }
-    const all = [...stage.querySelectorAll('.ds-page')];
-    all.forEach((pg, i) => { const nEl = pg.querySelector('.ds-page-n'); if (nEl) nEl.textContent = `${i + 1} / ${all.length}`; });
   }
 
   /* ---------- PDF generado en la propia app ----------
