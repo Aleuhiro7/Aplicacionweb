@@ -1835,6 +1835,8 @@
         </div>
         ${foot(++n)}
       </section>`;
+    // «Cómo entrenar» va justo después de la portada, antes de la rutina.
+    out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('')}</ul>`));
     if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
     const dayIdx = new Map(days.map((d, i) => [d.id, i]));
     pages.forEach((pg) => {
@@ -1868,7 +1870,6 @@
         ${foot(++n, 'Foto izquierda: posición inicial · Foto derecha: posición final.')}
       </section>`);
     });
-    out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('')}</ul>`));
     return `<article class="ds">${out.join('')}</article>`;
   }
 
