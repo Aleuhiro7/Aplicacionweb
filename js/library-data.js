@@ -10,9 +10,12 @@
   const list = [];
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
-    exercises.forEach(([n, equipment, sets, reps, description, extra], i) => {
+    let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
+    exercises.forEach(([n, equipment, sets, reps, description, extra]) => {
+      const own = extra && extra.id;
+      if (!own) k++;
       list.push(Object.assign({
-        id: `${prefix}-${i + 1}`, name: n, group, pattern: name, equipment, sets, reps, rest, tempo, description, video: '',
+        id: own || `${prefix}-${k}`, name: n, group, pattern: name, equipment, sets, reps, rest, tempo, description, video: '',
       }, extra || {}));
     });
   }
@@ -216,7 +219,8 @@
     ['Prensa inclinada 45° (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Pies a la anchura de la cadera en la mitad de la plataforma. Baja sin que la pelvis se despegue.'],
   ]);
   pattern('Cuádriceps', 'cua-p2', 'Patrón 2 · Prensa y unilaterales', { rest: '2 min', tempo: '2 s excéntrica / concéntrica controlada' }, [
-    ['Prensa horizontal', 'Máquina', '3', STD(15, 12, 10), 'Pies bajos en la plataforma para más cuádriceps. Recorrido completo sin bloquear las rodillas.'],
+    ['Prensa inclinada con pies bajos', 'Máquina de discos', '3', STD(15, 12, 10), 'Prensa inclinada (45°) con los pies bajos en la plataforma para más cuádriceps. Recorrido completo sin bloquear las rodillas.'],
+    ['Prensa horizontal en máquina', 'Máquina (sentado)', '3', STD(15, 12, 10), 'Sentado con la espalda apoyada y las piernas en línea recta, sin inclinación. Pies a la anchura de la cadera en la mitad de la plataforma; empuja hasta casi estirar sin bloquear las rodillas y vuelve controlando hasta 90° o algo más.', { id: 'cua-p2-hz' }],
     ['Prensa unilateral', 'Máquina de discos', '3', CERCA(12, 10, 8), 'Una pierna cada vez para corregir asimetrías.'],
     ['Sentadilla búlgara con mancuernas', 'Mancuernas y banco', '3', CERCA(12, 10, 8), 'Pie de atrás en el banco, torso erguido y rodilla adelante para cargar el cuádriceps.'],
     ['Sentadilla búlgara en multipower', 'Multipower y banco', '3', CERCA(12, 10, 8), 'La estabilidad de la máquina permite meter más carga.'],
@@ -340,7 +344,8 @@
 
   /* Imágenes de cada ejercicio (posición inicial _0 y final _1) en img/ejercicios/.
    * Fotos de Free Exercise DB (github.com/yuhonas/free-exercise-db), de dominio público (Unlicense).
-   * En algunos ejercicios sin foto exacta se usa la variante más parecida. */
+   * En algunos ejercicios sin foto exacta se usa la variante más parecida.
+   * Horizontal_Leg_Press es una ilustración propia (no hay foto libre de la prensa horizontal). */
   const IMAGES = {
     "bic-p1-1": "Machine_Bicep_Curl",
     "bic-p1-2": "Standing_Biceps_Cable_Curl",
@@ -477,6 +482,7 @@
     "cua-p1-6": "Barbell_Hack_Squat",
     "cua-p1-7": "Leg_Press",
     "cua-p2-1": "Narrow_Stance_Leg_Press",
+    "cua-p2-hz": "Horizontal_Leg_Press",
     "cua-p2-2": "Leg_Press",
     "cua-p2-3": "Split_Squat_with_Dumbbells",
     "cua-p2-4": "Smith_Single-Leg_Split_Squat",

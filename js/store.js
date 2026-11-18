@@ -164,6 +164,11 @@
     for (const ex of defaults) {
       if (!have.has(ex.id) && !removed.has(ex.id)) d.library.push(Object.assign({ builtIn: true }, ex));
     }
+    // Los de serie, en el orden de la biblioteca (así un ejercicio nuevo sale en su sitio); los propios, al final.
+    const order = new Map(defaults.map((x, i) => [x.id, i]));
+    d.library = d.library.map((x, i) => [x, i])
+      .sort((a, b) => (order.has(a[0].id) ? order.get(a[0].id) : 1e6 + a[1]) - (order.has(b[0].id) ? order.get(b[0].id) : 1e6 + b[1]))
+      .map((x) => x[0]);
   }
 
   /** Versiones anteriores usaban «día de cobro»; se convierte en fecha de próximo pago. */
