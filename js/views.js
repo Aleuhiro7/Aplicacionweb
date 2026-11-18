@@ -1798,7 +1798,11 @@
       pages.push({ d, di, parts });
     });
     const tips = [
-      ['Las 3 series de cada ejercicio', '1.ª efectiva: 12–15 repeticiones a 1 del fallo. 2.ª pesada: sube el peso y llega al fallo total en 6–8. 3.ª: vuelve al peso de la 1.ª y llega al fallo total por agotamiento.'],
+      ['Las 3 series de cada ejercicio', [
+        '<b>1.ª serie · Efectiva:</b> 12–15 repeticiones, quedándote a 1 del fallo.',
+        '<b>2.ª serie · Pesada:</b> sube el peso y llega al fallo total en 6–8 repeticiones.',
+        '<b>3.ª serie · Agotamiento:</b> vuelve al peso de la 1.ª y llega al fallo total.',
+      ]],
       ['Calienta antes de empezar', '5–10 minutos de movilidad y 1–2 series ligeras del primer ejercicio de cada músculo.'],
       ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
       ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
@@ -1836,7 +1840,7 @@
         ${foot(++n)}
       </section>`;
     // «Cómo entrenar» va justo después de la portada, antes de la rutina.
-    out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('')}</ul>`));
+    out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b>${Array.isArray(d) ? `<span class="rs-steps">${d.map((x) => `<span>${x}</span>`).join('')}</span>` : `<span>${d}</span>`}</li>`).join('')}</ul>`));
     if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
     const dayIdx = new Map(days.map((d, i) => [d.id, i]));
     pages.forEach((pg) => {
