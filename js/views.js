@@ -1978,6 +1978,40 @@
     return out;
   };
 
+  function saveBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  }
+
+  /**
+   * PDF listo: se enseña la portada y se puede mandar directamente (WhatsApp lo envía como
+   * documento y muestra la primera página como vista previa) o descargar.
+   */
+  function pdfReady(blob, name, cover) {
+    const file = new File([blob], name, { type: 'application/pdf' });
+    const canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
+    if (!canShare) { saveBlob(blob, name); UI.toast('PDF descargado: búscalo en Descargas y mándaselo'); return; }
+    UI.openModal({
+      title: 'PDF listo',
+      body: `<div class="pdf-ready">
+          ${cover ? `<img class="pdf-ready-cover" src="${cover}" alt="Primera página del PDF">` : ''}
+          <p class="muted">Pulsa «Enviar» y elige WhatsApp y el chat del cliente: le llega el PDF con esta primera página como vista previa.</p>
+        </div>`,
+      footer: `<button type="button" class="btn" data-pdf-save>${U.icon('download')}Descargar</button>
+        <button type="submit" class="btn primary">${U.icon('message')}Enviar</button>`,
+      onSubmit: async () => {
+        try { await navigator.share({ files: [file], title: name.replace(/\.pdf$/, '') }); UI.closeModal(); } catch (e) {
+          if (e && e.name === 'AbortError') return; // el usuario cerró el menú de compartir
+          saveBlob(blob, name); UI.closeModal(); UI.toast('No se pudo compartir: se ha descargado para que lo mandes tú');
+        }
+      },
+      onOpen: (dlg) => { const b = dlg.querySelector('[data-pdf-save]'); if (b) b.onclick = () => { saveBlob(blob, name); UI.closeModal(); UI.toast('PDF descargado: búscalo en Descargas'); }; },
+    });
+  }
+
   let pdfBusy = false;
   async function downloadSheetPdf(html, title, prepare) {
     if (pdfBusy) return;
@@ -2005,19 +2039,17 @@
       const opts = { quality: 0.9, pixelRatio: 2, width: box.width, height: box.height, backgroundColor: '#121722', cacheBust: false };
       try { opts.fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(pagesEl[0]); } catch (e) { /* sin fuentes incrustadas */ }
       const pages = [];
+      let cover = '';
       for (const el of pagesEl) {
         const url = await window.htmlToImage.toJpeg(el, opts);
+        if (!cover) cover = url;
         pages.push({ jpeg: dataUrlBytes(url), w: Math.round(box.width * 2), h: Math.round(box.height * 2) });
       }
       const blob = jpegsToPdf(pages);
       // Sin tildes ni símbolos: algunos navegadores ignoran el nombre si los lleva.
       const name = `${normalizeText(title).replace(/[^a-z0-9 _-]/gi, '').replace(/\b\w/g, (m) => m.toUpperCase()).trim() || 'Rutina'}.pdf`;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
-      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      UI.toast('PDF descargado: búscalo en Descargas y mándaselo');
+      stage.remove(); veil.remove();
+      pdfReady(blob, name, cover);
     } catch (e) {
       console.error(e);
       UI.toast('No se pudo crear el PDF. Inténtalo de nuevo.');

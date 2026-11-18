@@ -1685,3 +1685,6 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .rs-page .rs-series { font-size: calc(9.5pt * var(--k)); margin-top: calc(.6mm * var(--k)); }
 .rs-page .rs-meta { font-size: calc(9pt * var(--k)); margin-top: calc(.6mm * var(--k)); }
 .rs-page .rs-notes { font-size: calc(8.5pt * var(--k)); margin-top: calc(.8mm * var(--k)); }
+.pdf-ready { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.pdf-ready-cover { width: min(220px, 60vw); aspect-ratio: 210 / 297; object-fit: cover; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); border: 1px solid var(--border); }
+.pdf-ready p { margin: 0; font-size: .9rem; }
