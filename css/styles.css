@@ -1646,3 +1646,12 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .ds-page .rs-tips li { background: rgba(255, 255, 255, .05); border-left-color: var(--ds-mint); }
 .ds-page .rs-tips b { color: #fff; }
 .ds-page .rs-tips span { color: #cbd5e1; }
+
+/* Generación del PDF en la app: la hoja se monta fuera de la vista mientras se convierte. */
+.pdf-stage { position: fixed; left: -12000px; top: 0; width: 210mm; pointer-events: none; }
+.pdf-stage .ds-page { break-after: auto; }
+.pdf-veil { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: rgba(5, 8, 14, .6); backdrop-filter: blur(3px); }
+.pdf-veil-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 28px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.pdf-veil-box small { color: var(--muted); }
+.pdf-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: pdfspin .8s linear infinite; }
+@keyframes pdfspin { to { transform: rotate(360deg); } }

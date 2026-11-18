@@ -1923,7 +1923,102 @@
     const r = Store.routineFor(clientId);
     if (!c || !r) return;
     if (!(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de sacar el PDF'); return; }
-    printSheet(routineSheet(c, r), `Rutina ${c.name}`);
+    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`);
+  }
+
+  /* ---------- PDF generado en la propia app ----------
+   * En vez de usar «Imprimir» (cada móvil cambia márgenes, escala y cortes de página),
+   * cada página A4 de la hoja se convierte en imagen y se monta un PDF con ellas. */
+  let htmlToImageReady = null;
+  function loadHtmlToImage() {
+    if (window.htmlToImage) return Promise.resolve();
+    if (!htmlToImageReady) {
+      htmlToImageReady = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = 'js/vendor/html-to-image.js';
+        sc.onload = res; sc.onerror = () => { htmlToImageReady = null; rej(new Error('No se pudo cargar el generador de PDF')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return htmlToImageReady;
+  }
+
+  /** PDF mínimo: una imagen JPEG a página completa (A4) por página. */
+  function jpegsToPdf(pages) {
+    const enc = new TextEncoder();
+    const parts = []; const offsets = []; let len = 0;
+    const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
+    const obj = (n, body) => { offsets[n] = len; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
+    const W = 595.28, H = 841.89;
+    const n = pages.length;
+    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+    obj(2, () => push(`<< /Type /Pages /Count ${n} /Kids [${pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] >>`));
+    pages.forEach((pg, i) => {
+      const pId = 3 + i * 3, cId = pId + 1, iId = pId + 2;
+      obj(pId, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im${i} ${iId} 0 R >> >> /Contents ${cId} 0 R >>`));
+      const content = `q ${W} 0 0 ${H} 0 0 cm /Im${i} Do Q`;
+      obj(cId, () => { push(`<< /Length ${content.length} >>\nstream\n`); push(content); push('\nendstream'); });
+      obj(iId, () => {
+        push(`<< /Type /XObject /Subtype /Image /Width ${pg.w} /Height ${pg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${pg.jpeg.length} >>\nstream\n`);
+        push(pg.jpeg); push('\nendstream');
+      });
+    });
+    const total = 3 + n * 3;
+    const xref = len;
+    push(`xref\n0 ${total}\n0000000000 65535 f \n`);
+    for (let k = 1; k < total; k++) push(`${String(offsets[k]).padStart(10, '0')} 00000 n \n`);
+    push(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+    return new Blob(parts, { type: 'application/pdf' });
+  }
+
+  const dataUrlBytes = (url) => {
+    const bin = atob(url.slice(url.indexOf(',') + 1));
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  };
+
+  let pdfBusy = false;
+  async function downloadSheetPdf(html, title) {
+    if (pdfBusy) return;
+    pdfBusy = true;
+    const stage = document.createElement('div');
+    stage.className = 'pdf-stage';
+    stage.innerHTML = html;
+    document.body.appendChild(stage);
+    const veil = document.createElement('div');
+    veil.className = 'pdf-veil';
+    veil.innerHTML = '<div class="pdf-veil-box"><span class="pdf-spin"></span><b>Creando el PDF…</b><small>Tarda unos segundos</small></div>';
+    document.body.appendChild(veil);
+    try {
+      await loadHtmlToImage();
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      await Promise.all([...stage.querySelectorAll('img')].map((im) => (im.complete ? null : new Promise((res) => { im.onload = im.onerror = res; }))));
+      const pagesEl = [...stage.querySelectorAll('.ds-page')];
+      const box = pagesEl[0].getBoundingClientRect();
+      const opts = { quality: 0.9, pixelRatio: 2, width: box.width, height: box.height, backgroundColor: '#121722', cacheBust: false };
+      try { opts.fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(pagesEl[0]); } catch (e) { /* sin fuentes incrustadas */ }
+      const pages = [];
+      for (const el of pagesEl) {
+        const url = await window.htmlToImage.toJpeg(el, opts);
+        pages.push({ jpeg: dataUrlBytes(url), w: Math.round(box.width * 2), h: Math.round(box.height * 2) });
+      }
+      const blob = jpegsToPdf(pages);
+      // Sin tildes ni símbolos: algunos navegadores ignoran el nombre si los lleva.
+      const name = `${normalizeText(title).replace(/[^a-z0-9 _-]/gi, '').replace(/\b\w/g, (m) => m.toUpperCase()).trim() || 'Rutina'}.pdf`;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      UI.toast('PDF descargado: búscalo en Descargas y mándaselo');
+    } catch (e) {
+      console.error(e);
+      UI.toast('No se pudo crear el PDF. Inténtalo de nuevo.');
+    } finally {
+      stage.remove(); veil.remove(); pdfBusy = false;
+    }
   }
 
 
