@@ -1637,6 +1637,8 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .rs-tips .rs-steps { display: flex; flex-direction: column; gap: 1.8mm; margin-top: 1mm; }
 .rs-tips .rs-steps b { font-size: 10.5pt; }
 .ds-page .rs-tips .rs-steps b { color: var(--ds-mint); }
+.rs-tips .hl { font-style: normal; font-weight: 700; color: var(--ds-mint); }
+.ds-page .rs-tips .hl { color: #a5b8ff; }
 /* Rutina en el tema oscuro de las hojas */
 .ds-page .rs-name { color: #fff; }
 .ds-page .rs-series { color: var(--ds-accent, var(--ds-mint)); }
