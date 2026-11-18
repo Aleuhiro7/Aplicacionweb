@@ -1619,7 +1619,7 @@
             <h1>${esc(c.name)}</h1>
             <span class="ds-rule"></span>
             <p>${esc(fmtDate(today()))}</p>
-            <p class="ds-tag">Lo simple funciona.</p>
+            <p class="ds-tag">Tu mejor versión empieza hoy.</p>
           </div>
           <ol class="ds-index">${extraPages.concat(meals.map((m) => m.name), afterPages).map((name, i) => `<li><span>${i + 1}</span>${esc(name)}</li>`).join('')}</ol>
           ${anyOptions ? `<p class="ds-cover-note">${optNote}</p>` : '<p class="ds-cover-note"></p>'}
