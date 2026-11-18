@@ -2274,7 +2274,7 @@
 
   function healthFlagsCard(c) {
     const flags = clientFlags(c);
-    if (!flags.length) return '';
+    if (!flags.length || c.healthAsked) return '';
     const asked = c.healthAsked;
     return `<div class="health-flags${asked ? ' asked' : ''}">
         <div class="hf-head">${U.icon('alert')}<strong>${asked ? `Hablado con ${esc(c.name.split(' ')[0])} el ${esc(fmtDate(asked))}` : `Pregúntale por esto: lo marcó en el cuestionario`}</strong></div>
@@ -3793,7 +3793,13 @@
       saveRoutine(r);
     },
     'routine-days': (d) => setRoutineDays(d.client, Number(d.value)),
-    'health-asked': (d) => { Store.update('clients', d.client, { healthAsked: d.value ? today() : '' }); App.render(); if (d.value) UI.toast('Marcado como hablado'); },
+    'health-asked': (d) => {
+      const c = Store.get('clients', d.client);
+      const patch = { healthAsked: d.value ? today() : '' };
+      // Al marcarlo como hablado, lo del cuestionario pasa a la nota de salud fija (si estaba vacía).
+      if (d.value && c && !(c.health || '').trim()) patch.health = flagsText(clientFlags(c));
+      Store.update('clients', d.client, patch); App.render(); if (d.value) UI.toast('Marcado como hablado');
+    },
     'day-muscle': (d) => toggleDayMuscle(d.client, d.day, d.value),
     'muscle-pick': (d) => musclePicker(d.client, d.day, d.value),
     'complete-review': (d) => completeReview(d.client),
