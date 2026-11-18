@@ -1802,7 +1802,7 @@
     const c = Store.get('clients', clientId);
     const d = Store.dietFor(clientId);
     if (!c || !d) return;
-    printSheet(dietSheet(c, d), `Dieta ${c.name}`);
+    downloadSheetPdf(dietSheet(c, d), `Dieta ${c.name}`);
   }
 
   /**
