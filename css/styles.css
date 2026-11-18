@@ -1609,3 +1609,40 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 
 /* Número de orden en los músculos elegidos del día */
 .chip-order { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-right: 6px; border-radius: 999px; background: var(--primary); color: #fff; font-size: .72rem; font-weight: 800; line-height: 1; }
+
+/* ---------- Hoja de la rutina para imprimir / PDF (mismo diseño que la dieta) ---------- */
+.ds-index-days li { align-items: flex-start; }
+.ds-index-days li > div { display: flex; flex-direction: column; }
+.ds-index-days small { color: #94a3b8; font-weight: 500; font-size: 8.5pt; margin-top: 2px; }
+.rs-groups { width: 100%; flex: 1; display: flex; flex-direction: column; gap: 5mm; text-align: left; }
+.rs-group { flex: none; padding: 4.5mm 6mm; gap: 0; }
+.rs-ex { display: flex; align-items: center; gap: 4.5mm; padding: 3mm 0; border-top: 1px solid var(--ds-line); break-inside: avoid; }
+.rs-group .ds-glabel + .rs-ex { border-top: 0; padding-top: 1mm; }
+.rs-num { flex: none; width: 8mm; height: 8mm; border-radius: 8px; display: grid; place-items: center; background: var(--ds-soft); color: var(--ds-teal); font: 700 13pt/1 'Barlow Condensed', sans-serif; }
+.rs-photos { flex: none; display: flex; gap: 1.5mm; }
+.rs-photos img { width: 30mm; height: 20mm; object-fit: cover; border-radius: 6px; background: var(--ds-soft); }
+.rs-info { flex: 1; min-width: 0; }
+.rs-name { font-size: 13.5pt; font-weight: 700; color: var(--ds-navy); line-height: 1.2; }
+.rs-series { margin-top: 1mm; font-size: 10.5pt; font-weight: 600; color: var(--ds-teal); }
+.rs-meta { display: flex; flex-wrap: wrap; gap: 1mm 5mm; margin-top: 1mm; font-size: 9.5pt; color: var(--ds-ink); }
+.rs-meta b { color: var(--ds-muted); font-weight: 600; margin-right: 3px; }
+.rs-notes { margin-top: 1mm; font-size: 9.5pt; color: var(--ds-muted); font-style: italic; }
+.rs-page.ds-dense .rs-ex { padding: 2.2mm 0; }
+.rs-page.ds-dense .rs-photos img { width: 26mm; height: 17.5mm; }
+.rs-page.ds-dense .rs-name { font-size: 12.5pt; }
+.rs-tips { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 4mm; text-align: left; }
+.rs-tips li { display: flex; flex-direction: column; gap: 1mm; padding: 5mm 7mm; border-radius: 14px; background: var(--ds-soft); border-left: 4px solid var(--ds-teal); }
+.rs-tips b { font-size: 13.5pt; color: var(--ds-navy); }
+.rs-tips span { font-size: 11pt; color: var(--ds-ink); }
+/* Rutina en el tema oscuro de las hojas */
+.ds-page .rs-name { color: #fff; }
+.ds-page .rs-series { color: var(--ds-accent, var(--ds-mint)); }
+.ds-page .rs-meta { color: #e2e8f0; }
+.ds-page .rs-meta b { color: #94a3b8; }
+.ds-page .rs-notes { color: #cbd5e1; }
+.ds-page .rs-ex { border-top-color: color-mix(in srgb, var(--ds-accent, #fff) 22%, transparent); }
+.ds-page .rs-num { background: color-mix(in srgb, var(--ds-accent, #6e8bff) 30%, transparent); color: #fff; }
+.ds-page .rs-photos img { background: rgba(255, 255, 255, .06); }
+.ds-page .rs-tips li { background: rgba(255, 255, 255, .05); border-left-color: var(--ds-mint); }
+.ds-page .rs-tips b { color: #fff; }
+.ds-page .rs-tips span { color: #cbd5e1; }

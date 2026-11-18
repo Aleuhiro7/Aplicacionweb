@@ -518,6 +518,7 @@
             <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
           </div>
           <div class="actions">
+            <button class="btn sm primary" data-action="routine-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
             <a class="btn sm wa-btn" href="${routineWaLink(c, r)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
             <button class="btn sm" data-action="routine-copy" data-client="${c.id}">${U.icon('file')}Copiar</button>
             <button class="btn sm" data-action="routine-edit" data-client="${c.id}">${U.icon('edit')}Editar</button>
@@ -1590,6 +1591,8 @@
     return best ? FOOD_TONES[best] : null;
   }
 
+  const DS_BRAND = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><path class="hx-do" fill-rule="evenodd" style="fill:#fff" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
+
   /**
    * Hoja de la dieta para imprimir o guardar como PDF (A4, en claro): portada, una página por
    * comida (centrada) y, si hay, una página de indicaciones.
@@ -1607,7 +1610,7 @@
     const afterPages = ['Tu plato improvisado', supps.length ? 'Agua y suplementación' : 'Hidratación', notes ? 'Indicaciones' : null].filter(Boolean);
     const total = 1 + extraPages.length + meals.length + afterPages.length;
     const firstMeal = 2 + extraPages.length;
-    const brand = '<div class="ds-brand"><span class="ds-logo"><svg class="hexlogo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="dogradpdf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path class="hx" style="stroke:url(#dogradpdf)" d="M50 6 88 28v44L50 94 12 72V28Z"/><path class="hx-do" fill-rule="evenodd" style="fill:#fff" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg></span><span><strong>David Orihuela</strong><small>Entrenador Online</small></span></div>';
+    const brand = DS_BRAND;
     const top = `<header class="ds-top">${brand}<span class="ds-client">${esc(c.name)}</span></header>`;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || ''}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const optNote = 'Donde hay varias opciones, elige solo una: las cantidades ya son equivalentes.';
@@ -1779,20 +1782,148 @@
       </div>`;
   }
 
-  /** Abre el diálogo de impresión con la hoja de la dieta (desde ahí se guarda como PDF). */
+  /** Abre el diálogo de impresión con una hoja (desde ahí se guarda como PDF). */
+  function printSheet(html, title) {
+    let root = document.getElementById('print-root');
+    if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
+    root.innerHTML = html;
+    const prevTitle = document.title;
+    document.title = title; // nombre propuesto para el PDF
+    document.body.classList.add('printing');
+    const done = () => { document.body.classList.remove('printing'); document.title = prevTitle; root.innerHTML = ''; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    // Espera a que carguen las fotos (como mucho 4 s) para que salgan en el PDF.
+    const imgs = [...root.querySelectorAll('img')].filter((im) => !im.complete);
+    const loaded = Promise.all(imgs.map((im) => new Promise((res) => { im.onload = im.onerror = res; })));
+    Promise.race([loaded, new Promise((res) => setTimeout(res, 4000))]).then(() => setTimeout(() => window.print(), 50));
+  }
+
   function printDiet(clientId) {
     const c = Store.get('clients', clientId);
     const d = Store.dietFor(clientId);
     if (!c || !d) return;
-    let root = document.getElementById('print-root');
-    if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
-    root.innerHTML = dietSheet(c, d);
-    const prevTitle = document.title;
-    document.title = `Dieta ${c.name}`; // nombre propuesto para el PDF
-    document.body.classList.add('printing');
-    const done = () => { document.body.classList.remove('printing'); document.title = prevTitle; root.innerHTML = ''; window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    setTimeout(() => window.print(), 50);
+    printSheet(dietSheet(c, d), `Dieta ${c.name}`);
+  }
+
+  /**
+   * Hoja de la rutina para imprimir o guardar como PDF, con el mismo diseño que la de la dieta:
+   * portada, una página por día (los músculos en el orden elegido, cada ejercicio con sus fotos)
+   * y una página final de pautas.
+   */
+  function routineSheet(c, r) {
+    const days = (r.days || []).filter((d) => (d.exercises || []).length);
+    const top = `<header class="ds-top">${DS_BRAND}<span class="ds-client">${esc(c.name)}</span></header>`;
+    // Cada día se reparte en páginas: como mucho ~6 ejercicios por página.
+    const pages = [];
+    days.forEach((d, di) => {
+      const blocks = [];
+      for (const g of dayMuscles(d)) {
+        const exs = (d.exercises || []).filter((ex) => exGroup(ex) === g);
+        if (exs.length) blocks.push({ g, exs });
+      }
+      let cur = [], w = 0;
+      const MAX = 6.4;
+      for (const b of blocks) {
+        let part = { g: b.g, exs: [], cont: false };
+        for (const ex of b.exs) {
+          const cost = (part.exs.length ? 0 : 0.45) + 1;
+          if (w + cost > MAX && (cur.length || part.exs.length)) {
+            if (part.exs.length) cur.push(part);
+            pages.push({ d, di, parts: cur });
+            cur = []; w = 0; part = { g: b.g, exs: [], cont: part.exs.length > 0 || part.cont };
+          }
+          part.exs.push(ex); w += (part.exs.length === 1 ? 0.45 : 0) + 1;
+        }
+        if (part.exs.length) cur.push(part);
+      }
+      if (cur.length) pages.push({ d, di, parts: cur });
+    });
+    const tips = [
+      ['Calienta antes de empezar', '5–10 minutos de movilidad y 1–2 series ligeras del primer ejercicio de cada músculo.'],
+      ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
+      ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
+      ['Progresa poco a poco', 'Cuando completes todas las repeticiones con buena técnica, sube un poco el peso la próxima vez.'],
+      ['Apunta tus pesos', 'Anota el peso y las repeticiones de cada serie para saber qué superar el próximo día.'],
+      ['Escucha a tu cuerpo', 'Si algo duele (dolor, no esfuerzo), para y coméntamelo.'],
+    ];
+    const total = 1 + (r.notes ? 1 : 0) + pages.length + 1;
+    const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || 'David Orihuela · Entrenador Online'}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
+    const dayTitle = (d, di) => d.name || `Día ${di + 1}`;
+    const cover = `<section class="ds-page ds-cover">
+        <div class="ds-cover-in">
+          ${DS_BRAND}
+          <div class="ds-cover-main">
+            <span class="ds-kicker">Plan de entrenamiento</span>
+            <h1>${esc(c.name)}</h1>
+            <span class="ds-rule"></span>
+            <p>${esc(fmtDate(today()))} · ${plural(days.length, 'día', 'días')} a la semana</p>
+            <p class="ds-tag">Constancia por encima de todo.</p>
+          </div>
+          <ol class="ds-index ds-index-days">${days.map((d, i) => `<li><span>${i + 1}</span><div>${esc(dayTitle(d, (r.days || []).indexOf(d)))}<small>${esc(dayMuscles(d).filter((g) => (d.exercises || []).some((ex) => exGroup(ex) === g)).join(' · '))}</small></div></li>`).join('')}</ol>
+          <p class="ds-cover-note"></p>
+        </div>
+      </section>`;
+    const out = [cover];
+    let n = 1;
+    const simple = (kicker, title, inner) => `<section class="ds-page">
+        ${top}
+        <div class="ds-main">
+          <span class="ds-kicker">${kicker}</span>
+          <h2 class="ds-title">${title}</h2>
+          <span class="ds-rule"></span>
+          ${inner}
+        </div>
+        ${foot(++n)}
+      </section>`;
+    if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
+    const dayIdx = new Map(days.map((d, i) => [d.id, i]));
+    pages.forEach((pg, k) => {
+      const first = k === 0 || pages[k - 1].d !== pg.d;
+      const count = pg.parts.reduce((t, p) => t + p.exs.length, 0);
+      const dens = count >= 6 ? ' ds-dense' : '';
+      const i = dayIdx.get(pg.d.id);
+      out.push(`<section class="ds-page rs-page${dens}">
+        ${top}
+        <div class="ds-main">
+          <span class="ds-kicker">Día ${i + 1} de ${days.length}${first ? '' : ' · continuación'}</span>
+          <h2 class="ds-title">${esc(dayTitle(pg.d, (r.days || []).indexOf(pg.d)))}</h2>
+          <span class="ds-rule"></span>
+          <div class="rs-groups">${pg.parts.map((p) => `<div class="ds-group rs-group" style="--ds-accent:${RS_TONES[dayMuscles(pg.d).indexOf(p.g) % RS_TONES.length]}">
+              <div class="ds-glabel"><i></i><b>${esc(p.g)}</b>${p.cont ? '<em>continuación</em>' : `<em>${plural(((pg.d.exercises || []).filter((ex) => exGroup(ex) === p.g)).length, 'ejercicio', 'ejercicios')}</em>`}</div>
+              ${p.exs.map((ex) => {
+                const lib = ex.libraryId && Store.get('library', ex.libraryId);
+                const num = (pg.d.exercises || []).filter((x) => exGroup(x) === p.g).indexOf(ex) + 1;
+                const photos = lib && imgOf(lib) ? `<span class="rs-photos"><img src="${exImg(lib, 0)}" alt=""><img src="${exImg(lib, 1)}" alt=""></span>` : '';
+                const meta = [ex.load ? `<span><b>Carga</b> ${esc(ex.load)}</span>` : '', ex.rest ? `<span><b>Descanso</b> ${esc(ex.rest)}</span>` : ''].filter(Boolean).join('');
+                return `<div class="rs-ex">
+                  <span class="rs-num">${num}</span>
+                  ${photos}
+                  <div class="rs-info">
+                    <div class="rs-name">${esc(ex.name)}</div>
+                    ${ex.sets || ex.reps ? `<div class="rs-series">${esc([ex.sets && `${ex.sets} series`, ex.reps].filter(Boolean).join(' × '))}</div>` : ''}
+                    ${meta ? `<div class="rs-meta">${meta}</div>` : ''}
+                    ${ex.notes ? `<div class="rs-notes">${esc(ex.notes)}</div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>`).join('')}</div>
+        </div>
+        ${foot(++n, 'Foto izquierda: posición inicial · Foto derecha: posición final.')}
+      </section>`);
+    });
+    out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('')}</ul>`));
+    return `<article class="ds">${out.join('')}</article>`;
+  }
+
+  /** Un color por músculo dentro de cada día (degradado de la marca). */
+  const RS_TONES = ['#6e8bff', '#22d3ee', '#3ee6a0', '#a78bfa', '#fb923c', '#f472b6'];
+
+  function printRoutine(clientId) {
+    const c = Store.get('clients', clientId);
+    const r = Store.routineFor(clientId);
+    if (!c || !r) return;
+    if (!(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de sacar el PDF'); return; }
+    printSheet(routineSheet(c, r), `Rutina ${c.name}`);
   }
 
 
@@ -3773,6 +3904,7 @@
     'routine-create': (d) => routineForm(Store.get('clients', d.client)),
     'routine-edit': (d) => routineForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'routine-copy': (d) => copyRoutine(Store.get('clients', d.client)),
+    'routine-pdf': (d) => printRoutine(d.client),
     'day-add': (d) => dayForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'day-edit': (d) => { const r = Store.routineFor(d.client); dayForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
     'day-move': (d) => { const r = Store.routineFor(d.client); moveItem(r.days, d.day, Number(d.dir)); saveRoutine(r); },
