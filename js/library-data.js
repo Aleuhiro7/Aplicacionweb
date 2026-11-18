@@ -11,7 +11,7 @@
   /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
    * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
   const METHOD_SETS = '3';
-  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo · antes, 1–3 de aproximación';
+  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
     let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
