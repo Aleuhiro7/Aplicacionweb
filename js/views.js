@@ -2199,7 +2199,9 @@
 
       ${newFormsBanner()}
       <div class="alerts-stack">
-        ${alertSections.map((x) => x.html).join('')}
+        ${alertSections.some((x) => x.n)
+          ? alertSections.filter((x) => x.n).map((x) => x.html).join('')
+          : `<section class="card alert-card alert-ok" id="todo-ok"><h2>Avisos</h2><span class="ok-text">${U.icon('done')}No tienes ningún aviso pendiente. ¡Todo al día!</span></section>`}
       </div>
 
       <h2 class="section-title">Este mes</h2>
