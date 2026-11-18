@@ -11,6 +11,9 @@
   /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
    * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
   const METHOD_SETS = '3';
+  /* Descanso: 3 minutos en todo lo de pierna y 2 minutos en el resto de músculos. */
+  const LEGS = ['Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Aductores', 'Gemelos'];
+  const restOf = (group) => (LEGS.includes(group) ? '3 min' : '2 min');
   const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
@@ -19,8 +22,8 @@
       const own = extra && extra.id;
       if (!own) k++;
       list.push(Object.assign({
-        id: own || `${prefix}-${k}`, name: n, group, pattern: name, equipment, sets: METHOD_SETS, reps: METHOD_REPS, rest, tempo, description, video: '',
-      }, extra || {}));
+        id: own || `${prefix}-${k}`, name: n, group, pattern: name, equipment, sets: METHOD_SETS, reps: METHOD_REPS, rest: restOf(group), tempo, description, video: '',
+      }, extra || {}, { sets: METHOD_SETS, reps: METHOD_REPS, rest: restOf(group) }));
     });
   }
 
@@ -772,7 +775,9 @@
     'Serie 2 · Pesada: sube el peso y llega al fallo total entre 6 y 8 repeticiones.',
     'Serie 3 · Agotamiento: vuelve al peso de la serie 1 y haz todas las repeticiones que puedas, hasta el fallo total.',
   ] };
-  for (const sections of Object.values(window.LIBRARY_GUIDES)) {
+  for (const [group, sections] of Object.entries(window.LIBRARY_GUIDES)) {
+    const rest = LEGS.includes(group) ? 'Descanso: 3 minutos entre series.' : 'Descanso: 2 minutos entre series.';
+    for (const sec of sections) sec.items = sec.items.map((t) => (/^Descanso:/.test(t) ? rest : t));
     const i = sections.findIndex((x) => x.title === 'Pautas básicas');
     sections.splice(i + 1, 0, METHOD_GUIDE);
   }
