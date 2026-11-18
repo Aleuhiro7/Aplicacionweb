@@ -1798,8 +1798,8 @@
       pages.push({ d, di, parts });
     });
     const tips = [
-      ['Las 3 series de cada ejercicio', '1.ª efectiva: 12–15 repeticiones a 1 del fallo. 2.ª pesada: sube el peso y llega al fallo total en 6–8. 3.ª: vuelve al peso de la 1.ª y llega al fallo total por agotamiento.'],
-      ['Calienta antes de empezar', '5–10 minutos de movilidad y 1–2 series ligeras del primer ejercicio de cada músculo.'],
+      ['Las 3 series de cada ejercicio', 'Antes, 1–3 series de aproximación de 7–8 reps (50 %, 70 % y 90 % del peso). Luego: 1.ª efectiva, 12–15 a 1 del fallo · 2.ª pesada, 6–8 al fallo total · 3.ª con el peso de la 1.ª, al fallo total.'],
+      ['Calienta antes de empezar', '5–10 minutos de movilidad y activación antes del primer ejercicio.'],
       ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
       ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
       ['Progresa poco a poco', 'Cuando completes todas las repeticiones con buena técnica, sube un poco el peso la próxima vez.'],

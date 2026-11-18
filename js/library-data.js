@@ -11,7 +11,7 @@
   /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
    * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
   const METHOD_SETS = '3';
-  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
+  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo · antes, 1–3 de aproximación';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
     let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
@@ -629,7 +629,7 @@
       ] },
       { title: 'Calentamiento y activación', items: [
         'Movilidad: tobillo y cadera (sentadilla profunda sin peso, zancadas dinámicas).',
-        'Activación: 2 series × 15 de extensiones de cuádriceps ligeras + series de aproximación en el primer ejercicio.',
+        'Activación: 2 series × 15 de extensiones de cuádriceps ligeras.',
       ] },
       { title: 'Patrón 1 · Sentadilla pesada', items: ['Objetivo: masa y fuerza.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 2 · Prensa y unilaterales', items: ['Objetivo: volumen de calidad con menos fatiga de la columna y corrección de asimetrías.', 'Descanso: 2 minutos.'] },
@@ -766,6 +766,7 @@
 
   /* El método de las 3 series, explicado en las pautas de cada músculo (justo después de las pautas básicas). */
   const METHOD_GUIDE = { title: 'Método de las 3 series', items: [
+    'Aproximación: antes de las 3 series, en cada ejercicio, haz de 1 a 3 series de aproximación de 7 u 8 repeticiones para calentar y preparar el músculo: al 50 %, al 70 % y al 90 % del peso que vas a usar.',
     'Serie 1 · Efectiva: entre 12 y 15 repeticiones, quedándote a 1 repetición del fallo.',
     'Serie 2 · Pesada: sube el peso y llega al fallo total entre 6 y 8 repeticiones.',
     'Serie 3 · Agotamiento: vuelve al peso de la serie 1 y haz todas las repeticiones que puedas, hasta el fallo total.',

@@ -1630,8 +1630,8 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .rs-page.ds-dense .rs-ex { padding: 2.2mm 0; }
 .rs-page.ds-dense .rs-photos img { width: 26mm; height: 17.5mm; }
 .rs-page.ds-dense .rs-name { font-size: 12.5pt; }
-.rs-tips { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 4mm; text-align: left; }
-.rs-tips li { display: flex; flex-direction: column; gap: 1mm; padding: 5mm 7mm; border-radius: 14px; background: var(--ds-soft); border-left: 4px solid var(--ds-teal); }
+.rs-tips { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 3mm; text-align: left; }
+.rs-tips li { display: flex; flex-direction: column; gap: 1mm; padding: 4mm 7mm; border-radius: 14px; background: var(--ds-soft); border-left: 4px solid var(--ds-teal); }
 .rs-tips b { font-size: 13.5pt; color: var(--ds-navy); }
 .rs-tips span { font-size: 11pt; color: var(--ds-ink); }
 /* Rutina en el tema oscuro de las hojas */
