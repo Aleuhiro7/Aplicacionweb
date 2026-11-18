@@ -2035,6 +2035,7 @@
             <div class="grow">
               <strong>${esc(who)}</strong>
               <div class="meta">Respondió el ${esc(fmtDate(f.answeredAt))}${goal ? ` · ${esc(goal)}` : ''}</div>
+              ${healthFlags(f.items).length ? `<div class="nf-flags">${healthFlags(f.items).map((x) => `<span class="badge danger">${U.icon('alert')}${esc(x.label)}: ${esc(x.a)}</span>`).join('')}</div>` : ''}
             </div>
             <div class="nf-actions">
               <button class="btn sm" data-action="form-answers" data-id="${f.id}">${U.icon('file')}Ver respuestas</button>
@@ -2223,7 +2224,7 @@
         const di = Store.dueInfo(c);
         const last = Store.lastMeasurement(c.id);
         return `<tr class="clickable" data-href="#/clientes/${c.id}" tabindex="0">
-          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}</div></div></td>
+          <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}${clientFlags(c).length && !c.healthAsked ? `<span class="badge danger hf-badge" title="${esc(flagsText(clientFlags(c)))}">${U.icon('alert')}Preguntar: ${esc(clientFlags(c).map((f) => f.label.split(' ')[0].toLowerCase()).join(', '))}</span>` : ''}</div></div></td>
           <td class="hide-sm">${c.email ? esc(c.email) : '—'}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
           <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
@@ -2232,6 +2233,40 @@
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
+  }
+
+  /** Lo que conviene preguntar al cliente según su cuestionario: lesión, salud o medicación y alergias. */
+  const HEALTH_FLAGS = [
+    { key: 'lesion', label: 'Lesión o dolor', re: /lesi[oó]n|dolor/i },
+    { key: 'salud', label: 'Salud o medicación', re: /salud|medicaci/i },
+    { key: 'alergia', label: 'Alergia o intolerancia', re: /alergi|intoleran/i },
+  ];
+  function healthFlags(items) {
+    const out = [];
+    for (const f of HEALTH_FLAGS) {
+      const it = (items || []).find((x) => f.re.test(x.q || ''));
+      const a = it && String(it.a || '').trim();
+      if (a && !/^no\b|^ninguna?\b|^nada\b/i.test(a)) out.push({ key: f.key, label: f.label, a });
+    }
+    return out;
+  }
+  const clientFlags = (c) => healthFlags(c && c.questionnaire && c.questionnaire.items);
+  /** Texto para el campo «Salud» de la ficha: «Lesión o dolor: Sí, leve · Alergia o intolerancia: Lactosa». */
+  const flagsText = (flags) => flags.map((f) => `${f.label}: ${f.a}`).join(' · ');
+
+  function healthFlagsCard(c) {
+    const flags = clientFlags(c);
+    if (!flags.length) return '';
+    const asked = c.healthAsked;
+    return `<div class="health-flags${asked ? ' asked' : ''}">
+        <div class="hf-head">${U.icon('alert')}<strong>${asked ? `Hablado con ${esc(c.name.split(' ')[0])} el ${esc(fmtDate(asked))}` : `Pregúntale por esto: lo marcó en el cuestionario`}</strong></div>
+        <ul class="hf-list">${flags.map((f) => `<li><span class="hf-label">${esc(f.label)}</span><span class="hf-answer">${esc(f.a)}</span></li>`).join('')}</ul>
+        <div class="hf-actions">
+          ${asked ? `<button class="btn sm" data-action="health-asked" data-client="${c.id}" data-value="">Volver a marcar como pendiente</button>`
+            : `${U.waLink(c.phone) ? `<a class="btn sm wa-btn" href="${U.waLink(c.phone)}" target="_blank" rel="noopener">${U.icon('message')}Preguntarle por WhatsApp</a>` : ''}
+               <button class="btn sm primary" data-action="health-asked" data-client="${c.id}" data-value="1">${U.icon('check')}Ya lo he hablado</button>`}
+        </div>
+      </div>`;
   }
 
   function renderClients() {
@@ -2290,7 +2325,8 @@
             <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
           </div>
         </div>
-        ${c.health ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
+        ${healthFlagsCard(c)}
+        ${c.health && !(clientFlags(c).length && c.health === flagsText(clientFlags(c))) ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
       </div>
       <div class="tabs" role="tablist">
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
@@ -3352,7 +3388,7 @@
     const c = Store.add('clients', Object.assign({
       name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate, nextDue: today(),
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
-    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}, email ? { email } : {}));
+    }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}, email ? { email } : {}, healthFlags(f.items).length ? { health: flagsText(healthFlags(f.items)) } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
     Store.update('forms', f.id, { clientId: c.id, reviewedAt: f.reviewedAt || today() });
     UI.toast(`${(name || 'Cliente').split(' ')[0]} dado de alta: revisa su ficha`);
@@ -3739,6 +3775,7 @@
       saveRoutine(r);
     },
     'routine-days': (d) => setRoutineDays(d.client, Number(d.value)),
+    'health-asked': (d) => { Store.update('clients', d.client, { healthAsked: d.value ? today() : '' }); App.render(); if (d.value) UI.toast('Marcado como hablado'); },
     'day-muscle': (d) => toggleDayMuscle(d.client, d.day, d.value),
     'muscle-pick': (d) => musclePicker(d.client, d.day, d.value),
     'complete-review': (d) => completeReview(d.client),
@@ -3828,6 +3865,7 @@
       if (!c.email && cleanEmail(ans(/correo|e-?mail/i))) fill.email = cleanEmail(ans(/correo|e-?mail/i));
       if (!c.gender && /^(hombre|mujer)/i.test(sex)) fill.gender = /^hombre/i.test(sex) ? 'Hombre' : 'Mujer';
       if (!c.height && hw.height) fill.height = hw.height;
+      if (!c.health && healthFlags(items).length) fill.health = flagsText(healthFlags(items));
       if (hw.weight && !Store.measurementsFor(c.id).length) Store.add('measurements', { clientId: c.id, date: c.questionnaire.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
       Store.update('clients', c.id, Object.assign({ questionnaire: Object.assign({}, c.questionnaire, { reviewedAt: today() }) }, fill));
       App.render();

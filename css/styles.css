@@ -1580,3 +1580,20 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .mpick-card:has(input:checked) .mpick-check { background: var(--primary); border-color: var(--primary); color: #fff; }
 .mpick-card.added { opacity: .55; cursor: default; }
 .mpick-card .lib-name { padding-right: 30px; }
+
+/* Avisos de salud del cuestionario (lesión, medicación, alergias) */
+.health-flags { margin: 14px 16px 16px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.health-flags.asked { border-color: var(--border); background: var(--surface-2); }
+.hf-head { display: flex; align-items: center; gap: 8px; color: var(--danger); margin-bottom: 10px; }
+.health-flags.asked .hf-head { color: var(--muted); }
+.hf-head svg { width: 20px; height: 20px; flex-shrink: 0; }
+.hf-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.hf-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .92rem; }
+.hf-label { font-weight: 700; min-width: 170px; }
+.hf-answer { color: var(--text); }
+.hf-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hf-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-size: .72rem; }
+.hf-badge svg, .nf-flags .badge svg { width: 13px; height: 13px; }
+.nf-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.nf-flags .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; white-space: normal; }
+@media (max-width: 600px) { .hf-list li { flex-direction: column; gap: 1px; } .health-flags { margin: 12px 0 4px; } }
