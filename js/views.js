@@ -1966,9 +1966,9 @@
   function birthdayText(bi) {
     return bi.days === 0 ? `¡Hoy cumple ${bi.turns} años!` : bi.days === 1 ? `Mañana cumple ${bi.turns} años` : `Cumple ${bi.turns} años el ${fmtDate(bi.date)} (en ${bi.days} días)`;
   }
+  /** Abre su chat de WhatsApp sin texto: la felicitación la escribes tú. */
   function birthdayWa(c) {
-    const msg = `¡Feliz cumpleaños, ${c.name.split(' ')[0]}! 🎉🎂 Que pases un día genial. Un abrazo, ${coachFirst()}.`;
-    return `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(msg)}`;
+    return U.waLink(c.phone) || 'https://wa.me/';
   }
 
   /** Avisos: pagos que vencen pronto o vencidos, seguimientos/revisiones y tareas pendientes. */
