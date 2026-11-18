@@ -1688,3 +1688,21 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .pdf-ready { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .pdf-ready-cover { width: min(220px, 60vw); aspect-ratio: 210 / 297; object-fit: cover; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); border: 1px solid var(--border); }
 .pdf-ready p { margin: 0; font-size: .9rem; }
+
+/* Tarjeta para WhatsApp (mismo diseño que la imagen del cuestionario), 1200 × 630 */
+.og-card { width: 1200px; height: 630px; display: flex; background: radial-gradient(700px 500px at 45% -10%, rgba(110, 139, 255, .22), transparent 70%), radial-gradient(500px 400px at 0% 110%, rgba(34, 211, 238, .10), transparent 70%), #121722; color: #fff; font-family: 'Archivo', sans-serif; }
+.og-main { flex: 1; display: flex; flex-direction: column; padding: 70px 76px 70px; }
+.og-main .ds-brand { gap: 22px; }
+.og-main .ds-logo { width: 92px !important; height: 92px !important; }
+.og-main .ds-brand strong { color: #fff; font: 700 46px/1 'Barlow Condensed', sans-serif; letter-spacing: .01em; }
+.og-main .ds-brand small { display: block; margin-top: 8px; font-size: 17px; letter-spacing: .32em; color: #6e8bff; background: linear-gradient(90deg, #6e8bff, #3ee6a0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.og-title { margin-top: auto; display: flex; flex-direction: column; font: 400 96px/1 'Anton', 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.og-grad { background: linear-gradient(90deg, #6e8bff, #22d3ee 55%, #3ee6a0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.og-sub { margin: 26px 0 0; font-size: 30px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 720px; }
+.og-band { width: 330px; display: grid; place-items: center; background: linear-gradient(180deg, #6e8bff, #22d3ee 55%, #3ee6a0); }
+.og-band span { transform: rotate(-90deg); white-space: nowrap; font: 400 54px/1 'Anton', sans-serif; color: #0b0b0b; text-transform: uppercase; letter-spacing: .01em; }
+.pdf-ready-cover.is-card { width: 100%; aspect-ratio: 1200 / 630; }
+.og-main .ds-logo { flex: none; }
+.og-main .ds-logo svg { width: 100%; height: 100%; }
+.og-title { line-height: 1.06; }
+.og-grad { padding-top: 6px; }

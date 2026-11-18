@@ -1802,7 +1802,10 @@
     const c = Store.get('clients', clientId);
     const d = Store.dietFor(clientId);
     if (!c || !d) return;
-    downloadSheetPdf(dietSheet(c, d), `Dieta ${c.name}`);
+    downloadSheetPdf(dietSheet(c, d), `Dieta ${c.name}`, null, {
+      top: 'Plan de', bottom: 'Alimentación', sub: c.name,
+      text: `Hola ${c.name.split(' ')[0]}, aquí tienes tu plan de alimentación. ¡Lo simple funciona! 🥗`,
+    });
   }
 
   /**
@@ -1906,7 +1909,11 @@
     const r = Store.routineFor(clientId);
     if (!c || !r) return;
     if (!(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de sacar el PDF'); return; }
-    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`, paginateRoutine);
+    const nDays = (r.days || []).filter((d) => (d.exercises || []).length).length;
+    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`, paginateRoutine, {
+      top: 'Rutina de', bottom: 'Entrenamiento', sub: `${c.name} · ${plural(nDays, 'día', 'días')} a la semana`,
+      text: `Hola ${c.name.split(' ')[0]}, aquí tienes tu rutina de entrenamiento. ¡A por ello! 💪`,
+    });
   }
 
   /**
@@ -1986,25 +1993,43 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 60000);
   }
 
+  /** Tarjeta apaisada con el diseño de la del cuestionario (logo, título en dos líneas, franja «Lo simple funciona.»). */
+  function shareCardHtml(card) {
+    return `<div class="og-card">
+        <div class="og-main">
+          ${DS_BRAND}
+          <div class="og-title"><span>${esc(card.top)}</span><span class="og-grad">${esc(card.bottom)}</span></div>
+          <p class="og-sub">${esc(card.sub)}</p>
+        </div>
+        <div class="og-band"><span>Lo simple funciona.</span></div>
+      </div>`;
+  }
+
   /**
-   * PDF listo: se enseña la portada y se puede mandar directamente (WhatsApp lo envía como
-   * documento y muestra la primera página como vista previa) o descargar.
+   * PDF listo: se enseña la tarjeta y al enviar se comparten la tarjeta (WhatsApp la muestra en
+   * grande, como el enlace del cuestionario) y el PDF, con un mensaje. También se puede descargar.
    */
-  function pdfReady(blob, name, cover) {
+  function pdfReady(blob, name, cover, cardJpg, card) {
     const file = new File([blob], name, { type: 'application/pdf' });
-    const canShare = !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file] }));
-    if (!canShare) { saveBlob(blob, name); UI.toast('PDF descargado: búscalo en Descargas y mándaselo'); return; }
+    const cardFile = cardJpg ? new File([dataUrlBytes(cardJpg)], name.replace(/\.pdf$/, '.jpg'), { type: 'image/jpeg' }) : null;
+    const can = (files) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({ files })); } catch (e) { return false; } };
+    const both = cardFile && can([cardFile, file]);
+    if (!both && !can([file])) { saveBlob(blob, name); UI.toast('PDF descargado: búscalo en Descargas y mándaselo'); return; }
+    const preview = cardJpg || cover;
     UI.openModal({
       title: 'PDF listo',
       body: `<div class="pdf-ready">
-          ${cover ? `<img class="pdf-ready-cover" src="${cover}" alt="Primera página del PDF">` : ''}
-          <p class="muted">Pulsa «Enviar» y elige WhatsApp y el chat del cliente: le llega el PDF con esta primera página como vista previa.</p>
+          ${preview ? `<img class="pdf-ready-cover${cardJpg ? ' is-card' : ''}" src="${preview}" alt="Vista previa">` : ''}
+          <p class="muted">Pulsa «Enviar», elige WhatsApp y el chat del cliente: le llega esta tarjeta en grande con el mensaje y, debajo, el PDF.</p>
         </div>`,
       footer: `<button type="button" class="btn" data-pdf-save>${U.icon('download')}Descargar</button>
         <button type="submit" class="btn primary">${U.icon('message')}Enviar</button>`,
       onSubmit: async () => {
-        try { await navigator.share({ files: [file], title: name.replace(/\.pdf$/, '') }); UI.closeModal(); } catch (e) {
+        const data = both ? { files: [cardFile, file], text: card && card.text ? card.text : '' } : { files: [file] };
+        if (!data.text) delete data.text;
+        try { await navigator.share(data); UI.closeModal(); } catch (e) {
           if (e && e.name === 'AbortError') return; // el usuario cerró el menú de compartir
+          try { await navigator.share({ files: [file] }); UI.closeModal(); return; } catch (e2) { if (e2 && e2.name === 'AbortError') return; }
           saveBlob(blob, name); UI.closeModal(); UI.toast('No se pudo compartir: se ha descargado para que lo mandes tú');
         }
       },
@@ -2013,12 +2038,12 @@
   }
 
   let pdfBusy = false;
-  async function downloadSheetPdf(html, title, prepare) {
+  async function downloadSheetPdf(html, title, prepare, card) {
     if (pdfBusy) return;
     pdfBusy = true;
     const stage = document.createElement('div');
     stage.className = 'pdf-stage';
-    stage.innerHTML = html;
+    stage.innerHTML = html + (card ? shareCardHtml(card) : '');
     document.body.appendChild(stage);
     const veil = document.createElement('div');
     veil.className = 'pdf-veil';
@@ -2029,7 +2054,7 @@
       if (document.fonts) {
         // Carga ya todas las letras de la hoja: si se mide con otra fuente, la paginación sale mal.
         await Promise.all(['400', '500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 12px Archivo`))
-          .concat(['600', '700', '800'].map((w) => document.fonts.load(`${w} 12px "Barlow Condensed"`)))).catch(() => {});
+          .concat(['600', '700', '800'].map((w) => document.fonts.load(`${w} 12px "Barlow Condensed"`)), [document.fonts.load('400 12px Anton')])).catch(() => {});
         await document.fonts.ready;
       }
       if (prepare) prepare(stage);
@@ -2045,11 +2070,19 @@
         if (!cover) cover = url;
         pages.push({ jpeg: dataUrlBytes(url), w: Math.round(box.width * 2), h: Math.round(box.height * 2) });
       }
+      // Tarjeta para WhatsApp (como la del cuestionario): imagen apaisada 1200 × 630.
+      let cardJpg = null;
+      const cardEl = stage.querySelector('.og-card');
+      if (cardEl) {
+        const copts = { quality: 0.92, pixelRatio: 1, width: 1200, height: 630, backgroundColor: '#121722', cacheBust: false };
+        try { copts.fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(cardEl); } catch (e) { /* sin fuentes incrustadas */ }
+        cardJpg = await window.htmlToImage.toJpeg(cardEl, copts);
+      }
       const blob = jpegsToPdf(pages);
       // Sin tildes ni símbolos: algunos navegadores ignoran el nombre si los lleva.
       const name = `${normalizeText(title).replace(/[^a-z0-9 _-]/gi, '').replace(/\b\w/g, (m) => m.toUpperCase()).trim() || 'Rutina'}.pdf`;
       stage.remove(); veil.remove();
-      pdfReady(blob, name, cover);
+      pdfReady(blob, name, cover, cardJpg, card);
     } catch (e) {
       console.error(e);
       UI.toast('No se pudo crear el PDF. Inténtalo de nuevo.');
