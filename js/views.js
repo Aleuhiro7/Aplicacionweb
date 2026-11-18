@@ -474,9 +474,8 @@
   const exGroup = (ex) => ex.group || ((ex.libraryId && Store.get('library', ex.libraryId)) || {}).group || 'Otros';
   /** Músculos de un día: los elegidos y los de los ejercicios que ya tenga, en el orden de la biblioteca. */
   function dayMuscles(d) {
-    const set = new Set([...(d.muscles || []), ...(d.exercises || []).map(exGroup)]);
-    const order = libraryGroups();
-    return [...set].sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
+    // En el orden en que los eliges: el primero que marcas es el primero del día.
+    return [...new Set([...(d.muscles || []), ...(d.exercises || []).map(exGroup)])];
   }
   const dayCountPicker = (c, n) => `<div class="day-count" role="group" aria-label="Días de entrenamiento a la semana">
       ${[1, 2, 3, 4, 5, 6, 7].map((k) => `<button type="button" class="day-count-btn${k === n ? ' active' : ''}" data-action="routine-days" data-client="${c.id}" data-value="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}
@@ -542,7 +541,7 @@
           </div>
           <div class="day-muscles">
             <div class="day-muscles-label">Músculos que entrena</div>
-            <div class="chips">${groups.map((g) => `<button type="button" class="chip${muscles.includes(g) ? ' active' : ''}" data-action="day-muscle" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}" aria-pressed="${muscles.includes(g)}">${esc(g)}</button>`).join('')}</div>
+            <div class="chips">${groups.map((g) => `<button type="button" class="chip${muscles.includes(g) ? ' active' : ''}" data-action="day-muscle" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}" aria-pressed="${muscles.includes(g)}">${muscles.includes(g) ? `<span class="chip-order">${muscles.indexOf(g) + 1}</span>` : ''}${esc(g)}</button>`).join('')}</div>
           </div>
           ${muscles.length ? muscles.map((g) => {
             const exs = list.filter((ex) => exGroup(ex) === g);

@@ -1606,3 +1606,6 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .health-note p { margin: 0; white-space: pre-line; color: var(--text); font-weight: 600; }
 .health-note + .health-flags { margin-top: 0; }
 @media (max-width: 600px) { .health-note { margin: 12px 0 4px; } .health-note + .health-flags { margin-top: 8px; } }
+
+/* Número de orden en los músculos elegidos del día */
+.chip-order { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-right: 6px; border-radius: 999px; background: var(--primary); color: #fff; font-size: .72rem; font-weight: 800; line-height: 1; }
