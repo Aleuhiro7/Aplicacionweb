@@ -1813,30 +1813,16 @@
   function routineSheet(c, r) {
     const days = (r.days || []).filter((d) => (d.exercises || []).length);
     const top = `<header class="ds-top">${DS_BRAND}<span class="ds-client">${esc(c.name)}</span></header>`;
-    // Cada día se reparte en páginas: como mucho ~6 ejercicios por página.
+    // Una página por día con todos sus ejercicios; al crear el PDF se mide y lo que no cabe
+    // pasa a páginas de «continuación» (paginateRoutine), así nunca se corta nada.
     const pages = [];
     days.forEach((d, di) => {
-      const blocks = [];
+      const parts = [];
       for (const g of dayMuscles(d)) {
         const exs = (d.exercises || []).filter((ex) => exGroup(ex) === g);
-        if (exs.length) blocks.push({ g, exs });
+        if (exs.length) parts.push({ g, exs, cont: false });
       }
-      let cur = [], w = 0;
-      const MAX = 6.4;
-      for (const b of blocks) {
-        let part = { g: b.g, exs: [], cont: false };
-        for (const ex of b.exs) {
-          const cost = (part.exs.length ? 0 : 0.45) + 1;
-          if (w + cost > MAX && (cur.length || part.exs.length)) {
-            if (part.exs.length) cur.push(part);
-            pages.push({ d, di, parts: cur });
-            cur = []; w = 0; part = { g: b.g, exs: [], cont: part.exs.length > 0 || part.cont };
-          }
-          part.exs.push(ex); w += (part.exs.length === 1 ? 0.45 : 0) + 1;
-        }
-        if (part.exs.length) cur.push(part);
-      }
-      if (cur.length) pages.push({ d, di, parts: cur });
+      pages.push({ d, di, parts });
     });
     const tips = [
       ['Calienta antes de empezar', '5–10 minutos de movilidad y 1–2 series ligeras del primer ejercicio de cada músculo.'],
@@ -1877,19 +1863,16 @@
       </section>`;
     if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
     const dayIdx = new Map(days.map((d, i) => [d.id, i]));
-    pages.forEach((pg, k) => {
-      const first = k === 0 || pages[k - 1].d !== pg.d;
-      const count = pg.parts.reduce((t, p) => t + p.exs.length, 0);
-      const dens = count >= 6 ? ' ds-dense' : '';
+    pages.forEach((pg) => {
       const i = dayIdx.get(pg.d.id);
-      out.push(`<section class="ds-page rs-page${dens}">
+      out.push(`<section class="ds-page rs-page">
         ${top}
         <div class="ds-main">
-          <span class="ds-kicker">Día ${i + 1} de ${days.length}${first ? '' : ' · continuación'}</span>
+          <span class="ds-kicker">Día ${i + 1} de ${days.length}</span>
           <h2 class="ds-title">${esc(dayTitle(pg.d, (r.days || []).indexOf(pg.d)))}</h2>
           <span class="ds-rule"></span>
           <div class="rs-groups">${pg.parts.map((p) => `<div class="ds-group rs-group" style="--ds-accent:${RS_TONES[dayMuscles(pg.d).indexOf(p.g) % RS_TONES.length]}">
-              <div class="ds-glabel"><i></i><b>${esc(p.g)}</b>${p.cont ? '<em>continuación</em>' : `<em>${plural(((pg.d.exercises || []).filter((ex) => exGroup(ex) === p.g)).length, 'ejercicio', 'ejercicios')}</em>`}</div>
+              <div class="ds-glabel"><i></i><b>${esc(p.g)}</b>${`<em>${plural(((pg.d.exercises || []).filter((ex) => exGroup(ex) === p.g)).length, 'ejercicio', 'ejercicios')}</em>`}</div>
               ${p.exs.map((ex) => {
                 const lib = ex.libraryId && Store.get('library', ex.libraryId);
                 const num = (pg.d.exercises || []).filter((x) => exGroup(x) === p.g).indexOf(ex) + 1;
@@ -1923,7 +1906,52 @@
     const r = Store.routineFor(clientId);
     if (!c || !r) return;
     if (!(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de sacar el PDF'); return; }
-    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`);
+    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`, paginateRoutine);
+  }
+
+  /**
+   * Reparte los ejercicios de cada día en páginas midiendo de verdad lo que ocupan:
+   * si uno no cabe (respetando el margen de abajo), pasa a una página de «continuación».
+   */
+  function paginateRoutine(stage) {
+    const main = (pg) => pg.querySelector('.ds-main');
+    const overflows = (pg) => main(pg).scrollHeight > main(pg).clientHeight + 1;
+    for (const page of [...stage.querySelectorAll('.rs-page')]) {
+      const groups = [...page.querySelectorAll('.rs-group')];
+      const items = [];
+      groups.forEach((g) => g.querySelectorAll('.rs-ex').forEach((ex) => items.push({ g, ex })));
+      const empty = (g) => { const t = g.cloneNode(true); t.querySelectorAll('.rs-ex').forEach((e) => e.remove()); return t; };
+      const tplGroup = new Map(groups.map((g) => [g, empty(g)]));
+      const tplPage = page.cloneNode(true);
+      tplPage.querySelector('.rs-groups').innerHTML = '';
+      const kick = tplPage.querySelector('.ds-kicker');
+      kick.textContent = `${kick.textContent} · continuación`;
+      page.querySelector('.rs-groups').innerHTML = '';
+      let cur = page, last = page, inPage = new Map();
+      const addGroup = (pg, g, cont) => {
+        const el = tplGroup.get(g).cloneNode(true);
+        if (cont) el.querySelector('.ds-glabel em').textContent = 'continuación';
+        pg.querySelector('.rs-groups').appendChild(el);
+        inPage.set(g, el);
+        return el;
+      };
+      const started = new Set();
+      for (const { g, ex } of items) {
+        let el = inPage.get(g), created = false;
+        if (!el) { el = addGroup(cur, g, started.has(g)); created = true; }
+        el.appendChild(ex);
+        if (overflows(cur) && cur.querySelectorAll('.rs-ex').length > 1) {
+          ex.remove();
+          if (created) el.remove();
+          const np = tplPage.cloneNode(true);
+          last.after(np); last = np; cur = np; inPage = new Map();
+          addGroup(np, g, started.has(g)).appendChild(ex);
+        }
+        started.add(g);
+      }
+    }
+    const all = [...stage.querySelectorAll('.ds-page')];
+    all.forEach((pg, i) => { const nEl = pg.querySelector('.ds-page-n'); if (nEl) nEl.textContent = `${i + 1} / ${all.length}`; });
   }
 
   /* ---------- PDF generado en la propia app ----------
@@ -1980,7 +2008,7 @@
   };
 
   let pdfBusy = false;
-  async function downloadSheetPdf(html, title) {
+  async function downloadSheetPdf(html, title, prepare) {
     if (pdfBusy) return;
     pdfBusy = true;
     const stage = document.createElement('div');
@@ -1993,7 +2021,13 @@
     document.body.appendChild(veil);
     try {
       await loadHtmlToImage();
-      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      if (document.fonts) {
+        // Carga ya todas las letras de la hoja: si se mide con otra fuente, la paginación sale mal.
+        await Promise.all(['400', '500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 12px Archivo`))
+          .concat(['600', '700', '800'].map((w) => document.fonts.load(`${w} 12px "Barlow Condensed"`)))).catch(() => {});
+        await document.fonts.ready;
+      }
+      if (prepare) prepare(stage);
       await Promise.all([...stage.querySelectorAll('img')].map((im) => (im.complete ? null : new Promise((res) => { im.onload = im.onerror = res; }))));
       const pagesEl = [...stage.querySelectorAll('.ds-page')];
       const box = pagesEl[0].getBoundingClientRect();

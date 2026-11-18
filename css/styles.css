@@ -1655,3 +1655,19 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .pdf-veil-box small { color: var(--muted); }
 .pdf-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: pdfspin .8s linear infinite; }
 @keyframes pdfspin { to { transform: rotate(360deg); } }
+/* La zona de contenido de cada página de rutina tiene alto fijo: lo que no cabe se mide y pasa a la siguiente. */
+.rs-page .ds-main { overflow: hidden; padding-bottom: 8mm; }
+.rs-page .rs-groups { flex: none; }
+/* Más compacto: caben más ejercicios por hoja sin perder legibilidad. */
+.rs-page .ds-main { padding-top: 6mm; }
+.rs-page .ds-title { font-size: 36pt; }
+.rs-page .ds-rule { margin: 3mm auto 5mm; }
+.rs-groups { gap: 4mm; }
+.rs-group { padding: 3.5mm 5mm; }
+.rs-ex { gap: 4mm; padding: 2.2mm 0; align-items: flex-start; }
+.rs-num { margin-top: 5mm; }
+.rs-photos img { width: 26mm; height: 17.5mm; }
+.rs-name { font-size: 12pt; }
+.rs-series { font-size: 9.5pt; line-height: 1.3; margin-top: .6mm; }
+.rs-meta { font-size: 9pt; margin-top: .6mm; }
+.rs-notes { font-size: 8.5pt; line-height: 1.35; margin-top: .8mm; }
