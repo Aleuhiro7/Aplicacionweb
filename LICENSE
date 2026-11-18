@@ -1,0 +1,27 @@
+Copyright (c) 2026 David Orihuela. Todos los derechos reservados.
+
+David Orihuela Entrenador Online
+
+Este código, su diseño, sus textos y su contenido (incluida la biblioteca de
+ejercicios, las pautas y las plantillas de rutinas y dietas) son propiedad de
+David Orihuela.
+
+Que el repositorio sea público solo permite verlo. No se concede ningún permiso
+para copiarlo, modificarlo, distribuirlo, publicarlo, sublicenciarlo ni usarlo,
+total o parcialmente, con o sin fines comerciales, sin autorización previa y
+por escrito del titular.
+
+Componentes de terceros incluidos, que mantienen su propia licencia:
+- Fuentes Anton, Archivo y Barlow Condensed (carpeta fonts/): SIL Open Font
+  License 1.1, ver fonts/OFL-LICENSE.txt.
+- html-to-image (js/vendor/html-to-image.js): licencia MIT.
+- Fotos de ejercicios de Free Exercise DB (img/ejercicios/): dominio público.
+
+---
+
+Copyright (c) 2026 David Orihuela. All rights reserved.
+
+This repository is publicly visible for viewing only. No permission is granted
+to copy, modify, distribute, publish, sublicense or use this code or its
+content, in whole or in part, without prior written permission from the
+copyright holder. Third-party components listed above keep their own licenses.

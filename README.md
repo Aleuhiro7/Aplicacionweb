@@ -60,3 +60,7 @@ js/app.js         Arranque y navegación
 ```
 
 HTML, CSS y JavaScript puro, sin dependencias ni compilación.
+
+## Derechos
+
+© 2026 David Orihuela. **Todos los derechos reservados.** El código y el contenido de esta app no se pueden copiar, modificar, distribuir ni usar sin permiso por escrito. Ver [LICENSE](LICENSE) (las fuentes, html-to-image y las fotos de ejercicios mantienen su propia licencia).
