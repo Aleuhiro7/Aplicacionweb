@@ -11,7 +11,7 @@
   /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
    * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
   const METHOD_SETS = '3';
-  const METHOD_REPS = 'serie1 efectiva a 1 del fallo de 12 a 15 rep, serie2 pesada fallo total de 6 a 8 rep, serie3 con el mismo peso que la efectiva al fallo total por agotamiento.';
+  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
     let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
@@ -574,7 +574,7 @@
     'Pecho': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (press horizontal) + uno del Patrón 2 (porción superior) + uno del Patrón 3 o 4. El Patrón 5 es un finisher opcional.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana.',
         'Técnica: escápulas retraídas y deprimidas en todos los presses; el pecho empuja, el hombro acompaña.',
       ] },
@@ -582,7 +582,7 @@
         'Movilidad: rotaciones de hombro y aperturas con banda.',
         'Activación: 2 series × 12 de aperturas en polea o press con peso muy ligero.',
       ] },
-      { title: 'Patrón 1 · Press horizontal pesado', items: ['Objetivo: masa y fuerza base del pecho.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 1 · Press horizontal pesado', items: ['Objetivo: masa y fuerza base del pecho.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 2 · Porción superior', items: ['Objetivo: llenar la parte alta del pecho (bajo la clavícula).', 'Mecánica: banco a 30°; más inclinación carga el hombro.', 'Descanso: 2 minutos.'] },
       { title: 'Patrón 3 · Porción inferior y fondos', items: ['Objetivo: densidad del borde inferior del pecho.', 'Mecánica: declinados, fondos con torso inclinado y cruces de arriba abajo.'] },
       { title: 'Patrón 4 · Aislamiento y estiramiento', items: ['Objetivo: máxima tensión en el estiramiento con aperturas y poleas.', 'Tempo: 2 s excéntrica / 1 s de estiramiento / 1 s concéntrica.', 'Descanso: 90 segundos.'] },
@@ -591,7 +591,7 @@
     'Espalda': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (tracción vertical) + uno del Patrón 2 (remo) + uno del Patrón 3 o 4. El Patrón 5 (lumbar) según el objetivo.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana.',
         'Técnica: tira con los codos, no con las manos. Las correas de agarre están permitidas en las series pesadas.',
       ] },
@@ -599,7 +599,7 @@
         'Movilidad: colgarse de la barra 20–30 s y rotaciones de hombro.',
         'Activación: 2 series × 12 de pullover en polea con peso ligero.',
       ] },
-      { title: 'Patrón 1 · Tracción vertical (amplitud)', items: ['Objetivo: anchura del dorsal.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 1 · Tracción vertical (amplitud)', items: ['Objetivo: anchura del dorsal.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 2 · Remo horizontal (grosor)', items: ['Objetivo: densidad de la espalda media.', 'Mecánica: aprieta las escápulas 1 s arriba en cada repetición.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 3 · Dorsal en aislamiento', items: ['Objetivo: tensión en el dorsal sin bíceps (brazos rectos o tirones hacia la cadera).', 'Descanso: 90 segundos.'] },
       { title: 'Patrón 4 · Espalda alta y trapecio', items: ['Objetivo: trapecio, romboides y espalda alta.', 'Mecánica: encogimientos sin rotar los hombros, con 2 s de pausa arriba.'] },
@@ -608,22 +608,22 @@
     'Hombros': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (press) + uno del Patrón 2 (lateral) + uno del Patrón 3 (posterior). El anterior (Patrón 4) ya trabaja en los presses: solo si se busca específicamente.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana (el lateral y el posterior toleran más frecuencia).',
       ] },
       { title: 'Calentamiento y activación', items: [
         'Movilidad: rotaciones externas e internas con banda o polea ligera.',
         'Activación: 2 series × 15 de face pull ligero.',
       ] },
-      { title: 'Patrón 1 · Press vertical pesado', items: ['Objetivo: masa y fuerza del deltoides.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
-      { title: 'Patrón 2 · Deltoides lateral', items: ['Objetivo: anchura de hombros.', 'Volumen: 3 series × 15 / 12 / 10 reps.', 'Regla de oro: peso moderado y sin impulso; el codo sube, la mano lo acompaña.'] },
+      { title: 'Patrón 1 · Press vertical pesado', items: ['Objetivo: masa y fuerza del deltoides.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 2 · Deltoides lateral', items: ['Objetivo: anchura de hombros.', 'Regla de oro: peso moderado y sin impulso; el codo sube, la mano lo acompaña.'] },
       { title: 'Patrón 3 · Deltoides posterior', items: ['Objetivo: hombro redondo y salud postural.', 'Mecánica: no juntes las escápulas: el trabajo es del hombro, no de la espalda.'] },
       { title: 'Patrón 5 · Finisher', items: ['Objetivo: congestión del lateral con series descendentes o parciales.', 'Descanso: 30 a 45 segundos.'] },
     ],
     'Cuádriceps': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (sentadilla) + uno del Patrón 2 (prensa o unilateral) + uno del Patrón 3 (aislamiento). Finisher opcional.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana.',
         'Técnica: rodillas en la línea de los pies y recorrido completo.',
       ] },
@@ -631,14 +631,14 @@
         'Movilidad: tobillo y cadera (sentadilla profunda sin peso, zancadas dinámicas).',
         'Activación: 2 series × 15 de extensiones de cuádriceps ligeras + series de aproximación en el primer ejercicio.',
       ] },
-      { title: 'Patrón 1 · Sentadilla pesada', items: ['Objetivo: masa y fuerza.', 'Volumen: 3 series × 10–12 / 8–10 / 6–8 reps.', 'Descanso: 2 a 3 minutos.'] },
+      { title: 'Patrón 1 · Sentadilla pesada', items: ['Objetivo: masa y fuerza.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 2 · Prensa y unilaterales', items: ['Objetivo: volumen de calidad con menos fatiga de la columna y corrección de asimetrías.', 'Descanso: 2 minutos.'] },
       { title: 'Patrón 3 · Aislamiento', items: ['Objetivo: tensión directa en el cuádriceps (recto femoral incluido).', 'Tempo: 2 s excéntrica / 1 s arriba.'] },
     ],
     'Isquiotibiales': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (bisagra de cadera) + uno del Patrón 2 (curl femoral). Finisher opcional.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana.',
       ] },
       { title: 'Calentamiento y activación', items: [
@@ -651,7 +651,7 @@
     'Glúteos': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (empuje de cadera) + uno del Patrón 2 (estiramiento o unilateral) + uno del Patrón 3 (glúteo medio o patadas). Finisher opcional.',
-        'Volumen: máximo 3 series efectivas por ejercicio.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1–2 veces por semana.',
       ] },
       { title: 'Calentamiento y activación', items: [
@@ -660,29 +660,26 @@
       ] },
       { title: 'Patrón 1 · Empuje de cadera', items: ['Objetivo: máxima contracción del glúteo mayor con mucha carga.', 'Mecánica: barbilla al pecho y pelvis en retroversión arriba; aguanta 2 s.', 'Descanso: 2 a 3 minutos.'] },
       { title: 'Patrón 2 · Estiramiento y unilaterales', items: ['Objetivo: trabajar el glúteo estirado (búlgaras, zancadas con déficit, sumo).', 'Mecánica: torso inclinado adelante para cargar más el glúteo.'] },
-      { title: 'Patrón 3 · Glúteo medio y patadas', items: ['Objetivo: parte alta y lateral del glúteo.', 'Volumen: rangos altos (15–20 reps).'] },
+      { title: 'Patrón 3 · Glúteo medio y patadas', items: ['Objetivo: parte alta y lateral del glúteo.'] },
     ],
     'Aductores': [
       { title: 'Pautas básicas', items: [
         'Estructura: 1 ejercicio de 3 series al final del día de pierna.',
-        'Volumen: 3 series × 15 / 12 / 10 reps.',
         'Útil para estabilidad de rodilla y cadera y para completar el volumen de la pierna.',
       ] },
     ],
     'Gemelos': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (gemelo) + uno del Patrón 2 (sóleo).',
-        'Volumen: 3 series por ejercicio, rangos altos.',
         'Frecuencia: 2 veces por semana (se recuperan rápido).',
         'Regla de oro: 2 s de pausa en el estiramiento abajo. Sin rebotes.',
       ] },
-      { title: 'Patrón 1 · Gemelo (rodilla extendida)', items: ['Objetivo: gastrocnemio, la parte visible del gemelo.', 'Volumen: 3 series × 15 / 12 / 10 reps.'] },
-      { title: 'Patrón 2 · Sóleo (rodilla flexionada)', items: ['Objetivo: sóleo, que da grosor a la pierna.', 'Volumen: 3 series × 20 / 15 / 12 reps.'] },
+      { title: 'Patrón 1 · Gemelo (rodilla extendida)', items: ['Objetivo: gastrocnemio, la parte visible del gemelo.'] },
+      { title: 'Patrón 2 · Sóleo (rodilla flexionada)', items: ['Objetivo: sóleo, que da grosor a la pierna.'] },
     ],
     'Core / Abdomen': [
       { title: 'Pautas básicas', items: [
         'Estructura: un ejercicio del Patrón 1 (flexión) + uno del Patrón 2 (piernas) + uno del Patrón 3 (oblicuos o antirrotación).',
-        'Volumen: 3 series por ejercicio.',
         'Frecuencia: 2–3 veces por semana, al final del entreno.',
         'Regla de oro: el abdomen se entrena con carga y progresión, como cualquier músculo.',
       ] },
@@ -690,14 +687,13 @@
     'Antebrazo': [
       { title: 'Pautas básicas', items: [
         'Estructura: 1–2 ejercicios al final del día de brazo o espalda.',
-        'Volumen: 3 series × 20 / 15 / 12 reps.',
         'Los remos pesados y el peso muerto sin correas ya trabajan el agarre.',
       ] },
     ],
     'Bíceps': [
       { title: 'Pautas básicas', items: [
         'Estructura: selecciona un solo ejercicio de cada patrón de movimiento (Patrón 1 + Patrón 2 + Patrón 3). Añade el Finisher de forma opcional al final para agotamiento completo.',
-        'Volumen: máximo 3 series efectivas por ejercicio para garantizar máxima intensidad sin acumular fatiga innecesaria.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1 vez por semana.',
       ] },
       { title: 'Calentamiento y activación', items: [
@@ -707,36 +703,32 @@
       { title: 'Patrón 1 · Curl pesado (Masa y Fuerza)', items: [
         'Objetivo: sobrecarga mecánica básica. Codos fijos y sin impulso.',
         'Mecánica: codos alineados. Ejercicios con barra, mancuernas pesadas o poleas base.',
-        'Volumen: 3 series × 12 / 10 / 6–8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 2 a 3 minutos entre series.',
         'Progresión: si logras el número máximo de repeticiones en todas las series con técnica perfecta, aumenta el peso en la siguiente sesión (incremento lineal).',
       ] },
       { title: 'Patrón 2 · Aislamiento y detalle (pico y cabeza corta)', items: [
         'Objetivo: codos adelantados. Máxima contracción y acortamiento del bíceps.',
         'Mecánica: ejercicios en banco Scott, predicador o curls concentrados.',
-        'Volumen: 3 series × 12 / 10 / 8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 90 a 120 segundos (al ser ejercicios de mayor aislamiento mecánico).',
       ] },
       { title: 'Patrón 3 · Estiramiento y braquial (grosor y cabeza larga)', items: [
         'Objetivo: longitud muscular y grosor lateral (cabeza larga y braquial). Codos retrasados por detrás del torso o agarres neutros.',
         'Mecánica: curls inclinados, Bayesian o variantes martillo.',
         'Tempo: 3 s excéntrica (enfatizando el estiramiento) / concéntrica explosiva.',
-        'Volumen: 3 series × 12–15 / 10–12 / 8–10 reps (Cerca-del-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 90 segundos.',
         'Regla de oro: el estiramiento es el protagonista. Si acortas el recorrido, anulas el objetivo. Jamás sacrifiques rango por peso.',
       ] },
       { title: 'Patrón 4 · Finisher (congestión final y bombeo extremo)', items: [
         'Objetivo: vaciar las reservas de glucógeno y lograr la máxima congestión sanguínea.',
         'Mecánica: ejercicios de aislamiento puro, autocarga o bandas elásticas. Opcional al final del entreno.',
-        'Volumen: 2 series × al fallo o altas repeticiones (+50 reps) (Fallo-Agotamiento).',
         'Descanso: mínimo posible (30 a 45 segundos).',
         'Regla de oro: peso moderado-ligero. No busques mover kilos, busca mover sangre y provocar acidosis muscular (sensación de quemazón extrema).',
       ] },
     ],
     'Tríceps': [
       { title: 'Pautas básicas', items: [
-        'Estructura: selecciona un solo ejercicio de cada patrón de movimiento (Patrón 1 + Patrón 2 + Patrón 3). Añade el Patrón 4 con solo 2 series de forma opcional al final para agotamiento completo.',
-        'Volumen: máximo 3 series efectivas por ejercicio para garantizar máxima intensidad sin acumular fatiga innecesaria.',
+        'Estructura: selecciona un solo ejercicio de cada patrón de movimiento (Patrón 1 + Patrón 2 + Patrón 3). Añade el Patrón 4 de forma opcional al final para agotamiento completo.',
+        'Volumen: 3 series por ejercicio, siempre con el método de las 3 series (abajo).',
         'Frecuencia: 1 vez por semana.',
         'Tempo general: 2 s excéntrica / 1 s bloqueo (extensión completa obligatoria). Excepción: 3 s en el Patrón Pesado.',
         'Descanso: 2 minutos entre series (2–3 minutos en los multiarticulares pesados).',
@@ -749,30 +741,37 @@
         'Objetivo: construcción de fuerza y masa base. Máxima sobrecarga mecánica.',
         'Mecánica: cargas pesadas libres o asistidas. Presses cerrados, fondos en paralelas o máquina y press francés pesado.',
         'Tempo: 3 s excéntrica / concéntrica explosiva.',
-        'Volumen: 3 series × 12 / 10 / 6–8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 2 a 3 minutos (90 segundos en variantes de peso corporal).',
       ] },
       { title: 'Patrón 2 · Cabeza larga (construcción / estiramiento)', items: [
         'Objetivo: masa general y énfasis en la porción larga mediante flexión de hombro (trabajo tras nuca / estiramiento).',
         'Mecánica: trabajo tras nuca con flexión de hombro. Poleas, barra Z o mancuernas llevando el bíceps cerca de la oreja.',
-        'Volumen: 3 series × 12 / 10 / 8 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 90 a 120 segundos.',
       ] },
       { title: 'Patrón 3 · Cabeza lateral (herradura / densidad)', items: [
         'Objetivo: masa general, detalle y densidad mediante tracción vertical hacia abajo.',
-        'Mecánica: rangos altos. Extensiones verticales en polea con cuerda, barra recta o barra en V. Codos pegados a los costados.',
+        'Mecánica: extensiones verticales en polea con cuerda, barra recta o barra en V. Codos pegados a los costados.',
         'Tempo: 1 s excéntrica / 1 s bloqueo (apretando al máximo) / 1 s concéntrica.',
-        'Volumen: 3 series × 15 / 12 / 10 reps (Casi-Fallo / Fallo / Top Set Fallo-Total).',
         'Descanso: 60 a 90 segundos.',
       ] },
       { title: 'Patrón 4 · Cabeza medial (aislamiento / detalle)', items: [
         'Objetivo: estimular la porción más profunda del tríceps mediante supinación (agarre invertido), máxima extensión y aislamiento unilateral.',
-        'Mecánica: rangos muy altos y máximo aislamiento. Extensiones unilaterales con cable, agarres invertidos (supinos) o patadas de tríceps (Kickbacks) con cable para buscar el acortamiento completo.',
+        'Mecánica: máximo aislamiento. Extensiones unilaterales con cable, agarres invertidos (supinos) o patadas de tríceps (Kickbacks) con cable para buscar el acortamiento completo.',
         'Tempo: 1 s excéntrica / 2 s de contracción estricta abajo / 1 s concéntrica.',
-        'Volumen: 3 series × 18 / 15 / 12 reps o variantes al Fallo-Agotamiento (+20 reps).',
         'Descanso: 60 segundos.',
         'Regla de oro: cero balanceos. Olvídate de los kilos; el foco es el aislamiento puro y la tensión en el punto de bloqueo.',
       ] },
     ],
   };
+
+  /* El método de las 3 series, explicado en las pautas de cada músculo (justo después de las pautas básicas). */
+  const METHOD_GUIDE = { title: 'Método de las 3 series', items: [
+    'Serie 1 · Efectiva: entre 12 y 15 repeticiones, quedándote a 1 repetición del fallo.',
+    'Serie 2 · Pesada: sube el peso y llega al fallo total entre 6 y 8 repeticiones.',
+    'Serie 3 · Agotamiento: vuelve al peso de la serie 1 y haz todas las repeticiones que puedas, hasta el fallo total.',
+  ] };
+  for (const sections of Object.values(window.LIBRARY_GUIDES)) {
+    const i = sections.findIndex((x) => x.title === 'Pautas básicas');
+    sections.splice(i + 1, 0, METHOD_GUIDE);
+  }
 })();
