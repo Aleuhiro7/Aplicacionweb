@@ -20,7 +20,8 @@
     });
   }
 
-  const STD = (a, b, c) => `${a} (Casi-Fallo) / ${b} (Fallo) / ${c} [Top Set] (Fallo-Total)`;
+  // Método de 3 series (el mismo en todos los ejercicios que lo usan; los números antiguos ya no cuentan).
+  const STD = () => 'Serie 1 efectiva: 12–15 (a 1 del fallo) / Serie 2 pesada: 6–8 (Fallo-Total) / Serie 3 con el peso de la efectiva: al Fallo-Total por agotamiento';
   const CERCA = (a, b, c) => `${a} (Cerca-del-Fallo) / ${b} (Fallo) / ${c} [Top Set] (Fallo-Total)`;
 
   /* ======================= BÍCEPS ======================= */
