@@ -150,7 +150,8 @@
   function measurementFields() {
     return [
       { name: 'date', label: 'Fecha', type: 'date', required: true, default: today(), full: true },
-      { name: 'weight', label: 'Peso (kg)', type: 'number', step: '0.1', min: 0, required: true, full: true },
+      { name: 'weight', label: 'Peso (kg)', type: 'number', step: '0.1', min: 0, required: true },
+      { name: 'waist', label: 'Cintura (cm)', type: 'number', step: '0.1', min: 0 },
       { name: 'notes', label: 'Notas de la revisión', type: 'textarea', placeholder: 'Sensaciones, adherencia, cambios en el plan…' },
     ];
   }
@@ -158,14 +159,14 @@
   function openMeasurementForm(id, clientId) {
     const existing = id ? Store.get('measurements', id) : null;
     UI.form({
-      title: existing ? 'Editar peso' : 'Registrar peso',
+      title: existing ? 'Editar medidas' : 'Registrar peso y cintura',
       fields: measurementFields(),
       values: existing || {},
-      onDelete: existing ? () => deleteRecord('measurements', id, 'este registro de peso') : null,
+      onDelete: existing ? () => deleteRecord('measurements', id, 'este registro') : null,
       onSubmit: (v) => {
         if (existing) Store.update('measurements', id, v);
         else Store.add('measurements', Object.assign({ clientId }, v));
-        UI.toast('Peso guardado');
+        UI.toast('Medidas guardadas');
         App.render();
       },
     });
@@ -2493,7 +2494,7 @@
             ${U.waLink(c.phone) ? `<a class="btn" href="${U.waLink(c.phone)}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
             ${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">${U.icon('mail')}Email</a>` : ''}
             <button class="btn" data-action="edit-client" data-id="${c.id}">${U.icon('edit')}Editar</button>
-            <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
+            <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medidas</button>
           </div>
         </div>
         ${c.health && c.health.trim() ? `<div class="health-note">${U.icon('alert')}<div><strong>Salud · tenlo siempre presente</strong><p>${esc(c.health.trim())}</p></div></div>` : ''}
@@ -2557,6 +2558,9 @@
     const ms = all.filter((m) => m.weight !== '' && m.weight !== undefined);
     const weightDelta = ms.length >= 2 ? Number(ms[ms.length - 1].weight) - Number(ms[0].weight) : null;
     const lastM = ms[ms.length - 1];
+    const waists = all.filter((m) => Number(m.waist) > 0);
+    const lastWaist = waists[waists.length - 1];
+    const waistDelta = waists.length >= 2 ? Number(lastWaist.waist) - Number(waists[0].waist) : null;
     const imc = lastM && c.height ? Number(lastM.weight) / Math.pow(Number(c.height) / 100, 2) : null;
     const months = c.startDate ? Math.max(0, Math.floor(U.daysBetween(c.startDate, t) / 30.44)) : null;
     const row = (k, v) => (v ? `<dt>${k}</dt><dd>${v}</dd>` : '');
@@ -2588,7 +2592,9 @@
             ${row('Peso actual', `${fmtNum(lastM.weight)} kg <span class="muted">(${fmtDate(lastM.date)})</span>`)}
             ${weightDelta !== null ? row('Cambio', `<span class="${weightDelta > 0 ? 'delta-up' : 'delta-down'}">${weightDelta > 0 ? '+' : ''}${fmtNum(weightDelta)} kg</span> desde ${fmtDate(ms[0].date)}`) : ''}
             ${imc ? row('IMC', fmtNum(imc)) : ''}
-          </dl>` : empty('ruler', 'Sin peso registrado todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button></div>`)}
+            ${lastWaist ? row('Cintura', `${fmtNum(lastWaist.waist)} cm <span class="muted">(${fmtDate(lastWaist.date)})</span>`) : ''}
+            ${waistDelta !== null ? row('Cambio cintura', `<span class="${waistDelta > 0 ? 'delta-up' : 'delta-down'}">${waistDelta > 0 ? '+' : ''}${fmtNum(waistDelta)} cm</span> desde ${fmtDate(waists[0].date)}`) : ''}
+          </dl>` : empty('ruler', 'Sin peso registrado todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medidas</button></div>`)}
           ${ms.length >= 2 ? `<div class="mt">${UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg', height: 180 })}</div>` : ''}
         </section>
       </div>`;
@@ -2604,23 +2610,36 @@
       return `<span class="${d > 0 ? 'delta-up' : 'delta-down'}">${d > 0 ? '+' : ''}${fmtNum(d)} kg</span>`;
     };
     const rows = ms.slice().reverse();
+    const waists = ms.filter((m) => Number(m.waist) > 0);
+    /** Cintura de esa revisión y su cambio respecto a la anterior en la que se midió. */
+    const waistCell = (m) => {
+      if (!(Number(m.waist) > 0)) return '<span class="muted">—</span>';
+      const prev = waists[waists.indexOf(m) - 1];
+      const d = prev ? Number(m.waist) - Number(prev.waist) : 0;
+      return `${fmtNum(m.waist)} cm${d ? ` <span class="${d > 0 ? 'delta-up' : 'delta-down'}">(${d > 0 ? '+' : ''}${fmtNum(d)})</span>` : ''}`;
+    };
     return `
       <section class="card">
         <div class="card-header">
           <h2>Evolución del peso</h2>
-          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
+          <button class="btn primary sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medidas</button>
         </div>
         ${ms.length ? UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg' }) : empty('ruler', 'Registra el primer peso para empezar a ver la evolución.')}
       </section>
+      ${waists.length ? `<section class="card">
+        <div class="card-header"><h2>Evolución de la cintura</h2></div>
+        ${UI.lineChart(waists.map((m) => ({ x: m.date, y: m.waist })), { unit: 'cm' })}
+      </section>` : ''}
       ${ms.length ? `<section class="card">
-        <div class="card-header"><h2>Historial de peso</h2></div>
+        <div class="card-header"><h2>Historial de peso y cintura</h2></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Fecha</th><th class="num">Peso</th><th class="num">Cambio</th><th class="num hide-sm">Desde el inicio</th><th></th></tr></thead>
+          <thead><tr><th>Fecha</th><th class="num">Peso</th><th class="num">Cambio</th><th class="num hide-sm">Desde el inicio</th><th class="num">Cintura</th><th></th></tr></thead>
           <tbody>${rows.map((m, i) => `<tr>
             <td>${fmtDate(m.date)}${m.notes ? ` <span class="muted" title="${esc(m.notes)}">${U.icon('note')}</span>` : ''}</td>
             <td class="num"><strong>${fmtNum(m.weight)} kg</strong></td>
             <td class="num">${diff(m, rows[i + 1])}</td>
             <td class="num hide-sm">${m === first ? '<span class="muted">—</span>' : diff(m, first)}</td>
+            <td class="num">${waistCell(m)}</td>
             <td class="actions-cell"><button class="icon-btn" data-action="edit-measurement" data-id="${m.id}" aria-label="Editar">${U.icon('edit')}</button></td>
           </tr>`).join('')}</tbody>
         </table></div>
