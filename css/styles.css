@@ -1598,3 +1598,11 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .nf-flags .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; white-space: normal; }
 @media (max-width: 600px) { .hf-list li { flex-direction: column; gap: 1px; } .health-flags { margin: 12px 0 4px; } }
 #salud.has-items { --tone: var(--danger); }
+
+/* Nota de salud fija en el perfil */
+.health-note { display: flex; gap: 10px; align-items: flex-start; margin: 14px 16px 16px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
+.health-note > svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--danger); margin-top: 1px; }
+.health-note strong { color: var(--danger); display: block; margin-bottom: 4px; }
+.health-note p { margin: 0; white-space: pre-line; color: var(--text); font-weight: 600; }
+.health-note + .health-flags { margin-top: 0; }
+@media (max-width: 600px) { .health-note { margin: 12px 0 4px; } .health-note + .health-flags { margin-top: 8px; } }

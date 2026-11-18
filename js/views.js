@@ -102,7 +102,7 @@
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío en un cliente nuevo: queda pendiente de pago desde el alta hasta que marques su primer pago. Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { type: 'section', label: 'Salud y notas' },
-      { name: 'health', label: 'Lesiones, patologías o medicación', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada…' },
+      { name: 'health', label: 'Lesiones, patologías, medicación o alergias', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada, alergia al marisco…', hint: 'Lo que escribas aquí te saldrá siempre en rojo arriba del perfil.' },
       { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Horarios, material disponible, preferencias, motivación…' },
     ];
   }
@@ -2343,8 +2343,8 @@
             <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Peso</button>
           </div>
         </div>
+        ${c.health && c.health.trim() ? `<div class="health-note">${U.icon('alert')}<div><strong>Salud · tenlo siempre presente</strong><p>${esc(c.health.trim())}</p></div></div>` : ''}
         ${healthFlagsCard(c)}
-        ${c.health && !(clientFlags(c).length && c.health === flagsText(clientFlags(c))) ? `<div class="alert">${U.icon('alert')}<div><strong>Salud:</strong> ${esc(c.health)}</div></div>` : ''}
       </div>
       <div class="tabs" role="tablist">
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
