@@ -518,8 +518,8 @@
             <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
           </div>
           <div class="actions">
-            <button class="btn sm primary" data-action="routine-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
-            <a class="btn sm wa-btn" href="${routineWaLink(c, r)}" target="_blank" rel="noopener">${U.icon('message')}Enviar por WhatsApp</a>
+            <button class="btn sm primary wa-btn" data-action="routine-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
+            ${c.planLinks && c.planLinks.rutina ? `<a class="btn sm" href="${planUrl('rutina', c.planLinks.rutina)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
             <button class="btn sm" data-action="routine-copy" data-client="${c.id}">${U.icon('file')}Copiar</button>
             <button class="btn sm" data-action="routine-edit" data-client="${c.id}">${U.icon('edit')}Editar</button>
           </div>
@@ -680,11 +680,6 @@
       }
     });
     return lines.join('\n');
-  }
-
-  function routineWaLink(c, r) {
-    const base = U.waLink(c.phone) || 'https://wa.me/';
-    return `${base}?text=${encodeURIComponent(routineText(c, r))}`;
   }
 
   /** Guarda la rutina tras modificar sus días (marca la fecha de actualización). */
@@ -1485,10 +1480,11 @@
       </form>
     </div>
     ${dietSendable(d) ? `<div class="diet-sec diet-send">
-      <div class="card-header"><h2>PDF para el cliente</h2></div>
-      <p class="muted" style="margin:0 0 12px">Una portada, una página por comida y las indicaciones al final. Descárgalo y mándaselo.</p>
+      <div class="card-header"><h2>Enviar al cliente</h2></div>
+      <p class="muted" style="margin:0 0 12px">Le llega un enlace por WhatsApp con su tarjeta. Al abrirlo ve su dieta y se la descarga en PDF (portada, sus datos, su plan, una página por comida y hábitos). Si cambias algo, vuelve a enviarlo: el enlace es el mismo y se actualiza.</p>
       <div class="actions">
-        <button class="btn primary" data-action="diet-pdf" data-client="${c.id}">${U.icon('download')}Descargar PDF</button>
+        <button class="btn primary wa-btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
+        ${c.planLinks && c.planLinks.dieta ? `<a class="btn" href="${planUrl('dieta', c.planLinks.dieta)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
         <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
       </div>
     </div>` : ''}
@@ -1782,32 +1778,6 @@
       </div>`;
   }
 
-  /** Abre el diálogo de impresión con una hoja (desde ahí se guarda como PDF). */
-  function printSheet(html, title) {
-    let root = document.getElementById('print-root');
-    if (!root) { root = document.createElement('div'); root.id = 'print-root'; document.body.appendChild(root); }
-    root.innerHTML = html;
-    const prevTitle = document.title;
-    document.title = title; // nombre propuesto para el PDF
-    document.body.classList.add('printing');
-    const done = () => { document.body.classList.remove('printing'); document.title = prevTitle; root.innerHTML = ''; window.removeEventListener('afterprint', done); };
-    window.addEventListener('afterprint', done);
-    // Espera a que carguen las fotos (como mucho 4 s) para que salgan en el PDF.
-    const imgs = [...root.querySelectorAll('img')].filter((im) => !im.complete);
-    const loaded = Promise.all(imgs.map((im) => new Promise((res) => { im.onload = im.onerror = res; })));
-    Promise.race([loaded, new Promise((res) => setTimeout(res, 4000))]).then(() => setTimeout(() => window.print(), 50));
-  }
-
-  function printDiet(clientId) {
-    const c = Store.get('clients', clientId);
-    const d = Store.dietFor(clientId);
-    if (!c || !d) return;
-    downloadSheetPdf(dietSheet(c, d), `Dieta ${c.name}`, null, {
-      top: 'Plan de', bottom: 'Alimentación', sub: c.name,
-      text: `Hola ${c.name.split(' ')[0]}, aquí tienes tu plan de alimentación. ¡Lo simple funciona! 🥗`,
-    });
-  }
-
   /**
    * Hoja de la rutina para imprimir o guardar como PDF, con el mismo diseño que la de la dieta:
    * portada, una página por día (los músculos en el orden elegido, cada ejercicio con sus fotos)
@@ -1904,18 +1874,6 @@
   /** Un color por músculo dentro de cada día (degradado de la marca). */
   const RS_TONES = ['#6e8bff', '#22d3ee', '#3ee6a0', '#a78bfa', '#fb923c', '#f472b6'];
 
-  function printRoutine(clientId) {
-    const c = Store.get('clients', clientId);
-    const r = Store.routineFor(clientId);
-    if (!c || !r) return;
-    if (!(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de sacar el PDF'); return; }
-    const nDays = (r.days || []).filter((d) => (d.exercises || []).length).length;
-    downloadSheetPdf(routineSheet(c, r), `Rutina ${c.name}`, paginateRoutine, {
-      top: 'Rutina de', bottom: 'Entrenamiento', sub: `${c.name} · ${plural(nDays, 'día', 'días')} a la semana`,
-      text: `Hola ${c.name.split(' ')[0]}, aquí tienes tu rutina de entrenamiento. ¡A por ello! 💪`,
-    });
-  }
-
   /**
    * Cada día en una sola página: se busca el tamaño (--k) más grande con el que todos sus
    * ejercicios caben respetando el margen de abajo. Con pocos ejercicios se agranda un poco
@@ -1932,165 +1890,53 @@
     }
   }
 
-  /* ---------- PDF generado en la propia app ----------
-   * En vez de usar «Imprimir» (cada móvil cambia márgenes, escala y cortes de página),
-   * cada página A4 de la hoja se convierte en imagen y se monta un PDF con ellas. */
-  let htmlToImageReady = null;
-  function loadHtmlToImage() {
-    if (window.htmlToImage) return Promise.resolve();
-    if (!htmlToImageReady) {
-      htmlToImageReady = new Promise((res, rej) => {
-        const sc = document.createElement('script');
-        sc.src = 'js/vendor/html-to-image.js';
-        sc.onload = res; sc.onerror = () => { htmlToImageReady = null; rej(new Error('No se pudo cargar el generador de PDF')); };
-        document.head.appendChild(sc);
-      });
-    }
-    return htmlToImageReady;
-  }
-
-  /** PDF mínimo: una imagen JPEG a página completa (A4) por página. */
-  function jpegsToPdf(pages) {
-    const enc = new TextEncoder();
-    const parts = []; const offsets = []; let len = 0;
-    const push = (x) => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
-    const obj = (n, body) => { offsets[n] = len; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
-    const W = 595.28, H = 841.89;
-    const n = pages.length;
-    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
-    obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
-    obj(2, () => push(`<< /Type /Pages /Count ${n} /Kids [${pages.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] >>`));
-    pages.forEach((pg, i) => {
-      const pId = 3 + i * 3, cId = pId + 1, iId = pId + 2;
-      obj(pId, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im${i} ${iId} 0 R >> >> /Contents ${cId} 0 R >>`));
-      const content = `q ${W} 0 0 ${H} 0 0 cm /Im${i} Do Q`;
-      obj(cId, () => { push(`<< /Length ${content.length} >>\nstream\n`); push(content); push('\nendstream'); });
-      obj(iId, () => {
-        push(`<< /Type /XObject /Subtype /Image /Width ${pg.w} /Height ${pg.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${pg.jpeg.length} >>\nstream\n`);
-        push(pg.jpeg); push('\nendstream');
-      });
-    });
-    const total = 3 + n * 3;
-    const xref = len;
-    push(`xref\n0 ${total}\n0000000000 65535 f \n`);
-    for (let k = 1; k < total; k++) push(`${String(offsets[k]).padStart(10, '0')} 00000 n \n`);
-    push(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
-    return new Blob(parts, { type: 'application/pdf' });
-  }
-
-  const dataUrlBytes = (url) => {
-    const bin = atob(url.slice(url.indexOf(',') + 1));
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
+  /* ---------- Rutina y dieta por enlace ----------
+   * Se guarda la hoja ya preparada en la nube (como el cuestionario) y al cliente le llega un
+   * enlace con su tarjeta: al abrirlo ve su plan y se descarga él mismo el PDF.
+   * El enlace de cada cliente es siempre el mismo: al volver a enviarlo, se actualiza el contenido. */
+  const PLAN_KIND = {
+    rutina: { page: 'rutina.html', label: 'rutina de entrenamiento', emoji: '💪', open: 'Ábrela y descárgatela en PDF' },
+    dieta: { page: 'dieta.html', label: 'plan de alimentación', emoji: '🥗', open: 'Ábrelo y descárgatelo en PDF' },
   };
 
-  function saveBlob(blob, name) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1000);
-    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-  }
-
-  /** Tarjeta apaisada con el diseño de la del cuestionario (logo, título en dos líneas, franja «Lo simple funciona.»). */
-  function shareCardHtml(card) {
-    return `<div class="og-card">
-        <div class="og-main">
-          ${DS_BRAND}
-          <div class="og-title"><span>${esc(card.top)}</span><span class="og-grad">${esc(card.bottom)}</span></div>
-          <p class="og-sub">${esc(card.sub)}</p>
-        </div>
-        <div class="og-band"><span>Lo simple funciona.</span></div>
-      </div>`;
-  }
-
-  /**
-   * PDF listo: se enseña la tarjeta y al enviar se comparten la tarjeta (WhatsApp la muestra en
-   * grande, como el enlace del cuestionario) y el PDF, con un mensaje. También se puede descargar.
-   */
-  function pdfReady(blob, name, cover, cardJpg, card) {
-    const file = new File([blob], name, { type: 'application/pdf' });
-    const cardFile = cardJpg ? new File([dataUrlBytes(cardJpg)], name.replace(/\.pdf$/, '.jpg'), { type: 'image/jpeg' }) : null;
-    const can = (files) => { try { return !!(navigator.canShare && navigator.share && navigator.canShare({ files })); } catch (e) { return false; } };
-    const both = cardFile && can([cardFile, file]);
-    if (!both && !can([file])) { saveBlob(blob, name); UI.toast('PDF descargado: búscalo en Descargas y mándaselo'); return; }
-    const preview = cardJpg || cover;
-    UI.openModal({
-      title: 'PDF listo',
-      body: `<div class="pdf-ready">
-          ${preview ? `<img class="pdf-ready-cover${cardJpg ? ' is-card' : ''}" src="${preview}" alt="Vista previa">` : ''}
-          <p class="muted">Pulsa «Enviar», elige WhatsApp y el chat del cliente: le llega esta tarjeta en grande con el mensaje y, debajo, el PDF.</p>
-        </div>`,
-      footer: `<button type="button" class="btn" data-pdf-save>${U.icon('download')}Descargar</button>
-        <button type="submit" class="btn primary">${U.icon('message')}Enviar</button>`,
-      onSubmit: async () => {
-        const data = both ? { files: [cardFile, file], text: card && card.text ? card.text : '' } : { files: [file] };
-        if (!data.text) delete data.text;
-        try { await navigator.share(data); UI.closeModal(); } catch (e) {
-          if (e && e.name === 'AbortError') return; // el usuario cerró el menú de compartir
-          try { await navigator.share({ files: [file] }); UI.closeModal(); return; } catch (e2) { if (e2 && e2.name === 'AbortError') return; }
-          saveBlob(blob, name); UI.closeModal(); UI.toast('No se pudo compartir: se ha descargado para que lo mandes tú');
-        }
-      },
-      onOpen: (dlg) => { const b = dlg.querySelector('[data-pdf-save]'); if (b) b.onclick = () => { saveBlob(blob, name); UI.closeModal(); UI.toast('PDF descargado: búscalo en Descargas'); }; },
-    });
-  }
-
-  let pdfBusy = false;
-  async function downloadSheetPdf(html, title, prepare, card) {
-    if (pdfBusy) return;
-    pdfBusy = true;
-    const stage = document.createElement('div');
-    stage.className = 'pdf-stage';
-    stage.innerHTML = html + (card ? shareCardHtml(card) : '');
-    document.body.appendChild(stage);
-    const veil = document.createElement('div');
-    veil.className = 'pdf-veil';
-    veil.innerHTML = '<div class="pdf-veil-box"><span class="pdf-spin"></span><b>Creando el PDF…</b><small>Tarda unos segundos</small></div>';
-    document.body.appendChild(veil);
+  async function sendPlanLink(kind, clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    let html = '';
+    if (kind === 'rutina') {
+      const r = Store.routineFor(clientId);
+      if (!r || !(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina antes de enviarla'); return; }
+      html = routineSheet(c, r);
+    } else {
+      const d = Store.dietFor(clientId);
+      if (!d) return;
+      html = dietSheet(c, d);
+    }
+    if (await needCloud()) return;
+    const links = Object.assign({}, c.planLinks);
+    const token = links[kind] || newToken();
+    // Abrimos la ventana ya (si no, el móvil la bloquea al esperar a la nube).
+    const win = window.open('about:blank', '_blank');
     try {
-      await loadHtmlToImage();
-      if (document.fonts) {
-        // Carga ya todas las letras de la hoja: si se mide con otra fuente, la paginación sale mal.
-        await Promise.all(['400', '500', '600', '700', '800'].map((w) => document.fonts.load(`${w} 12px Archivo`))
-          .concat(['600', '700', '800'].map((w) => document.fonts.load(`${w} 12px "Barlow Condensed"`)), [document.fonts.load('400 12px Anton')])).catch(() => {});
-        await document.fonts.ready;
-      }
-      if (prepare) prepare(stage);
-      await Promise.all([...stage.querySelectorAll('img')].map((im) => (im.complete ? null : new Promise((res) => { im.onload = im.onerror = res; }))));
-      const pagesEl = [...stage.querySelectorAll('.ds-page')];
-      const box = pagesEl[0].getBoundingClientRect();
-      const opts = { quality: 0.9, pixelRatio: 2, width: box.width, height: box.height, backgroundColor: '#121722', cacheBust: false };
-      try { opts.fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(pagesEl[0]); } catch (e) { /* sin fuentes incrustadas */ }
-      const pages = [];
-      let cover = '';
-      for (const el of pagesEl) {
-        const url = await window.htmlToImage.toJpeg(el, opts);
-        if (!cover) cover = url;
-        pages.push({ jpeg: dataUrlBytes(url), w: Math.round(box.width * 2), h: Math.round(box.height * 2) });
-      }
-      // Tarjeta para WhatsApp (como la del cuestionario): imagen apaisada 1200 × 630.
-      let cardJpg = null;
-      const cardEl = stage.querySelector('.og-card');
-      if (cardEl) {
-        const copts = { quality: 0.92, pixelRatio: 1, width: 1200, height: 630, backgroundColor: '#121722', cacheBust: false };
-        try { copts.fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(cardEl); } catch (e) { /* sin fuentes incrustadas */ }
-        cardJpg = await window.htmlToImage.toJpeg(cardEl, copts);
-      }
-      const blob = jpegsToPdf(pages);
-      // Sin tildes ni símbolos: algunos navegadores ignoran el nombre si los lleva.
-      const name = `${normalizeText(title).replace(/[^a-z0-9 _-]/gi, '').replace(/\b\w/g, (m) => m.toUpperCase()).trim() || 'Rutina'}.pdf`;
-      stage.remove(); veil.remove();
-      pdfReady(blob, name, cover, cardJpg, card);
+      const sheet = await PdfMaker.prepared(html, kind === 'rutina' ? paginateRoutine : null);
+      await Sync.publishPlan(token, { kind, clientName: c.name, title: `${kind === 'rutina' ? 'Rutina' : 'Dieta'} ${c.name}`, html: sheet });
     } catch (e) {
       console.error(e);
-      UI.toast('No se pudo crear el PDF. Inténtalo de nuevo.');
-    } finally {
-      stage.remove(); veil.remove(); pdfBusy = false;
+      if (win) win.close();
+      UI.toast('No se ha podido crear el enlace. Revisa la conexión e inténtalo otra vez.');
+      return;
     }
+    links[kind] = token;
+    Store.update('clients', clientId, { planLinks: links, [`${kind}SentAt`]: today() });
+    const url = planUrl(kind, token);
+    const k = PLAN_KIND[kind];
+    const text = `Hola ${c.name.split(' ')[0]}, aquí tienes tu ${k.label} ${k.emoji}\n${k.open}:\n${url}`;
+    const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
+    if (win) win.location.href = wa; else window.open(wa, '_blank');
+    App.render();
+    UI.toast('Enlace preparado en WhatsApp', { label: 'Copiar enlace', onClick: () => copyText(url, 'Enlace copiado') });
   }
-
+  const planUrl = (kind, token) => new URL(`${PLAN_KIND[kind].page}?t=${token}`, location.href.split('#')[0]).href;
 
   async function copyText(text, msg) {
     try {
@@ -4069,7 +3915,7 @@
     'routine-create': (d) => routineForm(Store.get('clients', d.client)),
     'routine-edit': (d) => routineForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'routine-copy': (d) => copyRoutine(Store.get('clients', d.client)),
-    'routine-pdf': (d) => printRoutine(d.client),
+    'routine-pdf': (d) => sendPlanLink('rutina', d.client),
     'day-add': (d) => dayForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'day-edit': (d) => { const r = Store.routineFor(d.client); dayForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
     'day-move': (d) => { const r = Store.routineFor(d.client); moveItem(r.days, d.day, Number(d.dir)); saveRoutine(r); },
@@ -4135,7 +3981,7 @@
         onSubmit: (v) => { Store.update('clients', c.id, { height: v.height }); UI.toast('Altura guardada'); App.render(); },
       });
     },
-    'diet-pdf': (d) => printDiet(d.client),
+    'diet-pdf': (d) => sendPlanLink('dieta', d.client),
     'diet-copy': (d) => { const c = Store.get('clients', d.client); const dt = Store.dietFor(d.client); if (c && dt) copyText(dietText(c, dt), 'Dieta copiada: pégala donde quieras'); },
     'equiv-by': (d) => setEquivBy(d.value),
     'meal-count-pick': (d) => { state.mealCount = Number(d.value); App.render(); },

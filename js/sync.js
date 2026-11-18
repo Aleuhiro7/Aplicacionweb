@@ -147,6 +147,15 @@ async function createQuestionnaire(token, payload) {
   }));
 }
 
+/* Rutina y dieta por enlace: se guardan en la misma colección que los cuestionarios
+ * (cuestionarios/{token}, con kind «rutina» o «dieta»), así sirven las mismas reglas de Firebase. */
+async function publishPlan(token, payload) {
+  if (!state.user) throw new Error('Inicia sesión con Google para crear enlaces');
+  await setDoc(doc(db, 'cuestionarios', token), Object.assign({}, payload, {
+    owner: state.user.uid, answers: null, answeredAt: null, updatedAt: serverTimestamp(),
+  }));
+}
+
 async function fetchQuestionnaire(token) {
   if (!state.user) return null;
   const ref = doc(db, 'cuestionarios', token);
@@ -202,6 +211,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan };
 setStatus(state.status);
 App.render();

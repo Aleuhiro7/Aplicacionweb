@@ -1706,3 +1706,15 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .og-main .ds-logo svg { width: 100%; height: 100%; }
 .og-title { line-height: 1.06; }
 .og-grad { padding-top: 6px; }
+
+/* ---------- Página pública de la rutina / dieta (rutina.html, dieta.html) ---------- */
+.pv-wrap { max-width: 860px; padding-bottom: 110px; }
+.pv-head { margin-bottom: 18px; }
+.pv-head .q-intro { margin-bottom: 0; }
+.pv-pages { position: relative; overflow: hidden; }
+.pv-pages .ds { transform-origin: 0 0; width: 210mm; }
+.pv-pages .ds-page { margin-bottom: 10mm; border-radius: 6mm; box-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
+.pv-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); display: flex; justify-content: center; background: linear-gradient(transparent, rgba(10, 13, 20, .92) 35%); }
+.pv-bar[hidden] { display: none; }
+.pv-bar .btn { width: min(420px, 100%); justify-content: center; padding: 15px 20px; font-size: 1.05rem; gap: 10px; }
+.pdf-spin.sm { width: 18px; height: 18px; border-width: 2px; }
