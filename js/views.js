@@ -3505,20 +3505,10 @@
     const s = Store.settings;
     const d = Store.data;
     return `
-      <div class="page-header"><div><h1 class="display">Ajustes y copias de seguridad</h1><p>Preferencias, sincronización y copias de seguridad de tus datos</p></div></div>
+      <div class="page-header"><div><h1 class="display">Ajustes y copias de seguridad</h1><p>Avisos, sincronización y copias de seguridad de tus datos</p></div></div>
       <div class="grid-2">
         <section class="card">
-          <div class="card-header"><h2>Preferencias</h2></div>
-          <form id="settings-form" class="form-grid">
-            <div class="field full"><label for="s-trainerName">Tu nombre</label><input id="s-trainerName" name="trainerName" value="${esc(s.trainerName)}" placeholder="Para el saludo del resumen"></div>
-            <div class="field"><label for="s-currency">Moneda</label><select id="s-currency" name="currency">${CURRENCIES.map((c) => `<option value="${c.value}" ${s.currency === c.value ? 'selected' : ''}>${c.label}</option>`).join('')}</select></div>
-            <div class="field"><label for="s-theme">Tema</label><select id="s-theme" name="theme">
-              ${[['dark', 'Oscuro'], ['light', 'Claro'], ['auto', 'Automático']].map(([v, l]) => `<option value="${v}" ${s.theme === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-            <div class="field full"><label for="s-defaultRate">Importe habitual por defecto</label><input id="s-defaultRate" name="defaultRate" type="number" step="0.01" min="0" value="${esc(s.defaultRate)}"></div>
-            <div class="full"><button type="submit" class="btn primary">Guardar preferencias</button></div>
-          </form>
-          <hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
-          <h2 style="margin-bottom:6px">Avisos de pago</h2>
+          <div class="card-header"><h2>Avisos de pago</h2></div>
           <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen y, si lo activas, con una notificación del navegador.</p>
           ${notificationStatus() ? `<p style="margin:0 0 12px">${esc(notificationStatus())}</p>` : ''}
           ${canNotify() && Notification.permission === 'default' ? `<button class="btn" data-action="enable-notifications">${U.icon('bell')} Activar notificaciones</button>` : ''}
