@@ -8,6 +8,10 @@
   'use strict';
 
   const list = [];
+  /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
+   * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
+  const METHOD_SETS = '3';
+  const METHOD_REPS = 'serie1 efectiva a 1 del fallo de 12 a 15 rep, serie2 pesada fallo total de 6 a 8 rep, serie3 con el mismo peso que la efectiva al fallo total por agotamiento.';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
     let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
@@ -15,13 +19,12 @@
       const own = extra && extra.id;
       if (!own) k++;
       list.push(Object.assign({
-        id: own || `${prefix}-${k}`, name: n, group, pattern: name, equipment, sets, reps, rest, tempo, description, video: '',
+        id: own || `${prefix}-${k}`, name: n, group, pattern: name, equipment, sets: METHOD_SETS, reps: METHOD_REPS, rest, tempo, description, video: '',
       }, extra || {}));
     });
   }
 
-  // Método de 3 series (el mismo en todos los ejercicios que lo usan; los números antiguos ya no cuentan).
-  const STD = () => 'Serie 1 efectiva: 12–15 (a 1 del fallo) / Serie 2 pesada: 6–8 (Fallo-Total) / Serie 3 con el peso de la efectiva: al Fallo-Total por agotamiento';
+  const STD = (a, b, c) => `${a} (Casi-Fallo) / ${b} (Fallo) / ${c} [Top Set] (Fallo-Total)`;
   const CERCA = (a, b, c) => `${a} (Cerca-del-Fallo) / ${b} (Fallo) / ${c} [Top Set] (Fallo-Total)`;
 
   /* ======================= BÍCEPS ======================= */
