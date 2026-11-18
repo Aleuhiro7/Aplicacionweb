@@ -1597,3 +1597,4 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .nf-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .nf-flags .badge { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; white-space: normal; }
 @media (max-width: 600px) { .hf-list li { flex-direction: column; gap: 1px; } .health-flags { margin: 12px 0 4px; } }
+#salud.has-items { --tone: var(--danger); }

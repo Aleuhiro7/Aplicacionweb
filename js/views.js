@@ -1995,7 +1995,10 @@
       .map((c) => ({ c, bi: birthdayInfo(c), kind: 'cumple' }))
       .filter((x) => x.bi && x.bi.days <= BIRTHDAY_NOTICE)
       .sort((a, b) => a.bi.days - b.bi.days);
-    return pay.concat(birthdays, answers, reviews, plans, tasks);
+    const health = Store.clients()
+      .filter((c) => clientStatus(c) !== 'inactivo' && !c.healthAsked && clientFlags(c).length)
+      .map((c) => ({ c, flags: clientFlags(c), kind: 'salud' }));
+    return pay.concat(health, birthdays, answers, reviews, plans, tasks);
   }
 
   function incomeChart() {
@@ -2087,6 +2090,7 @@
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
     const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
     const bdayAlerts = alerts.filter((a) => a.kind === 'cumple');
+    const healthAlerts = alerts.filter((a) => a.kind === 'salud');
     const formAlerts = []; // los formularios de personas nuevas van en el aviso grande de arriba
     const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
     const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
@@ -2113,6 +2117,20 @@
           </section>`,
     });
     const alertSections = [
+      section('salud', 'Preguntar por su salud', healthAlerts.length, '',
+        `<ul class="list task-list">${healthAlerts.map((a) => `
+          <li class="task review">
+            ${avatar(a.c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${a.c.id}" style="color:inherit;text-decoration:none">${esc(a.c.name)}</a>
+              <div class="nf-flags">${a.flags.map((x) => `<span class="badge danger">${U.icon('alert')}${esc(x.label)}: ${esc(x.a)}</span>`).join('')}</div>
+            </div>
+            <div class="review-actions">
+              ${U.waLink(a.c.phone) ? `<a class="btn sm wa-btn" href="${U.waLink(a.c.phone)}" target="_blank" rel="noopener">${U.icon('message')}WhatsApp</a>` : ''}
+              <button class="btn sm primary" data-action="health-asked" data-client="${a.c.id}" data-value="1">${U.icon('check')}Ya lo he hablado</button>
+            </div>
+          </li>`).join('')}</ul>`,
+        'Nadie tiene lesiones, medicación ni alergias pendientes de preguntar'),
       section('cumpleanos', '🎂 Cumpleaños', bdayAlerts.length, '',
         `<ul class="list task-list">${bdayAlerts.map((a) => `
           <li class="task review bday${a.bi.days === 0 ? ' today' : ''}">
