@@ -1548,7 +1548,18 @@
     const d = Store.dietFor(c.id);
     if (!state.mealCount) state.mealCount = 5;
     const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim() || (d.supps || '').trim() || (d.suppList || []).length);
+    // Interruptor «Sin dieta»: para los clientes de solo rutina (no salen en «dieta pendiente»).
+    const toggle = `<div class="nodiet-bar${c.noDiet ? ' on' : ''}">
+      <div class="grow"><strong>Sin dieta · solo rutina</strong><span class="muted">${c.noDiet ? 'Este cliente no lleva dieta: no te aparecerá como dieta pendiente.' : 'Actívalo si a este cliente solo le haces la rutina.'}</span></div>
+      <button type="button" class="switch" role="switch" aria-checked="${!!c.noDiet}" aria-label="Sin dieta" data-action="toggle-no-diet" data-client="${c.id}"><span></span></button>
+    </div>`;
+    if (c.noDiet) {
+      return `<section class="card diet-panel">${toggle}
+      ${empty('done', `${esc(c.name.split(' ')[0])} no lleva dieta. Desactiva el interruptor para hacérsela${has ? ' (lo que ya tenías hecho se conserva)' : ''}.`)}
+      </section>`;
+    }
     return `<section class="card diet-panel">
+    ${toggle}
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
     <div class="diet-sec">
@@ -3992,6 +4003,13 @@
     'set-status': (d) => setClientStatus(d.id, d.value),
     'new-measurement': (d) => openMeasurementForm(null, d.client),
     'edit-measurement': (d) => openMeasurementForm(d.id),
+    'toggle-no-diet': (d) => {
+      const c = Store.get('clients', d.client);
+      if (!c) return;
+      Store.update('clients', c.id, { noDiet: !c.noDiet });
+      UI.toast(c.noDiet ? 'Marcado: sin dieta (solo rutina)' : 'Ya puedes hacerle la dieta');
+      App.render();
+    },
     'new-injury': (d) => openInjuryForm(null, d.client),
     'edit-injury': (d) => openInjuryForm(d.id),
     'injury-recovered': (d) => markInjuryRecovered(d.id),

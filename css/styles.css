@@ -1734,3 +1734,12 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .injury-list li.injury .grow { min-width: 0; flex: 1 1 260px; }
 @media (max-width: 600px) { .injury-actions { width: 100%; justify-content: flex-start; } }
 .count.danger { background: var(--danger); color: #fff; }
+/* Interruptor «Sin dieta · solo rutina» */
+.nodiet-bar { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin-bottom: 14px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,.03)); }
+.nodiet-bar .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nodiet-bar .muted { font-size: .86rem; }
+.nodiet-bar.on { border-color: var(--accent, #6e8bff); }
+.switch { position: relative; flex-shrink: 0; width: 50px; height: 30px; padding: 0; border: 0; border-radius: 999px; background: var(--border); cursor: pointer; transition: background .2s; }
+.switch span { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); transition: transform .2s; }
+.switch[aria-checked="true"] { background: linear-gradient(90deg, #6e8bff, #22d3ee); }
+.switch[aria-checked="true"] span { transform: translateX(20px); }
