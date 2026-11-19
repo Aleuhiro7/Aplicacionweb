@@ -1721,3 +1721,4 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .pv-bar[hidden] { display: none; }
 .pv-bar .btn { width: min(420px, 100%); justify-content: center; padding: 15px 20px; font-size: 1.05rem; gap: 10px; }
 .pdf-spin.sm { width: 18px; height: 18px; border-width: 2px; }
+.form-grid .field[hidden] { display: none !important; }

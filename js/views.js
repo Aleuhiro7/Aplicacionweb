@@ -99,6 +99,7 @@
       { type: 'section', label: 'Asesoría' },
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
+      { name: 'free', label: 'Gratis (no se le cobra nada)', type: 'checkbox', full: true, hint: 'Para los clientes que llevas gratis: sin importe, sin avisos de pago y sin pagos pendientes.' },
       { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío en un cliente nuevo: queda pendiente de pago desde el alta hasta que marques su primer pago. Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { type: 'section', label: 'Salud y notas' },
@@ -115,7 +116,15 @@
       values: existing || {},
       submitLabel: existing ? 'Guardar cambios' : 'Crear cliente',
       onDelete: existing ? () => deleteClient(id) : null,
+      onReady: () => {
+        // «Gratis»: se ocultan el importe y el próximo pago (no se le cobra nada).
+        const box = document.getElementById('f-free');
+        const sync = () => ['rate', 'nextDue'].forEach((n) => { const f = document.querySelector(`[data-field="${n}"]`); if (f) f.hidden = box.checked; });
+        box.addEventListener('change', sync);
+        sync();
+      },
       onSubmit: (v) => {
+        if (v.free) v.rate = '';
         // El próximo pago se alinea con el día del alta.
         if (!existing && !v.nextDue) v.nextDue = v.startDate && v.startDate > today() ? v.startDate : today(); // nuevo: pendiente de pago desde el alta
         else if (v.startDate) v.nextDue = v.nextDue ? Store.snapToStart(v.startDate, v.nextDue) : Store.startOnOrAfter(v.startDate, today());
@@ -258,7 +267,7 @@
   /** Clientes activos ordenados por fecha de próximo pago (los que no tienen fecha, al final). */
   function clientsByDue() {
     return Store.clients()
-      .filter((c) => clientStatus(c) === 'activo')
+      .filter((c) => clientStatus(c) === 'activo' && !c.free)
       .sort((a, b) => (a.nextDue || '9999').localeCompare(b.nextDue || '9999') || a.name.localeCompare(b.name, 'es'));
   }
 
@@ -2399,7 +2408,7 @@
           <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}${clientFlags(c).length && !c.healthAsked ? `<span class="badge danger hf-badge" title="${esc(flagsText(clientFlags(c)))}">${U.icon('alert')}Preguntar: ${esc(clientFlags(c).map((f) => f.label.split(' ')[0].toLowerCase()).join(', '))}</span>` : ''}</div></div></td>
           <td class="hide-sm">${c.email ? esc(c.email) : '—'}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
-          <td class="num">${c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
+          <td class="num">${c.free ? badge('Gratis', 'success') : c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
           <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
           <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? `${esc(U.fmtDateShort(ri.date))} ${badge(ri.type === 'mensual' ? 'Mensual' : 'Seguimiento', REVIEW_STATUS[ri.status].badge)}` : '<span class="muted">—</span>'; })()}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
@@ -2567,7 +2576,7 @@
 
     return `
       <div class="stats">
-        <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${di ? esc(U.fmtDateShort(di.date)) : '—'}</div><div class="stat-sub">${di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
+        <div class="card stat"><div class="stat-label">Próximo pago</div><div class="stat-value" style="font-size:1.8rem">${c.free ? 'Gratis' : di ? esc(U.fmtDateShort(di.date)) : '—'}</div><div class="stat-sub">${c.free ? 'No se le cobra nada' : di ? esc(dueText(di).replace(/ \(.*\)$/, '')) : clientStatus(c) === 'activo' ? 'Sin fecha' : esc(CLIENT_STATUS[clientStatus(c)].label)}</div></div>
         <div class="card stat"><div class="stat-label">Último pago</div><div class="stat-value">${lastPay ? money(lastPay.amount) : '—'}</div><div class="stat-sub">${lastPay ? esc(fmtDate(lastPay.date)) : 'Sin pagos'}</div></div>
         <div class="card stat"><div class="stat-label">Último peso</div><div class="stat-value">${lastM ? `${fmtNum(lastM.weight)} kg` : '—'}</div><div class="stat-sub">${lastM ? `${esc(U.fmtDateShort(lastM.date))} · hace ${plural(U.daysBetween(lastM.date, t), 'día', 'días')}` : 'Sin peso registrado'}</div></div>
         <div class="card stat stat-height"><div class="stat-label">Altura</div><div class="stat-value">${Number(c.height) > 0 ? `${fmtNum(c.height)} cm` : '—'}</div><div class="stat-sub">${imc ? `IMC ${fmtNum(imc)}` : Number(c.height) > 0 ? 'Añade su peso para ver el IMC' : 'Sin altura'}</div><button class="btn sm review-done" data-action="set-height" data-client="${c.id}">${U.icon(Number(c.height) > 0 ? 'edit' : 'plus')}${Number(c.height) > 0 ? 'Cambiar' : 'Añadir'}</button></div>

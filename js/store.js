@@ -304,7 +304,7 @@
    * null si el cliente no está activo o no tiene fecha de próximo pago.
    */
   function dueInfo(client) {
-    if (!client || (client.status || 'activo') !== 'activo') return null;
+    if (!client || (client.status || 'activo') !== 'activo' || client.free) return null; // «Gratis»: no se le cobra
     const paidOnce = data.payments.some((p) => p.clientId === client.id && p.status === 'pagado');
     // Sin fecha de próximo pago y sin ningún pago (p. ej. dado de alta desde el cuestionario): pendiente desde el alta.
     const due = client.nextDue || (!paidOnce ? (client.startDate && client.startDate < today() ? client.startDate : today()) : '');
