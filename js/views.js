@@ -2530,6 +2530,16 @@
     return out;
   }
   const clientFlags = (c) => healthFlags(c && c.questionnaire && c.questionnaire.items);
+  /**
+   * Nota de salud que se muestra arriba del perfil. Cuando ya has apuntado sus lesiones en la pestaña
+   * «Lesiones», se quita lo de «Lesión o dolor» que venía del cuestionario (queda lo demás: medicación, alergias…).
+   */
+  function healthShown(c) {
+    const text = (c.health || '').trim();
+    if (!text || !Store.injuriesFor(c.id).length) return text;
+    return text.split(/\s·\s|\n/).filter((part) => !/^\s*Lesi[oó]n o dolor\s*:/i.test(part)).join(' · ').trim();
+  }
+
   /** Texto para el campo «Salud» de la ficha: «Lesión o dolor: Sí, leve · Alergia o intolerancia: Lactosa». */
   const flagsText = (flags) => flags.map((f) => `${f.label}: ${f.a}`).join(' · ');
 
@@ -2606,7 +2616,7 @@
             <button class="btn primary" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medidas</button>
           </div>
         </div>
-        ${c.health && c.health.trim() ? `<div class="health-note">${U.icon('alert')}<div><strong>Salud · tenlo siempre presente</strong><p>${esc(c.health.trim())}</p></div></div>` : ''}
+        ${healthShown(c) ? `<div class="health-note">${U.icon('alert')}<div><strong>Salud · tenlo siempre presente</strong><p>${esc(healthShown(c))}</p></div></div>` : ''}
         ${activeInjuries.length ? `<div class="health-note">${U.icon('alert')}<div><strong>${activeInjuries.length === 1 ? 'Lesión activa' : 'Lesiones activas'}</strong><p>${activeInjuries.map((x) => `${esc(x.name)} · desde el ${esc(fmtDate(x.date))}`).join('\n')}</p></div></div>` : ''}
         ${healthFlagsCard(c)}
       </div>
