@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'entrenapro:data:v1';
-  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods', 'foodBlocks', 'forms'];
+  const COLLECTIONS = ['clients', 'measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'library', 'diets', 'foods', 'foodBlocks', 'forms', 'injuries'];
 
   function emptyData() {
     return {
@@ -11,6 +11,7 @@
       clients: [],
       measurements: [],
       payments: [],
+      injuries: [], // lesiones de cada cliente (fecha de la lesión y de la recuperación)
       tasks: [], // tareas pendientes del entrenador por cliente
       photos: [], // solo datos de cada foto; la imagen va aparte (ver photos.js)
       reviews: [], // historial de revisiones hechas
@@ -255,7 +256,7 @@
   function remove(collection, id) {
     data[collection] = data[collection].filter((r) => r.id !== id);
     if (collection === 'clients') {
-      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'diets']) {
+      for (const c of ['measurements', 'payments', 'tasks', 'photos', 'reviews', 'routines', 'diets', 'injuries']) {
         data[c] = data[c].filter((r) => r.clientId !== id);
       }
     }
@@ -392,6 +393,13 @@
     return data.reviews.filter((r) => r.clientId === clientId).sort((a, b) => b.date.localeCompare(a.date));
   }
 
+  /** Lesiones de un cliente: primero las activas y luego las recuperadas, de la más reciente a la más antigua. */
+  function injuriesFor(clientId) {
+    return data.injuries
+      .filter((x) => x.clientId === clientId)
+      .sort((a, b) => (!!a.recoveredDate - !!b.recoveredDate) || (b.date || '').localeCompare(a.date || ''));
+  }
+
   /** Tareas de un cliente: primero las pendientes (por fecha límite), luego las hechas. */
   function tasksFor(clientId) {
     return data.tasks
@@ -502,7 +510,7 @@
   window.Store = {
     load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
-    tasksFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, blocksForFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
+    tasksFor, injuriesFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, blocksForFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,
     get data() { return data; },
     get settings() { return data.settings; },

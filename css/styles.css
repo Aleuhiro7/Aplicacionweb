@@ -1722,3 +1722,15 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .pv-bar .btn { width: min(420px, 100%); justify-content: center; padding: 15px 20px; font-size: 1.05rem; gap: 10px; }
 .pdf-spin.sm { width: 18px; height: 18px; border-width: 2px; }
 .form-grid .field[hidden] { display: none !important; }
+/* Lesiones del cliente */
+.tab-count.danger { background: var(--danger); color: #fff; }
+.injury-list li.injury { align-items: flex-start; gap: 12px; }
+.injury-name { font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.injury-notes { margin-top: 6px; color: var(--muted); white-space: pre-line; font-size: .92rem; }
+.injury-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.injury.done .injury-name { color: var(--muted); }
+.injury-list li.injury { flex-wrap: wrap; }
+.injury-list .meta { white-space: normal; margin-top: 4px; }
+.injury-list li.injury .grow { min-width: 0; flex: 1 1 260px; }
+@media (max-width: 600px) { .injury-actions { width: 100%; justify-content: flex-start; } }
+.count.danger { background: var(--danger); color: #fff; }

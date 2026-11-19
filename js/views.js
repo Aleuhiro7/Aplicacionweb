@@ -426,6 +426,76 @@
     </section>` : ''}`;
   }
 
+  /* ---------- Lesiones ---------- */
+  function injuryFields() {
+    return [
+      { name: 'name', label: 'Lesión', required: true, full: true, placeholder: 'Ej.: esguince de tobillo derecho, tendinitis de hombro…' },
+      { name: 'date', label: 'Fecha de la lesión', type: 'date', required: true, default: today() },
+      { name: 'recoveredDate', label: 'Recuperado el', type: 'date', hint: 'Déjalo vacío mientras siga lesionado.' },
+      { name: 'notes', label: 'Notas', type: 'textarea', placeholder: 'Cómo pasó, diagnóstico, fisio, ejercicios a evitar…' },
+    ];
+  }
+
+  function openInjuryForm(id, clientId) {
+    const existing = id ? Store.get('injuries', id) : null;
+    UI.form({
+      title: existing ? 'Editar lesión' : 'Nueva lesión',
+      fields: injuryFields(),
+      values: existing || {},
+      onDelete: existing ? () => deleteRecord('injuries', id, 'esta lesión') : null,
+      onSubmit: (v) => {
+        if (v.recoveredDate && v.date && v.recoveredDate < v.date) { UI.toast('La recuperación no puede ser antes de la lesión'); return false; }
+        if (existing) Store.update('injuries', id, v);
+        else Store.add('injuries', Object.assign({ clientId }, v));
+        UI.toast('Lesión guardada');
+        App.render();
+      },
+    });
+  }
+
+  function markInjuryRecovered(id) {
+    const x = Store.get('injuries', id);
+    if (!x) return;
+    Store.update('injuries', id, { recoveredDate: today() });
+    App.render();
+    UI.toast('Marcada como recuperada', { label: 'Deshacer', onClick: () => { Store.update('injuries', id, { recoveredDate: '' }); App.render(); } });
+  }
+
+  function injuryItem(x) {
+    const days = U.daysBetween(x.date, x.recoveredDate || today());
+    const when = x.recoveredDate
+      ? `Del ${esc(fmtDate(x.date))} al ${esc(fmtDate(x.recoveredDate))} · ${plural(days, 'día', 'días')} hasta recuperarse`
+      : `Desde el ${esc(fmtDate(x.date))} · ${days === 0 ? 'hoy' : `hace ${plural(days, 'día', 'días')}`}`;
+    return `<li class="injury${x.recoveredDate ? ' done' : ''}">
+      <div class="grow">
+        <div class="injury-name">${esc(x.name)} ${x.recoveredDate ? badge('Recuperada', 'success') : badge('Activa', 'danger')}</div>
+        <div class="meta">${when}</div>
+        ${x.notes ? `<div class="injury-notes">${esc(x.notes)}</div>` : ''}
+      </div>
+      <div class="injury-actions">
+        ${x.recoveredDate ? '' : `<button class="btn sm" data-action="injury-recovered" data-id="${x.id}">${U.icon('check')}Recuperado</button>`}
+        <button class="icon-btn" data-action="edit-injury" data-id="${x.id}" aria-label="Editar lesión">${U.icon('edit')}</button>
+      </div>
+    </li>`;
+  }
+
+  function clientInjuries(c) {
+    const list = Store.injuriesFor(c.id);
+    const active = list.filter((x) => !x.recoveredDate);
+    const past = list.filter((x) => x.recoveredDate);
+    return `<section class="card">
+      <div class="card-header">
+        <h2>Lesiones activas ${active.length ? `<span class="count danger">${active.length}</span>` : ''}</h2>
+        <button class="btn primary sm" data-action="new-injury" data-client="${c.id}">${U.icon('plus')}Lesión</button>
+      </div>
+      ${active.length ? `<ul class="list injury-list">${active.map(injuryItem).join('')}</ul>` : empty('done', list.length ? 'Ahora mismo no tiene ninguna lesión.' : 'Sin lesiones registradas. Apunta aquí cada lesión y cuándo se recupera para tener su historial.')}
+    </section>
+    ${past.length ? `<section class="card">
+      <div class="card-header"><h2>Historial · recuperadas (${past.length})</h2></div>
+      <ul class="list injury-list">${past.map(injuryItem).join('')}</ul>
+    </section>` : ''}`;
+  }
+
   function submitTaskForm(form) {
     const text = form.elements.text.value.trim();
     if (!text) { form.elements.text.focus(); return; }
@@ -2475,7 +2545,8 @@
       return `<a href="#/clientes" class="back-link">${U.icon('back')} Clientes</a><div class="card">${empty('users', 'Este cliente no existe o fue eliminado.')}</div>`;
     }
     const pendingCount = Store.tasksFor(c.id).filter((t) => !t.done).length;
-    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['dieta', 'Dieta'], ['progreso', 'Progreso'], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
+    const activeInjuries = Store.injuriesFor(c.id).filter((x) => !x.recoveredDate);
+    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['dieta', 'Dieta'], ['progreso', 'Progreso'], ['lesiones', `Lesiones${activeInjuries.length ? ` <span class="tab-count danger">${activeInjuries.length}</span>` : ''}`], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
     const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
@@ -2487,6 +2558,7 @@
       case 'rutina': body = clientRoutine(c); break;
       case 'dieta': body = clientDiet(c); break;
       case 'tareas': body = clientTasks(c); break;
+      case 'lesiones': body = clientInjuries(c); break;
       default: body = clientSummary(c);
     }
     return `
@@ -2507,6 +2579,7 @@
           </div>
         </div>
         ${c.health && c.health.trim() ? `<div class="health-note">${U.icon('alert')}<div><strong>Salud · tenlo siempre presente</strong><p>${esc(c.health.trim())}</p></div></div>` : ''}
+        ${activeInjuries.length ? `<div class="health-note">${U.icon('alert')}<div><strong>${activeInjuries.length === 1 ? 'Lesión activa' : 'Lesiones activas'}</strong><p>${activeInjuries.map((x) => `${esc(x.name)} · desde el ${esc(fmtDate(x.date))}`).join('\n')}</p></div></div>` : ''}
         ${healthFlagsCard(c)}
       </div>
       <div class="tabs" role="tablist">
@@ -3919,6 +3992,9 @@
     'set-status': (d) => setClientStatus(d.id, d.value),
     'new-measurement': (d) => openMeasurementForm(null, d.client),
     'edit-measurement': (d) => openMeasurementForm(d.id),
+    'new-injury': (d) => openInjuryForm(null, d.client),
+    'edit-injury': (d) => openInjuryForm(d.id),
+    'injury-recovered': (d) => markInjuryRecovered(d.id),
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),
     'edit-payment': (d) => openPaymentForm(d.id),
     'pay-open': (d) => {
