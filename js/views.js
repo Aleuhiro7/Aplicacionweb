@@ -579,10 +579,30 @@
       </li>`;
   }
 
+  /** Interruptor «Sin dieta · solo rutina» / «Sin rutina · solo dieta»: el cliente no sale como pendiente de eso. */
+  function planToggle(c, kind) {
+    const diet = kind === 'dieta';
+    const on = !!(diet ? c.noDiet : c.noTraining);
+    const title = diet ? 'Sin dieta · solo rutina' : 'Sin rutina · solo dieta';
+    const text = on
+      ? `Este cliente no lleva ${kind}: no te aparecerá como ${kind} pendiente.`
+      : `Actívalo si a este cliente solo le haces la ${diet ? 'rutina' : 'dieta'}.`;
+    return `<div class="nodiet-bar${on ? ' on' : ''}">
+      <div class="grow"><strong>${title}</strong><span class="muted">${text}</span></div>
+      <button type="button" class="switch" role="switch" aria-checked="${on}" aria-label="${diet ? 'Sin dieta' : 'Sin rutina'}" data-action="toggle-no-plan" data-kind="${kind}" data-client="${c.id}"><span></span></button>
+    </div>`;
+  }
+
   function clientRoutine(c) {
     const r = Store.routineFor(c.id);
+    if (c.noTraining) {
+      return `<section class="card">${planToggle(c, 'rutina')}
+        ${empty('done', `${esc(c.name.split(' ')[0])} no lleva rutina. Desactiva el interruptor para hacérsela${r ? ' (lo que ya tenías hecho se conserva)' : ''}.`)}
+      </section>`;
+    }
     if (!r) {
-      return `<section class="card routine-start">
+      return `<section class="card">${planToggle(c, 'rutina')}</section>
+        <section class="card routine-start">
           <h2>¿Cuántos días va a entrenar ${esc(c.name.split(' ')[0])}?</h2>
           <p class="muted">Elige los días a la semana. Después, en cada día marcas los músculos y eliges sus ejercicios de la biblioteca.</p>
           ${dayCountPicker(c, 0)}
@@ -591,6 +611,7 @@
     const days = r.days || [];
     const groups = libraryGroups();
     return `
+      <section class="card">${planToggle(c, 'rutina')}</section>
       <section class="card routine-head">
         <div class="card-header">
           <div>
@@ -1548,11 +1569,7 @@
     const d = Store.dietFor(c.id);
     if (!state.mealCount) state.mealCount = 5;
     const has = d && ((d.targets && Number(d.targets.kcal) > 0) || (d.meals || []).length || (d.text || '').trim() || (d.supps || '').trim() || (d.suppList || []).length);
-    // Interruptor «Sin dieta»: para los clientes de solo rutina (no salen en «dieta pendiente»).
-    const toggle = `<div class="nodiet-bar${c.noDiet ? ' on' : ''}">
-      <div class="grow"><strong>Sin dieta · solo rutina</strong><span class="muted">${c.noDiet ? 'Este cliente no lleva dieta: no te aparecerá como dieta pendiente.' : 'Actívalo si a este cliente solo le haces la rutina.'}</span></div>
-      <button type="button" class="switch" role="switch" aria-checked="${!!c.noDiet}" aria-label="Sin dieta" data-action="toggle-no-diet" data-client="${c.id}"><span></span></button>
-    </div>`;
+    const toggle = planToggle(c, 'dieta');
     if (c.noDiet) {
       return `<section class="card diet-panel">${toggle}
       ${empty('done', `${esc(c.name.split(' ')[0])} no lleva dieta. Desactiva el interruptor para hacérsela${has ? ' (lo que ya tenías hecho se conserva)' : ''}.`)}
@@ -4003,11 +4020,12 @@
     'set-status': (d) => setClientStatus(d.id, d.value),
     'new-measurement': (d) => openMeasurementForm(null, d.client),
     'edit-measurement': (d) => openMeasurementForm(d.id),
-    'toggle-no-diet': (d) => {
+    'toggle-no-plan': (d) => {
       const c = Store.get('clients', d.client);
       if (!c) return;
-      Store.update('clients', c.id, { noDiet: !c.noDiet });
-      UI.toast(c.noDiet ? 'Marcado: sin dieta (solo rutina)' : 'Ya puedes hacerle la dieta');
+      const key = d.kind === 'dieta' ? 'noDiet' : 'noTraining';
+      Store.update('clients', c.id, { [key]: !c[key] });
+      UI.toast(c[key] ? `Marcado: sin ${d.kind} (solo ${d.kind === 'dieta' ? 'rutina' : 'dieta'})` : `Ya puedes hacerle la ${d.kind}`);
       App.render();
     },
     'new-injury': (d) => openInjuryForm(null, d.client),

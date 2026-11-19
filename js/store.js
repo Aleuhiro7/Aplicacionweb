@@ -447,7 +447,8 @@
     if (!client || (client.status || 'activo') !== 'activo') return null;
     const r = routineFor(client.id);
     const d = dietFor(client.id);
-    const noRoutine = !r || !(r.days || []).some((day) => (day.exercises || []).length);
+    // «Sin rutina» (clientes de solo dieta): no cuenta como rutina pendiente.
+    const noRoutine = !client.noTraining && (!r || !(r.days || []).some((day) => (day.exercises || []).length));
     // Fijar solo los objetivos (kcal y macros) no cuenta: la dieta tiene que estar rellenada con alimentos.
     const hasMealFoods = !!(d && (d.meals || []).some((m) => (m.items || []).length));
     // «Sin dieta» (clientes de solo rutina): no cuenta como dieta pendiente.
