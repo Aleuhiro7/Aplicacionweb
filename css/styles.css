@@ -1937,3 +1937,4 @@ p.cz-approach b { color: #fb923c; font-weight: 700; }
 .cz-sheet-in p { margin: 0 0 6px; }
 .cz-sheet-in .btn { justify-content: center; padding: 14px; font-size: 1rem; }
 .cz-del { color: var(--danger); margin-bottom: 24px; }
+.cz-stats small { text-align: center; line-height: 1.25; }

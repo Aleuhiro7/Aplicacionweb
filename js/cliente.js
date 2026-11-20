@@ -772,7 +772,7 @@ function summaryView(id) {
       <div class="cz-stats">
         <div><strong>${fmtDuration(w.durationSec || 0)}</strong><small>Tiempo</small></div>
         <div><strong>${sets.length}</strong><small>Series</small></div>
-        <div><strong>${volume ? `${fmtKg(Math.round(volume))} kg` : '—'}</strong><small>Volumen</small></div>
+        <div><strong>${volume ? `${fmtKg(Math.round(volume))} kg` : '—'}</strong><small>Kilos movidos<br>(peso × reps)</small></div>
       </div>
       ${ups.length ? `<h3>Mejoras de peso</h3><ul class="cz-ups">${ups.map((u) => `<li><span>${esc(u.name)}</span><b>${fmtKg(u.before)} → ${fmtKg(u.now)} kg <em>+${fmtKg(u.now - u.before)}</em></b></li>`).join('')}</ul>`
         : '<p class="muted">Sin mejoras de peso esta vez. Recuerda: aumentar la intensidad también es progreso.</p>'}
