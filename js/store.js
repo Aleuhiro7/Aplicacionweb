@@ -71,6 +71,25 @@
       base.settings.restV2 = true;
       migrated = true; // hay que subirlo a la nube (y a la zona de los clientes)
     }
+    // Una sola vez: las series y repeticiones de las rutinas ya hechas pasan al método nuevo de las 3 series
+    // (los ejercicios de la biblioteca toman sus pautas actuales; los escritos a mano con el formato
+    // antiguo de «Casi-Fallo / Fallo / Top Set», también).
+    if (!base.settings.repsV2) {
+      const lib = new Map(base.library.map((x) => [x.id, x]));
+      const method = (window.LIBRARY_DEFAULT || [])[0];
+      const OLD = /casi-fallo|cerca-del-fallo|top set|serie1 efectiva|fallo-total|fallo-agotamiento|\(fallo\)/i;
+      for (const r of base.routines) {
+        for (const d of r.days || []) {
+          for (const ex of d.exercises || []) {
+            const l = lib.get(ex.libraryId);
+            if (l && l.builtIn) { ex.sets = l.sets; ex.reps = l.reps; }
+            else if (method && OLD.test(ex.reps || '')) { ex.sets = method.sets; ex.reps = method.reps; }
+          }
+        }
+      }
+      base.settings.repsV2 = true;
+      migrated = true;
+    }
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {
       base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));
