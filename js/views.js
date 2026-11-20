@@ -1922,7 +1922,7 @@
       ['Apunta tus pesos', 'Anota el peso y las repeticiones de cada serie para saber qué superar el próximo día.'],
       ['Escucha a tu cuerpo', 'Si algo duele (dolor, no esfuerzo), para y coméntamelo.'],
     ];
-    const total = 1 + (r.notes ? 1 : 0) + pages.length + 1;
+    const total = 1 + 1 + (r.notes ? 1 : 0) + pages.length + 1;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || 'David Orihuela · Entrenador Online'}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const dayTitle = (d, di) => d.name || `Día ${di + 1}`;
     const cover = `<section class="ds-page ds-cover">
@@ -1951,7 +1951,19 @@
         </div>
         ${foot(++n)}
       </section>`;
-    // «Cómo entrenar» va justo después de la portada, antes de la rutina.
+    // Página 2: el protocolo innegociable. Página 3: «Cómo entrenar». Después, la rutina.
+    const protocol = [
+      ['Feedback visual (vídeos).', 'Grábate la serie más pesada de cada ejercicio. Sin esto no se puede corregir la técnica ni la intensidad.'],
+      ['Registro de pesos.', 'Apunta el peso máximo logrado en cada serie pesada para asegurar la sobrecarga progresiva.'],
+      ['Check-in y reporte.', 'Es obligatorio cumplir con el reporte semanal o mensual.'],
+      ['Sinceridad e integridad.', 'No modifiques el plan ni la dieta por tu cuenta. Informa de inmediato ante cualquier dolor, lesión o exceso de estrés.'],
+      ['Comunicación directa.', 'Ante cualquier duda, contáctame por WhatsApp de inmediato. No asumas nada.'],
+      ['Gestión de ausencias.', 'Si fallas un día, cuenta como descanso. Retoma el plan exactamente donde lo dejaste. No te saltes sesiones.'],
+      ['Calendario continuo.', 'No te rijas por semanas naturales. El objetivo es completar todas las sesiones en el orden establecido, aunque el ciclo tarde más de 7 días.'],
+      ['Gestión de agujetas.', 'Si el dolor muscular es excesivo, sáltate ese día, haz el siguiente entrenamiento del ciclo y recupera el anterior cuando estés recuperado.'],
+    ];
+    out.push(simple('Para que el plan funcione', 'Protocolo innegociable', `<p class="rs-proto-intro">Su incumplimiento impide la supervisión y la evolución del plan.</p>
+      <ol class="rs-tips rs-proto">${protocol.map(([t, d], i) => `<li><i>${i + 1}</i><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ol>`));
     out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b>${Array.isArray(d) ? `<span class="rs-steps">${d.map((x) => `<span>${x}</span>`).join('')}</span>` : `<span>${d}</span>`}</li>`).join('')}</ul>`));
     if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
     const dayIdx = new Map(days.map((d, i) => [d.id, i]));

@@ -1744,3 +1744,13 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .switch[aria-checked="true"] { background: linear-gradient(90deg, #6e8bff, #22d3ee); }
 .switch[aria-checked="true"] span { transform: translateX(20px); }
 .card > .nodiet-bar:only-child { margin-bottom: 0; }
+/* PDF de la rutina: protocolo innegociable */
+.rs-proto-intro { margin: 0 0 5mm; font-style: italic; font-size: 11pt; color: #cbd5e1; text-align: center; }
+.rs-tips.rs-proto li { flex-direction: row; align-items: flex-start; gap: 4mm; border-left-color: #f87171; }
+.rs-tips.rs-proto li > div { display: flex; flex-direction: column; gap: .8mm; }
+.rs-tips.rs-proto i { flex-shrink: 0; display: grid; place-items: center; width: 8mm; height: 8mm; border-radius: 50%; background: #f87171; color: #121722; font: 800 11pt/1 'Archivo', sans-serif; font-style: normal; margin-top: .3mm; }
+.rs-tips.rs-proto { gap: 2mm; }
+.rs-tips.rs-proto li { padding: 2.6mm 6mm; }
+.rs-tips.rs-proto b { font-size: 11.5pt; }
+.rs-tips.rs-proto span { font-size: 10pt; line-height: 1.4; }
+.ds-page .rs-proto-intro { margin: -1mm 0 4mm; }
