@@ -10,7 +10,9 @@ import {
   getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs,
+} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const app = initializeApp({
   apiKey: 'AIzaSyAKJyR04QdmU_IEWhiH_lwxaUBOFLsM9Ek',
@@ -162,6 +164,7 @@ onAuthStateChanged(auth, async (user) => {
     token = m.exists() ? m.data().portal : '';
     if (!token && urlToken) { await claim(user, urlToken); token = urlToken; }
     portal = token ? await readPortal(token) : null;
+    if (portal) await loadWorkouts();
   } catch (e) {
     console.error(e);
     message('No se ha podido abrir', 'Comprueba tu conexión e inténtalo de nuevo en unos minutos.', logoutBtn());
@@ -193,14 +196,20 @@ function render() {
   const r = routine();
   const days = r.days || [];
   const h = location.hash.slice(1);
-  const tab = h.startsWith('dia-') ? 'rutina' : (['rutina', 'dieta', 'guia'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'rutina'));
+  // Entreno en marcha: pantalla propia (sin pestañas) hasta que lo termines.
+  if (h === 'entreno' && wk) { renderWorkout(); return; }
+  stopTicker();
+  const diaryRoute = h === 'diario' || h.startsWith('diario/') || h.startsWith('resumen/') || h === 'empezar';
+  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'rutina'));
   const tabs = [
     portal.noRoutine ? null : ['rutina', 'Rutina'],
+    portal.noRoutine ? null : ['diario', 'Diario'],
     portal.noDiet ? null : ['dieta', 'Dieta'],
     portal.noRoutine ? null : ['guia', 'Guía'],
   ].filter(Boolean);
   let body;
   if (h.startsWith('dia-') && days[Number(h.slice(4))]) body = dayView(days, Number(h.slice(4)));
+  else if (tab === 'diario') body = h === 'empezar' ? chooseDayView(days) : h.startsWith('resumen/') ? summaryView(h.slice(8)) : h.startsWith('diario/') ? dateView(h.slice(7)) : diaryView(days);
   else if (tab === 'dieta') body = dietView();
   else if (tab === 'guia') body = guideView();
   else body = daysView(r);
@@ -215,7 +224,8 @@ function render() {
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
-  if (h.startsWith('dia-')) window.scrollTo(0, 0);
+  if (tab === 'diario') bindDiary();
+  if (h.startsWith('dia-') || h.startsWith('resumen/') || h === 'empezar') window.scrollTo(0, 0);
 }
 
 function daysView(r) {
@@ -332,4 +342,384 @@ function pdfButton(btn, html, name, done) {
     }
     setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 4000);
   };
+}
+
+/* =====================================================================
+ * Diario de entrenamiento
+ * - Calendario con los días entrenados y la lista de entrenos.
+ * - «Entrenar hoy»: eliges el día de tu rutina y te guía ejercicio a ejercicio, serie a serie,
+ *   con la cuenta atrás del descanso (empezar, pausar, seguir). Apuntas el peso y las repeticiones.
+ * - Al terminar, resumen: tiempo, series, volumen y mejoras de peso respecto a la vez anterior.
+ * Se guarda en portal/{código}/workouts/{id} (lo ve también tu entrenador). El entreno en marcha se
+ * guarda además en este móvil, así no se pierde si se cierra la página.
+ * ===================================================================== */
+let workouts = []; // entrenos guardados, del más reciente al más antiguo
+let workoutsError = false;
+let wk = null; // entreno en marcha
+let cal = null; // mes que se ve en el calendario { y, m }
+let ticker = null;
+let wakeLock = null;
+
+const wkKey = () => `cz:entreno:${token}`;
+const pad2 = (n) => String(n).padStart(2, '0');
+const ymd = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const fmtDay = (s) => { const [y, m, d] = s.split('-').map(Number); return `${d} de ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? ` de ${y}` : ''}`; };
+const fmtClock = (sec) => { sec = Math.max(0, Math.ceil(sec)); return `${Math.floor(sec / 60)}:${pad2(sec % 60)}`; };
+const fmtDuration = (sec) => { const m = Math.round(sec / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad2(m % 60)} min`; };
+const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+const fmtKg = (n) => (Math.round(n * 100) / 100).toLocaleString('es-ES');
+
+/** «2 min» → 120 s · «90 s» → 90 · «2 a 3 min» → 120 (el primero). Sin dato: 2 min. */
+function restSeconds(text) {
+  const t = String(text || '').toLowerCase();
+  const n = num((t.match(/\d+(?:[.,]\d+)?/) || [])[0]);
+  if (n === null) return 120;
+  return Math.round(/min|'/.test(t) ? n * 60 : n);
+}
+
+/** Nombre y pauta de cada serie: el método de las 3 series si la rutina lo usa. */
+function setInfo(ex, i) {
+  const method = /pesada/i.test(ex.reps || '') && ex.sets.length === 3;
+  if (method) {
+    return [
+      ['Serie 1 · Efectiva', '12–15 reps, a 1 del fallo'],
+      ['Serie 2 · Pesada', 'sube el peso · 6–8 reps al fallo total'],
+      ['Serie 3 · Agotamiento', 'peso de la serie 1 · al fallo total'],
+    ][i];
+  }
+  return [`Serie ${i + 1}`, ex.reps || ''];
+}
+
+async function loadWorkouts() {
+  workoutsError = false;
+  try {
+    const snap = await getDocs(collection(db, 'portal', token, 'workouts'));
+    workouts = snap.docs.map((d) => d.data()).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0));
+  } catch (e) {
+    console.error(e);
+    workouts = [];
+    workoutsError = true;
+  }
+  try { wk = JSON.parse(localStorage.getItem(wkKey()) || 'null'); } catch (e) { wk = null; }
+}
+
+function saveWk() {
+  try { if (wk) localStorage.setItem(wkKey(), JSON.stringify(wk)); else localStorage.removeItem(wkKey()); } catch (e) { /* sin espacio */ }
+}
+
+/** Lo que hiciste la última vez en ese ejercicio (antes del entreno `beforeId`). */
+function lastSets(ex, beforeId) {
+  for (const w of workouts) {
+    if (w.id === beforeId) continue;
+    const e = (w.exercises || []).find((x) => (ex.id && x.id === ex.id) || x.name === ex.name);
+    if (e && e.sets.some((st) => st.done && num(st.kg) !== null)) return { w, sets: e.sets };
+  }
+  return null;
+}
+const bestKg = (sets) => Math.max(-Infinity, ...sets.filter((st) => st.done).map((st) => num(st.kg)).filter((n) => n !== null));
+
+/* ---------- Calendario y lista ---------- */
+function diaryView(days) {
+  const now = new Date();
+  if (!cal) cal = { y: now.getFullYear(), m: now.getMonth() };
+  const first = new Date(cal.y, cal.m, 1);
+  const lead = (first.getDay() + 6) % 7; // la semana empieza en lunes
+  const total = new Date(cal.y, cal.m + 1, 0).getDate();
+  const byDate = new Map();
+  for (const w of workouts) byDate.set(w.date, (byDate.get(w.date) || 0) + 1);
+  const today = ymd();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span class="cz-cal-cell empty"></span>');
+  for (let d = 1; d <= total; d++) {
+    const key = `${cal.y}-${pad2(cal.m + 1)}-${pad2(d)}`;
+    const n = byDate.get(key) || 0;
+    const cls = ['cz-cal-cell', n ? 'done' : '', key === today ? 'today' : ''].filter(Boolean).join(' ');
+    cells.push(n ? `<a class="${cls}" href="#diario/${key}">${d}</a>` : `<span class="${cls}">${d}</span>`);
+  }
+  const monthCount = workouts.filter((w) => w.date.startsWith(`${cal.y}-${pad2(cal.m + 1)}`)).length;
+  const recent = workouts.slice(0, 6);
+  return `
+    ${wk ? `<section class="card cz-card cz-resume">
+      <h2>Tienes un entreno a medias</h2>
+      <p class="muted">${esc(wk.dayName)} · empezado el ${esc(fmtDay(wk.date))}.</p>
+      <div class="cz-row"><a class="btn primary" href="#entreno">▶ Continuar</a><button type="button" class="btn" id="cz-wk-discard">Descartar</button></div>
+    </section>` : `<a class="btn primary cz-big" href="#empezar">▶ Entrenar hoy</a>`}
+    ${workoutsError ? '<p class="cz-error">No se han podido cargar tus entrenos. Comprueba la conexión.</p>' : ''}
+    <section class="card cz-card cz-cal">
+      <div class="cz-cal-head">
+        <button type="button" class="btn sm" data-cal="-1" aria-label="Mes anterior">‹</button>
+        <strong>${MONTHS[cal.m][0].toUpperCase() + MONTHS[cal.m].slice(1)} ${cal.y}</strong>
+        <button type="button" class="btn sm" data-cal="1" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="cz-cal-grid">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((x) => `<span class="cz-cal-dow">${x}</span>`).join('')}${cells.join('')}</div>
+      <p class="muted cz-cal-foot">${monthCount ? `${monthCount} ${monthCount === 1 ? 'entreno' : 'entrenos'} este mes` : 'Aún no hay entrenos este mes'}</p>
+    </section>
+    ${recent.length ? `<section class="card cz-card"><h2>Últimos entrenos</h2>
+      <ul class="cz-wlist">${recent.map(workoutRow).join('')}</ul></section>` : ''}`;
+}
+
+const workoutRow = (w) => `<li><a href="#resumen/${esc(w.id)}">
+    <span class="grow"><strong>${esc(w.dayName)}</strong><small>${esc(fmtDay(w.date))} · ${fmtDuration(w.durationSec || 0)}</small></span>
+    <span class="cz-wlist-n">${(w.exercises || []).reduce((n, e) => n + e.sets.filter((st) => st.done).length, 0)} series</span>
+  </a></li>`;
+
+function dateView(date) {
+  const list = workouts.filter((w) => w.date === date);
+  return `<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div>
+    <h2 class="cz-day-title"><small>Entrenos</small>${esc(fmtDay(date))}</h2>
+    ${list.length ? `<section class="card cz-card"><ul class="cz-wlist">${list.map(workoutRow).join('')}</ul></section>` : '<p class="muted">Ese día no entrenaste.</p>'}`;
+}
+
+/** Elegir el día de la rutina. Se propone el siguiente al último que hiciste (calendario continuo). */
+function chooseDayView(days) {
+  if (!days.length) return '<section class="card cz-card"><p class="muted">Todavía no tienes rutina. Cuando tu entrenador la prepare, podrás entrenar desde aquí.</p></section>';
+  const last = workouts[0];
+  const next = last && Number.isInteger(last.dayIndex) ? (last.dayIndex + 1) % days.length : 0;
+  return `<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div>
+    <h2 class="cz-day-title"><small>Entrenar hoy</small>¿Qué día toca?</h2>
+    <p class="muted">${last ? `La última vez hiciste <strong>${esc(last.dayName)}</strong>. Te toca el siguiente:` : 'Elige el día de tu rutina que vas a entrenar:'}</p>
+    <section class="cz-days">
+      ${days.map((d, i) => `<button type="button" class="card cz-day${i === next ? ' next' : ''}" data-start="${i}">
+        <span class="cz-day-n">${i + 1}</span>
+        <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
+        ${i === next ? '<span class="cz-next">Te toca</span>' : `<span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>`}
+      </button>`).join('')}
+    </section>`;
+}
+
+function bindDiary() {
+  root.querySelectorAll('[data-cal]').forEach((b) => { b.onclick = () => { cal.m += Number(b.dataset.cal); if (cal.m < 0) { cal.m = 11; cal.y--; } if (cal.m > 11) { cal.m = 0; cal.y++; } render(); }; });
+  root.querySelectorAll('[data-start]').forEach((b) => { b.onclick = () => startWorkout(Number(b.dataset.start)); });
+  const disc = document.getElementById('cz-wk-discard');
+  if (disc) disc.onclick = () => { if (confirm('¿Descartar el entreno a medias? Se perderán los pesos que hayas apuntado.')) { wk = null; saveWk(); render(); } };
+}
+
+/* ---------- Entreno en marcha ---------- */
+function startWorkout(i) {
+  const d = (routine().days || [])[i];
+  if (!d) return;
+  const exercises = [];
+  for (const g of d.groups) {
+    for (const ex of g.exs) {
+      const n = Math.min(10, Math.max(1, parseInt(ex.sets, 10) || 3));
+      exercises.push({
+        id: ex.id, name: ex.name, group: g.g, color: g.color, img0: ex.img0, img1: ex.img1,
+        reps: ex.reps, rest: ex.rest, notes: ex.notes, sets: Array.from({ length: n }, () => ({ kg: '', reps: '', done: false })),
+      });
+    }
+  }
+  wk = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, date: ymd(), dayIndex: i, dayName: d.name, startedAt: Date.now(), ex: 0, set: 0, timer: null, exercises };
+  saveWk();
+  location.hash = '#entreno';
+}
+
+function renderWorkout() {
+  const e = wk.exercises[wk.ex];
+  const total = wk.exercises.length;
+  const doneSets = wk.exercises.reduce((n, x) => n + x.sets.filter((st) => st.done).length, 0);
+  const allSets = wk.exercises.reduce((n, x) => n + x.sets.length, 0);
+  const last = lastSets(e, wk.id);
+  const restSec = restSeconds(e.rest);
+  const t = wk.timer;
+  root.innerHTML = `
+    <section class="card cz-wk-top">
+      <div class="grow"><small>${esc(wk.dayName)} · ejercicio ${wk.ex + 1} de ${total}</small><strong id="cz-elapsed">${fmtClock((Date.now() - wk.startedAt) / 1000)}</strong></div>
+      <button type="button" class="btn sm" id="cz-wk-finish">Terminar</button>
+    </section>
+    <div class="cz-progress"><i style="width:${Math.round((doneSets / allSets) * 100)}%"></i></div>
+    <section class="card cz-group cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
+      <div class="cz-glabel"><i></i>${esc(e.group)}</div>
+      ${e.img0 ? `<div class="cz-photos"><figure><img src="${esc(e.img0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${esc(e.img1)}" alt=""><figcaption>Final</figcaption></figure></div>` : ''}
+      <h2 class="cz-wk-name">${esc(e.name)}</h2>
+      <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))}</p>
+      ${e.notes ? `<p class="cz-notes">${esc(e.notes)}</p>` : ''}
+      ${last ? `<p class="cz-last">La última vez (${esc(fmtDay(last.w.date))}): ${last.sets.filter((st) => st.done).map((st) => `${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}`).join(' · ')}</p>` : ''}
+      <div class="cz-sets">
+        ${e.sets.map((st, i) => {
+          const [label, hint] = setInfo(e, i);
+          const prev = last && last.sets[i];
+          return `<div class="cz-set${st.done ? ' done' : ''}${i === wk.set && !st.done ? ' current' : ''}">
+            <div class="cz-set-label"><strong>${esc(label)}</strong><small>${esc(hint)}</small></div>
+            <label class="cz-in"><input type="text" inputmode="decimal" data-set="${i}" data-k="kg" value="${esc(st.kg)}" placeholder="${prev && prev.kg ? esc(prev.kg) : '0'}"><span>kg</span></label>
+            <label class="cz-in"><input type="text" inputmode="numeric" data-set="${i}" data-k="reps" value="${esc(st.reps)}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
+            <button type="button" class="cz-check" data-done="${i}" aria-pressed="${st.done}" aria-label="Serie hecha">✓</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </section>
+    <section class="card cz-timer${t && t.running ? ' running' : ''}" id="cz-timer">
+      <small>Descanso${t ? '' : ` · ${fmtClock(restSec)}`}</small>
+      <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSec)}</strong>
+      <div class="cz-row">
+        ${!t ? `<button type="button" class="btn primary" id="cz-t-start">✓ Serie hecha · empezar descanso</button>`
+          : t.running ? '<button type="button" class="btn primary" id="cz-t-pause">⏸ Pausar</button>'
+          : '<button type="button" class="btn primary" id="cz-t-resume">▶ Seguir</button>'}
+        ${t ? '<button type="button" class="btn" id="cz-t-add">+30 s</button><button type="button" class="btn" id="cz-t-skip">Saltar ›</button>' : ''}
+      </div>
+    </section>
+    <div class="cz-row cz-wk-nav">
+      <button type="button" class="btn" id="cz-prev" ${wk.ex === 0 ? 'disabled' : ''}>‹ Anterior</button>
+      <button type="button" class="btn" id="cz-next">${wk.ex === total - 1 ? 'Terminar ✓' : 'Siguiente ejercicio ›'}</button>
+    </div>`;
+  bindWorkout();
+  startTicker();
+  keepAwake();
+}
+
+function bindWorkout() {
+  root.querySelectorAll('input[data-set]').forEach((inp) => {
+    inp.oninput = () => { wk.exercises[wk.ex].sets[Number(inp.dataset.set)][inp.dataset.k] = inp.value.trim(); saveWk(); };
+  });
+  root.querySelectorAll('[data-done]').forEach((b) => {
+    b.onclick = () => {
+      const i = Number(b.dataset.done);
+      const st = wk.exercises[wk.ex].sets[i];
+      st.done = !st.done;
+      if (st.done) wk.set = nextOpenSet(wk.exercises[wk.ex]);
+      saveWk(); renderWorkout();
+    };
+  });
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on('cz-t-start', () => {
+    // Marca la serie en curso como hecha (con lo que hayas apuntado) y empieza la cuenta atrás.
+    const e = wk.exercises[wk.ex];
+    const st = e.sets[wk.set] || e.sets.find((x) => !x.done);
+    if (st) st.done = true;
+    wk.timer = { running: true, endAt: Date.now() + restSeconds(e.rest) * 1000, left: 0 };
+    saveWk(); unlockAudio(); renderWorkout();
+  });
+  on('cz-t-pause', () => { wk.timer = { running: false, left: timerLeft() }; saveWk(); renderWorkout(); });
+  on('cz-t-resume', () => { wk.timer = { running: true, endAt: Date.now() + wk.timer.left * 1000 }; saveWk(); renderWorkout(); });
+  on('cz-t-add', () => { if (wk.timer.running) wk.timer.endAt += 30000; else wk.timer.left += 30; saveWk(); updateClock(); });
+  on('cz-t-skip', () => restDone(false));
+  on('cz-prev', () => { wk.ex--; wk.set = nextOpenSet(wk.exercises[wk.ex]); wk.timer = null; saveWk(); renderWorkout(); window.scrollTo(0, 0); });
+  on('cz-next', () => { if (wk.ex === wk.exercises.length - 1) finishWorkout(); else { wk.ex++; wk.set = nextOpenSet(wk.exercises[wk.ex]); wk.timer = null; saveWk(); renderWorkout(); window.scrollTo(0, 0); } });
+  on('cz-wk-finish', () => finishWorkout());
+}
+
+const nextOpenSet = (e) => { const i = e.sets.findIndex((st) => !st.done); return i < 0 ? e.sets.length : i; };
+const timerLeft = () => (!wk || !wk.timer ? 0 : wk.timer.running ? (wk.timer.endAt - Date.now()) / 1000 : wk.timer.left);
+
+function updateClock() {
+  const c = document.getElementById('cz-timer-clock');
+  if (c && wk && wk.timer) c.textContent = fmtClock(timerLeft());
+  const el = document.getElementById('cz-elapsed');
+  if (el && wk) el.textContent = fmtClock((Date.now() - wk.startedAt) / 1000);
+}
+
+function startTicker() {
+  stopTicker();
+  ticker = setInterval(() => {
+    if (!wk || location.hash !== '#entreno') { stopTicker(); return; }
+    updateClock();
+    if (wk.timer && wk.timer.running && timerLeft() <= 0) restDone(true);
+  }, 250);
+}
+function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); }
+
+/** Fin del descanso: aviso y a la siguiente serie; tras la última serie, al siguiente ejercicio. */
+function restDone(alert) {
+  if (alert) { beep(); if (navigator.vibrate) navigator.vibrate([300, 150, 300]); }
+  wk.timer = null;
+  const e = wk.exercises[wk.ex];
+  const open = nextOpenSet(e);
+  if (open >= e.sets.length) {
+    if (wk.ex < wk.exercises.length - 1) { wk.ex++; wk.set = nextOpenSet(wk.exercises[wk.ex]); saveWk(); renderWorkout(); window.scrollTo(0, 0); flash('Siguiente ejercicio'); return; }
+    wk.set = e.sets.length;
+    saveWk(); renderWorkout(); flash('¡Última serie hecha! Pulsa «Terminar ✓»');
+    return;
+  }
+  wk.set = open;
+  saveWk(); renderWorkout(); flash(`A por la serie ${open + 1}`);
+}
+
+function flash(text) {
+  const el = document.createElement('div');
+  el.className = 'cz-flash';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+/* Pitido al terminar el descanso (el móvil necesita que el sonido se active con un toque). */
+let audio = null;
+function unlockAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { audio = null; } }
+function beep() {
+  if (!audio) return;
+  [0, 0.25, 0.5].forEach((t) => {
+    const o = audio.createOscillator(); const g = audio.createGain();
+    o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+    g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.18);
+    o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
+  });
+}
+
+/* La pantalla no se apaga mientras entrenas (si el móvil lo permite). */
+async function keepAwake() { try { if (!wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { wakeLock = null; } }
+function releaseAwake() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); } });
+
+async function finishWorkout() {
+  const doneSets = wk.exercises.reduce((n, x) => n + x.sets.filter((st) => st.done).length, 0);
+  const allSets = wk.exercises.reduce((n, x) => n + x.sets.length, 0);
+  if (!doneSets) { if (confirm('No has marcado ninguna serie. ¿Salir sin guardar el entreno?')) { wk = null; saveWk(); location.hash = '#diario'; } return; }
+  if (doneSets < allSets && !confirm(`Llevas ${doneSets} de ${allSets} series. ¿Terminar y guardar el entreno?`)) return;
+  const endedAt = Date.now();
+  const w = {
+    id: wk.id, date: wk.date, dayIndex: wk.dayIndex, dayName: wk.dayName, startedAt: wk.startedAt, endedAt,
+    durationSec: Math.round((endedAt - wk.startedAt) / 1000),
+    exercises: wk.exercises.map((x) => ({ id: x.id || '', name: x.name, group: x.group, sets: x.sets.map((st) => ({ kg: st.kg, reps: st.reps, done: !!st.done })) })),
+  };
+  root.querySelector('#cz-wk-finish').disabled = true;
+  try {
+    await setDoc(doc(db, 'portal', token, 'workouts', w.id), w);
+  } catch (e) {
+    console.error(e);
+    alert('No se ha podido guardar el entreno (sin conexión). No cierres la página e inténtalo otra vez en un momento.');
+    root.querySelector('#cz-wk-finish').disabled = false;
+    return;
+  }
+  workouts.unshift(w);
+  wk = null; saveWk();
+  stopTicker();
+  location.hash = `#resumen/${w.id}`;
+}
+
+/* ---------- Resumen de un entreno ---------- */
+function summaryView(id) {
+  const w = workouts.find((x) => x.id === id);
+  if (!w) return '<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div><p class="muted">No se encuentra este entreno.</p>';
+  const sets = w.exercises.flatMap((e) => e.sets.filter((st) => st.done));
+  const volume = sets.reduce((v, st) => v + (num(st.kg) || 0) * (num(st.reps) || 0), 0);
+  const ups = [];
+  const firsts = [];
+  for (const e of w.exercises) {
+    const now = bestKg(e.sets);
+    if (!Number.isFinite(now)) continue;
+    // «La vez anterior» = el entreno anterior a este con ese ejercicio.
+    const older = workouts.slice(workouts.indexOf(w) + 1).find((x) => (x.exercises || []).some((y) => ((e.id && y.id === e.id) || y.name === e.name) && y.sets.some((st) => st.done && num(st.kg) !== null)));
+    const before = older ? bestKg(older.exercises.find((y) => (e.id && y.id === e.id) || y.name === e.name).sets) : null;
+    if (before === null || !Number.isFinite(before)) firsts.push(e.name);
+    else if (now > before) ups.push({ name: e.name, before, now });
+  }
+  return `<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div>
+    <section class="card cz-card cz-summary">
+      <small class="cz-kicker">${esc(fmtDay(w.date))}</small>
+      <h2>${workouts[0] === w && Date.now() - w.endedAt < 3600e3 ? '¡Entreno completado! 💪' : esc(w.dayName)}</h2>
+      ${workouts[0] === w && Date.now() - w.endedAt < 3600e3 ? `<p class="muted">${esc(w.dayName)}</p>` : ''}
+      <div class="cz-stats">
+        <div><strong>${fmtDuration(w.durationSec || 0)}</strong><small>Tiempo</small></div>
+        <div><strong>${sets.length}</strong><small>Series</small></div>
+        <div><strong>${volume ? `${fmtKg(Math.round(volume))} kg` : '—'}</strong><small>Volumen</small></div>
+      </div>
+      ${ups.length ? `<h3>Mejoras de peso</h3><ul class="cz-ups">${ups.map((u) => `<li><span>${esc(u.name)}</span><b>${fmtKg(u.before)} → ${fmtKg(u.now)} kg <em>+${fmtKg(u.now - u.before)}</em></b></li>`).join('')}</ul>`
+        : '<p class="muted">Sin mejoras de peso esta vez. Recuerda: aumentar la intensidad también es progreso.</p>'}
+      ${firsts.length ? `<p class="muted cz-firsts">Primera vez que apuntas: ${esc(firsts.join(', '))}. La próxima vez verás si mejoras.</p>` : ''}
+    </section>
+    <section class="card cz-card">
+      <h2>Detalle</h2>
+      ${w.exercises.map((e) => `<div class="cz-sum-ex"><strong>${esc(e.name)}</strong>
+        <span>${e.sets.map((st, i) => (st.done ? `<i>${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}</i>` : `<i class="skip">S${i + 1} sin hacer</i>`)).join('')}</span></div>`).join('')}
+    </section>`;
 }

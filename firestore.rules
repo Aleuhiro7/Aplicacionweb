@@ -34,6 +34,13 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
+    // Diario de entrenamiento del cliente: lo escribe el cliente de esa zona y lo pueden ver él y su entrenador.
+    match /portal/{token}/workouts/{wid} {
+      allow read, write: if request.auth != null
+        && (get(/databases/$(database)/documents/portal/$(token)).data.get('memberUid', null) == request.auth.uid
+            || get(/databases/$(database)/documents/portal/$(token)).data.owner == request.auth.uid);
+    }
+
     // Cuenta de cada cliente: qué zona es la suya. Solo la ve y la cambia él.
     match /members/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
