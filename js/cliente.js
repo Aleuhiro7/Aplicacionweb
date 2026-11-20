@@ -11,7 +11,7 @@ import {
   sendPasswordResetEmail, signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs,
+  getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const app = initializeApp({
@@ -225,6 +225,16 @@ function render() {
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (tab === 'diario') bindDiary();
+  const del = root.querySelector('[data-del]');
+  if (del) del.onclick = async () => {
+    const pick = await choose('¿Borrar este entreno?', 'Se quitará de tu diario y de tu historial. No se puede deshacer.', [['no', 'No, dejarlo', 'primary'], ['si', 'Sí, borrarlo', 'danger']]);
+    if (pick !== 'si') return;
+    try {
+      await deleteDoc(doc(db, 'portal', token, 'workouts', del.dataset.del));
+      workouts = workouts.filter((x) => x.id !== del.dataset.del);
+      location.hash = '#diario';
+    } catch (e) { console.error(e); alert('No se ha podido borrar (sin conexión). Inténtalo otra vez.'); }
+  };
   if (h.startsWith('dia-') || h.startsWith('resumen/') || h === 'empezar') window.scrollTo(0, 0);
 }
 
@@ -689,11 +699,33 @@ async function keepAwake() { try { if (!wakeLock && navigator.wakeLock) { wakeLo
 function releaseAwake() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); } });
 
+/** Ventana propia (no la del navegador, que se acepta sin querer) con las opciones. Devuelve la elegida. */
+function choose(title, text, options) {
+  return new Promise((resolve) => {
+    const box = document.createElement('div');
+    box.className = 'cz-sheet';
+    box.innerHTML = `<div class="cz-sheet-in card"><strong>${esc(title)}</strong><p class="muted">${esc(text)}</p>
+      ${options.map(([k, l, cls]) => `<button type="button" class="btn ${cls || ''}" data-k="${k}">${esc(l)}</button>`).join('')}</div>`;
+    box.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b || e.target === box) { box.remove(); resolve(b ? b.dataset.k : 'cancel'); } };
+    document.body.appendChild(box);
+  });
+}
+
+/** Botón «Terminar» de arriba o fin del entreno. Si quedan series, pregunta qué hacer (seguir es lo primero). */
 async function finishWorkout() {
   const doneSets = wk.exercises.reduce((n, x) => n + x.sets.filter((st) => st.done).length, 0);
   const allSets = wk.exercises.reduce((n, x) => n + x.sets.length, 0);
-  if (!doneSets) { if (confirm('No has marcado ninguna serie. ¿Salir sin guardar el entreno?')) { wk = null; saveWk(); location.hash = '#diario'; } return; }
-  if (doneSets < allSets && !confirm(`Llevas ${doneSets} de ${allSets} series. ¿Terminar y guardar el entreno?`)) return;
+  if (doneSets < allSets) {
+    const pick = await choose('¿Terminar el entreno ahora?', doneSets
+      ? `Llevas ${doneSets} de ${allSets} series. Si terminas, se guarda solo lo que has hecho.`
+      : 'Todavía no has hecho ninguna serie.', [
+      ['seguir', 'Seguir entrenando', 'primary'],
+      ...(doneSets ? [['guardar', `Terminar y guardar (${doneSets} ${doneSets === 1 ? 'serie' : 'series'})`]] : []),
+      ['descartar', 'Descartar el entreno (no se guarda)', 'danger'],
+    ]);
+    if (pick === 'descartar') { wk = null; saveWk(); stopTicker(); location.hash = '#diario'; return; }
+    if (pick !== 'guardar') return;
+  }
   const endedAt = Date.now();
   const w = {
     id: wk.id, date: wk.date, dayIndex: wk.dayIndex, dayName: wk.dayName, startedAt: wk.startedAt, endedAt,
@@ -750,5 +782,6 @@ function summaryView(id) {
       <h2>Detalle</h2>
       ${w.exercises.map((e) => `<div class="cz-sum-ex"><strong>${esc(e.name)}</strong>
         <span>${e.sets.map((st, i) => (st.done ? `<i>${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}</i>` : `<i class="skip">S${i + 1} sin hacer</i>`)).join('')}</span></div>`).join('')}
-    </section>`;
+    </section>
+    <div class="cz-links"><button type="button" class="link-btn cz-del" data-del="${esc(w.id)}">Borrar este entreno</button></div>`;
 }

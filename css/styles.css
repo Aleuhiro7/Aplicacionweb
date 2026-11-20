@@ -1931,3 +1931,9 @@ button.cz-day { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .cz-approach b { color: #fb923c; }
 p.cz-approach { display: block; margin: 0 0 12px; padding: 8px 12px; font-size: .8rem; line-height: 1.4; color: var(--muted); }
 p.cz-approach b { color: #fb923c; font-weight: 700; }
+.cz-sheet { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; padding: 16px; background: rgba(5, 8, 14, .7); }
+.cz-sheet-in { width: min(480px, 100%); display: flex; flex-direction: column; gap: 10px; margin: 0 0 env(safe-area-inset-bottom); }
+.cz-sheet-in strong { font: 700 1.5rem/1.1 "Barlow Condensed", sans-serif; }
+.cz-sheet-in p { margin: 0 0 6px; }
+.cz-sheet-in .btn { justify-content: center; padding: 14px; font-size: 1rem; }
+.cz-del { color: var(--danger); margin-bottom: 24px; }
