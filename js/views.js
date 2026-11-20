@@ -1918,7 +1918,7 @@
       ]],
       ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
       ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
-      ['Progresa poco a poco', 'Cuando completes todas las repeticiones con buena técnica, sube un poco el peso la próxima vez.'],
+      ['Progresa poco a poco', 'Cuando completes todas las repeticiones con buena técnica, sube un poco el peso la próxima vez. Aumentar la intensidad también es progreso.'],
       ['Apunta tus pesos', 'Anota el peso y las repeticiones de cada serie para saber qué superar el próximo día.'],
       ['Escucha a tu cuerpo', 'Si algo duele (dolor, no esfuerzo), para y coméntamelo.'],
     ];
