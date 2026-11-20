@@ -886,7 +886,11 @@
           v.custom = [...own];
         }
         if (ex) Object.assign(ex, v);
-        else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, group ? { group } : {}, v));
+        else {
+          // Si el nombre es el de un ejercicio de la biblioteca, queda enlazado (fotos y pautas al día).
+          const m = Store.library().find((x) => x.name.toLowerCase() === String(v.name).trim().toLowerCase());
+          (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, group ? { group } : {}, m ? { libraryId: m.id, group: group || m.group } : {}, v));
+        }
         saveRoutine(r);
         if (!ex) UI.toast('Ejercicio añadido');
       },

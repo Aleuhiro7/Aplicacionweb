@@ -58,9 +58,18 @@
     // Así, cuando cambian las pautas de la biblioteca, cambian solas en todas las rutinas.
     {
       const lib = new Map(base.library.map((x) => [x.id, x]));
+      const key = (n) => String(n || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const byName = new Map(base.library.filter((x) => x.builtIn).map((x) => [key(x.name), x]));
       for (const r of base.routines) {
         for (const d of r.days || []) {
           for (const ex of d.exercises || []) {
+            // Ejercicios añadidos escribiendo el nombre: si es uno de la biblioteca, se enlaza con él.
+            if (!lib.get(ex.libraryId) && byName.has(key(ex.name))) {
+              const m = byName.get(key(ex.name));
+              ex.libraryId = m.id;
+              if (!ex.group) ex.group = m.group;
+              migrated = true;
+            }
             const l = lib.get(ex.libraryId);
             if (!l || !l.builtIn) continue;
             const own = ex.custom || [];
