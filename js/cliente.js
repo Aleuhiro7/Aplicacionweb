@@ -225,6 +225,7 @@ function render() {
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (tab === 'diario') bindDiary();
+  if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
   const del = root.querySelector('[data-del]');
   if (del) del.onclick = async () => {
     const pick = await choose('¿Borrar este entreno?', 'Se quitará de tu diario y de tu historial. No se puede deshacer.', [['no', 'No, dejarlo', 'primary'], ['si', 'Sí, borrarlo', 'danger']]);
@@ -465,6 +466,7 @@ function diaryView(days) {
       <div class="cz-cal-grid">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((x) => `<span class="cz-cal-dow">${x}</span>`).join('')}${cells.join('')}</div>
       <p class="muted cz-cal-foot">${monthCount ? `${monthCount} ${monthCount === 1 ? 'entreno' : 'entrenos'} este mes` : 'Aún no hay entrenos este mes'}</p>
     </section>
+    <div class="cz-links cz-howto"><button type="button" class="link-btn" id="cz-tour">¿Cómo funciona el diario?</button></div>
     ${recent.length ? `<section class="card cz-card"><h2>Últimos entrenos</h2>
       <ul class="cz-wlist">${recent.map(workoutRow).join('')}</ul></section>` : ''}`;
 }
@@ -498,7 +500,51 @@ function chooseDayView(days) {
     </section>`;
 }
 
+/* ---------- Tutorial del diario: sale solo la primera vez (y con «¿Cómo funciona el diario?») ---------- */
+const TOUR = [
+  ['📒', 'Tu diario de entrenamiento', 'Aquí entrenas cada día con tu rutina, paso a paso, y queda todo apuntado: lo que haces, los pesos que mueves y cómo mejoras.'],
+  ['▶️', 'Entrenar hoy', 'Cuando vayas a entrenar, pulsa «Entrenar hoy» y elige el día de tu rutina. Te marcamos el que te toca.'],
+  ['🏋️', 'Serie a serie', 'Te llevamos ejercicio a ejercicio. Antes de empezar cada uno, haz tus series de aproximación. Apunta el peso y las repeticiones de la serie y pulsa ▶.'],
+  ['⏱️', 'El descanso', 'Al acabar la serie, pulsa ▶ para empezar la cuenta atrás del descanso. Puedes pausarla o reiniciarla. Cuando termine te avisamos y pasamos a la siguiente serie.'],
+  ['📈', 'Tu progreso', 'Al terminar verás tu resumen con las mejoras. Los días entrenados se marcan en el calendario y tu entrenador lo ve todo para ajustar tu plan.'],
+];
+const tourKey = () => `cz:tour:${auth.currentUser ? auth.currentUser.uid : ''}`;
+function maybeTour() {
+  let seen = false;
+  try { seen = !!localStorage.getItem(tourKey()); } catch (e) { seen = true; }
+  if (!seen && !document.querySelector('.cz-tour')) showTour();
+}
+function showTour() {
+  let i = 0;
+  const box = document.createElement('div');
+  box.className = 'cz-sheet cz-tour';
+  const done = () => { try { localStorage.setItem(tourKey(), '1'); } catch (e) { /* sin almacenamiento */ } box.remove(); };
+  const paint = () => {
+    const [icon, title, text] = TOUR[i];
+    const last = i === TOUR.length - 1;
+    box.innerHTML = `<div class="cz-sheet-in card">
+      <div class="cz-tour-icon">${icon}</div>
+      <small class="cz-kicker">${i + 1} de ${TOUR.length}</small>
+      <strong>${esc(title)}</strong>
+      <p class="muted">${esc(text)}</p>
+      <div class="cz-tour-dots">${TOUR.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      <button type="button" class="btn primary" data-t="next">${last ? '¡Empezar!' : 'Siguiente ›'}</button>
+      ${last ? '' : '<button type="button" class="link-btn" data-t="skip">Saltar</button>'}
+    </div>`;
+  };
+  box.onclick = (e) => {
+    const b = e.target.closest('[data-t]');
+    if (!b) return;
+    if (b.dataset.t === 'skip' || i === TOUR.length - 1) { done(); return; }
+    i++; paint();
+  };
+  paint();
+  document.body.appendChild(box);
+}
+
 function bindDiary() {
+  const tb = document.getElementById('cz-tour');
+  if (tb) tb.onclick = () => showTour();
   root.querySelectorAll('[data-cal]').forEach((b) => { b.onclick = () => { cal.m += Number(b.dataset.cal); if (cal.m < 0) { cal.m = 11; cal.y--; } if (cal.m > 11) { cal.m = 0; cal.y++; } render(); }; });
   root.querySelectorAll('[data-start]').forEach((b) => { b.onclick = () => startWorkout(Number(b.dataset.start)); });
   const disc = document.getElementById('cz-wk-discard');

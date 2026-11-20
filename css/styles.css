@@ -1939,3 +1939,11 @@ p.cz-approach b { color: #fb923c; font-weight: 700; }
 .cz-del { color: var(--danger); margin-bottom: 24px; }
 .cz-stats small { text-align: center; line-height: 1.25; }
 .cz-stats div.up strong { color: #3ee6a0; }
+.cz-tour .cz-sheet-in { text-align: center; align-items: stretch; }
+.cz-tour-icon { font-size: 2.6rem; line-height: 1; margin-top: 4px; }
+.cz-tour .cz-sheet-in strong { margin-top: 2px; }
+.cz-tour .cz-sheet-in p { font-size: .98rem; line-height: 1.5; }
+.cz-tour-dots { display: flex; justify-content: center; gap: 6px; margin: 2px 0 6px; }
+.cz-tour-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.cz-tour-dots i.on { width: 22px; border-radius: 999px; background: linear-gradient(90deg, #6e8bff, #22d3ee); }
+.cz-howto { margin: -2px 0 14px; }
