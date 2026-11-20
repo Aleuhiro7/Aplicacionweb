@@ -509,19 +509,63 @@ function startWorkout(i) {
       });
     }
   }
-  wk = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, date: ymd(), dayIndex: i, dayName: d.name, startedAt: Date.now(), ex: 0, set: 0, timer: null, exercises };
+  wk = { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`, date: ymd(), dayIndex: i, dayName: d.name, startedAt: Date.now(), ex: 0, set: 0, phase: 'set', timer: null, exercises };
   saveWk();
   location.hash = '#entreno';
 }
 
+/* El entreno es guiado, paso a paso, en tres fases:
+ *  - «set»:  la serie que toca (solo esa se puede rellenar: kg y reps) → ▶
+ *  - «rest»: la cuenta atrás del descanso; ▶ para empezarla cuando acabes la serie, ⏸ pausar, ↺ reiniciar
+ *  - «ask»:  descanso terminado → «¿Pasamos a la siguiente serie?» (o al siguiente ejercicio)
+ * Tras la última serie del último ejercicio se termina el entreno. */
 function renderWorkout() {
+  if (!wk.phase) { wk.phase = 'set'; wk.set = nextOpenSet(wk.exercises[wk.ex]); }
   const e = wk.exercises[wk.ex];
   const total = wk.exercises.length;
   const doneSets = wk.exercises.reduce((n, x) => n + x.sets.filter((st) => st.done).length, 0);
   const allSets = wk.exercises.reduce((n, x) => n + x.sets.length, 0);
   const last = lastSets(e, wk.id);
-  const restSec = restSeconds(e.rest);
+  const cur = e.sets[wk.set] || {};
+  const prev = last && last.sets[wk.set];
+  const [label, hint] = setInfo(e, Math.min(wk.set, e.sets.length - 1));
+  const isLastSet = wk.set >= e.sets.length - 1;
+  const isLastEx = wk.ex >= total - 1;
   const t = wk.timer;
+  let step;
+  if (wk.phase === 'set') {
+    step = `<section class="card cz-step">
+      <small class="cz-kicker">Ahora · ${esc(label)}</small>
+      <p class="muted cz-step-hint">${esc(hint)}</p>
+      <div class="cz-step-inputs">
+        <label class="cz-in big"><input type="text" inputmode="decimal" id="cz-kg" value="${esc(cur.kg || '')}" placeholder="${prev && prev.kg ? esc(prev.kg) : '0'}"><span>kg</span></label>
+        <label class="cz-in big"><input type="text" inputmode="numeric" id="cz-reps" value="${esc(cur.reps || '')}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
+      </div>
+      ${prev && prev.kg ? `<p class="muted cz-step-prev">La última vez en esta serie: ${esc(prev.kg)} kg × ${esc(prev.reps || '—')}</p>` : ''}
+      <button type="button" class="btn primary cz-play" id="cz-go">▶ ${isLastSet && isLastEx ? 'Última serie · terminar entreno' : 'Hecho · ir al descanso'}</button>
+    </section>`;
+  } else if (wk.phase === 'rest') {
+    step = `<section class="card cz-timer${t && t.running ? ' running' : ''}">
+      <small>Descanso · ${esc(label)} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
+      <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSeconds(e.rest))}</strong>
+      <p class="muted cz-step-hint">${!t ? 'Cuando termines la serie, pulsa ▶ para empezar el descanso.' : t.running ? 'Descansando…' : 'En pausa.'}</p>
+      <div class="cz-row">
+        ${!t ? '<button type="button" class="btn primary cz-play" id="cz-t-start">▶ Empezar descanso</button>'
+          : t.running ? '<button type="button" class="btn primary" id="cz-t-pause">⏸ Pausar</button>'
+          : '<button type="button" class="btn primary" id="cz-t-resume">▶ Seguir</button>'}
+        ${t ? '<button type="button" class="btn" id="cz-t-reset">↺ Reiniciar</button>' : ''}
+      </div>
+      <button type="button" class="link-btn cz-edit-set" id="cz-edit">Corregir el peso de esta serie</button>
+    </section>`;
+  } else {
+    const nextText = !isLastSet ? `¿Pasamos a la serie ${wk.set + 2}?` : !isLastEx ? `¿Pasamos al siguiente ejercicio?<br><small>${esc(wk.exercises[wk.ex + 1].name)}</small>` : '¿Terminamos el entreno?';
+    step = `<section class="card cz-ask">
+      <strong class="cz-ask-title">¡Descanso terminado!</strong>
+      <p>${nextText}</p>
+      <button type="button" class="btn primary cz-play" id="cz-next">${!isLastSet ? 'Sí, siguiente serie ›' : !isLastEx ? 'Sí, siguiente ejercicio ›' : 'Terminar entreno ✓'}</button>
+      <button type="button" class="link-btn" id="cz-t-again">↺ Repetir el descanso</button>
+    </section>`;
+  }
   root.innerHTML = `
     <section class="card cz-wk-top">
       <div class="grow"><small>${esc(wk.dayName)} · ejercicio ${wk.ex + 1} de ${total}</small><strong id="cz-elapsed">${fmtClock((Date.now() - wk.startedAt) / 1000)}</strong></div>
@@ -532,73 +576,63 @@ function renderWorkout() {
       <div class="cz-glabel"><i></i>${esc(e.group)}</div>
       ${e.img0 ? `<div class="cz-photos"><figure><img src="${esc(e.img0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${esc(e.img1)}" alt=""><figcaption>Final</figcaption></figure></div>` : ''}
       <h2 class="cz-wk-name">${esc(e.name)}</h2>
-      <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))}</p>
+      <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))} · descanso ${esc(e.rest || '2 min')}</p>
       ${e.notes ? `<p class="cz-notes">${esc(e.notes)}</p>` : ''}
-      ${last ? `<p class="cz-last">La última vez (${esc(fmtDay(last.w.date))}): ${last.sets.filter((st) => st.done).map((st) => `${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}`).join(' · ')}</p>` : ''}
-      <div class="cz-sets">
-        ${e.sets.map((st, i) => {
-          const [label, hint] = setInfo(e, i);
-          const prev = last && last.sets[i];
-          return `<div class="cz-set${st.done ? ' done' : ''}${i === wk.set && !st.done ? ' current' : ''}">
-            <div class="cz-set-label"><strong>${esc(label)}</strong><small>${esc(hint)}</small></div>
-            <label class="cz-in"><input type="text" inputmode="decimal" data-set="${i}" data-k="kg" value="${esc(st.kg)}" placeholder="${prev && prev.kg ? esc(prev.kg) : '0'}"><span>kg</span></label>
-            <label class="cz-in"><input type="text" inputmode="numeric" data-set="${i}" data-k="reps" value="${esc(st.reps)}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
-            <button type="button" class="cz-check" data-done="${i}" aria-pressed="${st.done}" aria-label="Serie hecha">✓</button>
-          </div>`;
-        }).join('')}
-      </div>
+      <ol class="cz-setlist">${e.sets.map((st, i) => {
+        const [l2] = setInfo(e, i);
+        const state = st.done ? 'done' : i === wk.set ? 'now' : 'next';
+        return `<li class="${state}"><span>${esc(l2)}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)} kg` : '—'} × ${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : 'Pendiente'}</b></li>`;
+      }).join('')}</ol>
     </section>
-    <section class="card cz-timer${t && t.running ? ' running' : ''}" id="cz-timer">
-      <small>Descanso${t ? '' : ` · ${fmtClock(restSec)}`}</small>
-      <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSec)}</strong>
-      <div class="cz-row">
-        ${!t ? `<button type="button" class="btn primary" id="cz-t-start">✓ Serie hecha · empezar descanso</button>`
-          : t.running ? '<button type="button" class="btn primary" id="cz-t-pause">⏸ Pausar</button>'
-          : '<button type="button" class="btn primary" id="cz-t-resume">▶ Seguir</button>'}
-        ${t ? '<button type="button" class="btn" id="cz-t-add">+30 s</button><button type="button" class="btn" id="cz-t-skip">Saltar ›</button>' : ''}
-      </div>
-    </section>
-    <div class="cz-row cz-wk-nav">
-      <button type="button" class="btn" id="cz-prev" ${wk.ex === 0 ? 'disabled' : ''}>‹ Anterior</button>
-      <button type="button" class="btn" id="cz-next">${wk.ex === total - 1 ? 'Terminar ✓' : 'Siguiente ejercicio ›'}</button>
-    </div>`;
+    ${step}`;
   bindWorkout();
   startTicker();
   keepAwake();
+  // La pantalla baja sola hasta el paso que toca (en un ejercicio nuevo, se ve primero el ejercicio).
+  if (wk.phase !== 'set' || wk.set > 0) {
+    const el = root.querySelector('.cz-step, .cz-timer, .cz-ask');
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'end' }));
+  }
 }
 
 function bindWorkout() {
-  root.querySelectorAll('input[data-set]').forEach((inp) => {
-    inp.oninput = () => { wk.exercises[wk.ex].sets[Number(inp.dataset.set)][inp.dataset.k] = inp.value.trim(); saveWk(); };
-  });
-  root.querySelectorAll('[data-done]').forEach((b) => {
-    b.onclick = () => {
-      const i = Number(b.dataset.done);
-      const st = wk.exercises[wk.ex].sets[i];
-      st.done = !st.done;
-      if (st.done) wk.set = nextOpenSet(wk.exercises[wk.ex]);
-      saveWk(); renderWorkout();
-    };
-  });
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-  on('cz-t-start', () => {
-    // Marca la serie en curso como hecha (con lo que hayas apuntado) y empieza la cuenta atrás.
-    const e = wk.exercises[wk.ex];
-    const st = e.sets[wk.set] || e.sets.find((x) => !x.done);
-    if (st) st.done = true;
-    wk.timer = { running: true, endAt: Date.now() + restSeconds(e.rest) * 1000, left: 0 };
-    saveWk(); unlockAudio(); renderWorkout();
+  const e = wk.exercises[wk.ex];
+  const kg = document.getElementById('cz-kg');
+  const reps = document.getElementById('cz-reps');
+  if (kg) {
+    kg.oninput = () => { e.sets[wk.set].kg = kg.value.trim(); saveWk(); };
+    reps.oninput = () => { e.sets[wk.set].reps = reps.value.trim(); saveWk(); };
+  }
+  // ▶ en la serie: queda hecha y vamos al descanso (o se termina el entreno si era la última).
+  on('cz-go', () => {
+    const st = e.sets[wk.set];
+    if (!st.kg && kg && kg.placeholder && kg.placeholder !== '0') st.kg = kg.placeholder; // mismo peso que la última vez
+    st.done = true;
+    unlockAudio();
+    if (wk.set >= e.sets.length - 1 && wk.ex >= wk.exercises.length - 1) { saveWk(); finishWorkout(); return; }
+    wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout();
   });
+  on('cz-t-start', () => { unlockAudio(); wk.timer = { running: true, endAt: Date.now() + restSeconds(e.rest) * 1000 }; saveWk(); renderWorkout(); });
   on('cz-t-pause', () => { wk.timer = { running: false, left: timerLeft() }; saveWk(); renderWorkout(); });
   on('cz-t-resume', () => { wk.timer = { running: true, endAt: Date.now() + wk.timer.left * 1000 }; saveWk(); renderWorkout(); });
-  on('cz-t-add', () => { if (wk.timer.running) wk.timer.endAt += 30000; else wk.timer.left += 30; saveWk(); updateClock(); });
-  on('cz-t-skip', () => restDone(false));
-  on('cz-prev', () => { wk.ex--; wk.set = nextOpenSet(wk.exercises[wk.ex]); wk.timer = null; saveWk(); renderWorkout(); window.scrollTo(0, 0); });
-  on('cz-next', () => { if (wk.ex === wk.exercises.length - 1) finishWorkout(); else { wk.ex++; wk.set = nextOpenSet(wk.exercises[wk.ex]); wk.timer = null; saveWk(); renderWorkout(); window.scrollTo(0, 0); } });
+  on('cz-t-reset', () => { wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-t-again', () => { wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-edit', () => { e.sets[wk.set].done = false; wk.phase = 'set'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-next', () => advance());
   on('cz-wk-finish', () => finishWorkout());
 }
 
-const nextOpenSet = (e) => { const i = e.sets.findIndex((st) => !st.done); return i < 0 ? e.sets.length : i; };
+/** Siguiente paso tras el descanso: siguiente serie, o primera serie del siguiente ejercicio, o terminar. */
+function advance() {
+  const e = wk.exercises[wk.ex];
+  wk.timer = null;
+  if (wk.set < e.sets.length - 1) { wk.set++; wk.phase = 'set'; saveWk(); renderWorkout(); return; }
+  if (wk.ex < wk.exercises.length - 1) { wk.ex++; wk.set = 0; wk.phase = 'set'; saveWk(); renderWorkout(); window.scrollTo(0, 0); flash('Siguiente ejercicio'); return; }
+  finishWorkout();
+}
+
+const nextOpenSet = (e) => { const i = e.sets.findIndex((st) => !st.done); return i < 0 ? e.sets.length - 1 : i; };
 const timerLeft = () => (!wk || !wk.timer ? 0 : wk.timer.running ? (wk.timer.endAt - Date.now()) / 1000 : wk.timer.left);
 
 function updateClock() {
@@ -613,25 +647,19 @@ function startTicker() {
   ticker = setInterval(() => {
     if (!wk || location.hash !== '#entreno') { stopTicker(); return; }
     updateClock();
-    if (wk.timer && wk.timer.running && timerLeft() <= 0) restDone(true);
+    if (wk.phase === 'rest' && wk.timer && wk.timer.running && timerLeft() <= 0) restDone();
   }, 250);
 }
 function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); }
 
-/** Fin del descanso: aviso y a la siguiente serie; tras la última serie, al siguiente ejercicio. */
-function restDone(alert) {
-  if (alert) { beep(); if (navigator.vibrate) navigator.vibrate([300, 150, 300]); }
+/** Fin del descanso: aviso (pitido y vibración) y la pregunta de si pasamos a la siguiente serie. */
+function restDone() {
+  beep();
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
   wk.timer = null;
-  const e = wk.exercises[wk.ex];
-  const open = nextOpenSet(e);
-  if (open >= e.sets.length) {
-    if (wk.ex < wk.exercises.length - 1) { wk.ex++; wk.set = nextOpenSet(wk.exercises[wk.ex]); saveWk(); renderWorkout(); window.scrollTo(0, 0); flash('Siguiente ejercicio'); return; }
-    wk.set = e.sets.length;
-    saveWk(); renderWorkout(); flash('¡Última serie hecha! Pulsa «Terminar ✓»');
-    return;
-  }
-  wk.set = open;
-  saveWk(); renderWorkout(); flash(`A por la serie ${open + 1}`);
+  wk.phase = 'ask';
+  saveWk();
+  renderWorkout();
 }
 
 function flash(text) {
