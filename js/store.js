@@ -53,6 +53,24 @@
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (/^¿Qué edad tienes\? \| Menos de 25 años/.test(q) ? 'Fecha de nacimiento' : q));
     }
     seedLibrary(base);
+    // Una sola vez: los descansos de las rutinas ya hechas pasan a la regla nueva
+    // (3 min en los ejercicios de pierna y 2 min en el resto de músculos).
+    if (!base.settings.restV2) {
+      const LEGS = ['Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Aductores', 'Gemelos'];
+      const OTHERS = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Core / Abdomen', 'Antebrazo'];
+      const libGroup = new Map(base.library.map((x) => [x.id, x.group]));
+      for (const r of base.routines) {
+        for (const d of r.days || []) {
+          for (const ex of d.exercises || []) {
+            const g = ex.group || libGroup.get(ex.libraryId);
+            if (LEGS.includes(g)) ex.rest = '3 min';
+            else if (OTHERS.includes(g)) ex.rest = '2 min';
+          }
+        }
+      }
+      base.settings.restV2 = true;
+      migrated = true; // hay que subirlo a la nube (y a la zona de los clientes)
+    }
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {
       base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));
@@ -187,6 +205,7 @@
     }
   }
 
+  let migrated = false; // normalize() ha cambiado datos antiguos: se guardan en cuanto se pueda
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
@@ -220,8 +239,9 @@
 
   /** Sustituye todos los datos por los que llegan de la nube (sin volver a subirlos). */
   function replaceAll(raw) {
+    migrated = false;
     data = normalize(raw);
-    writeLocal();
+    if (migrated) { migrated = false; save(); } else writeLocal();
   }
 
   /** Une los datos de la nube con los de este navegador (por id) sin perder nada. */
