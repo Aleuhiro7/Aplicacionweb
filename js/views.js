@@ -877,6 +877,14 @@
         nameEl.addEventListener('input', () => { if (Store.library().some((x) => x.name === nameEl.value)) fill(); });
       },
       onSubmit: (v) => {
+        // Los ejercicios de la biblioteca siguen siempre sus pautas (series, repeticiones y descanso);
+        // lo que cambies aquí a mano para este cliente queda marcado como propio y ya no se toca.
+        const lib = ex && ex.libraryId && Store.get('library', ex.libraryId);
+        if (lib && lib.builtIn) {
+          const own = new Set(ex.custom || []);
+          for (const f of ['sets', 'reps', 'rest']) { if (String(v[f] || '') !== String(lib[f] || '')) own.add(f); else own.delete(f); }
+          v.custom = [...own];
+        }
         if (ex) Object.assign(ex, v);
         else (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, group ? { group } : {}, v));
         saveRoutine(r);

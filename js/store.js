@@ -53,6 +53,24 @@
       base.settings.questionnaire = base.settings.questionnaire.map((q) => (/^¿Qué edad tienes\? \| Menos de 25 años/.test(q) ? 'Fecha de nacimiento' : q));
     }
     seedLibrary(base);
+    // Siempre: los ejercicios de la biblioteca que hay en las rutinas siguen sus pautas actuales
+    // (series, repeticiones y descanso), salvo lo que hayas cambiado a mano en esa rutina (ex.custom).
+    // Así, cuando cambian las pautas de la biblioteca, cambian solas en todas las rutinas.
+    {
+      const lib = new Map(base.library.map((x) => [x.id, x]));
+      for (const r of base.routines) {
+        for (const d of r.days || []) {
+          for (const ex of d.exercises || []) {
+            const l = lib.get(ex.libraryId);
+            if (!l || !l.builtIn) continue;
+            const own = ex.custom || [];
+            for (const f of ['sets', 'reps', 'rest']) {
+              if (!own.includes(f) && l[f] !== undefined && ex[f] !== l[f]) { ex[f] = l[f]; migrated = true; }
+            }
+          }
+        }
+      }
+    }
     // Una sola vez: los descansos de las rutinas ya hechas pasan a la regla nueva
     // (3 min en los ejercicios de pierna y 2 min en el resto de músculos).
     if (!base.settings.restV2) {
