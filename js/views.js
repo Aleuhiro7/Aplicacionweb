@@ -1908,23 +1908,7 @@
       }
       pages.push({ d, di, parts });
     });
-    const tips = [
-      ['Calienta antes de empezar', [
-        '<b>Movilidad:</b> 5–10 minutos antes de empezar el entreno.',
-        '<b>Series de aproximación:</b> antes de las series efectivas de cada ejercicio, de 1 a 3 series de 7–8 repeticiones subiendo el peso: 50 %, 70 % y 90 % del peso que vas a usar.',
-        '<b>Cuántas:</b> músculo grande o todavía frío, las 3 (50 %, 70 % y 90 %). Pequeño o ya caliente, 2 (70 % y 90 %) o solo 1 (70 %).',
-      ]],
-      ['Las 3 series de cada ejercicio', [
-        '<b>1.ª serie · Efectiva:</b> 12–15 repeticiones, quedándote a 1 del fallo.',
-        '<b>2.ª serie · Pesada:</b> sube el peso y llega al fallo total en 6–8 repeticiones.',
-        '<b>3.ª serie · Agotamiento:</b> vuelve al peso de la 1.ª y llega al fallo total.',
-      ]],
-      ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
-      ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
-      ['Progresa poco a poco', 'Cuando completes todas las repeticiones con buena técnica, sube un poco el peso la próxima vez. Aumentar la intensidad también es progreso.'],
-      ['Apunta tus pesos', 'Anota el peso y las repeticiones de cada serie para saber qué superar el próximo día.'],
-      ['Escucha a tu cuerpo', 'Si algo duele (dolor, no esfuerzo), para y coméntamelo.'],
-    ];
+    const tips = window.GUIDES.tips;
     const total = 1 + 1 + (r.notes ? 1 : 0) + pages.length + 1;
     const foot = (n, txt) => `<footer class="ds-foot"><span>${txt || 'David Orihuela · Entrenador Online'}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
     const dayTitle = (d, di) => d.name || `Día ${di + 1}`;
@@ -1955,17 +1939,8 @@
         ${foot(++n)}
       </section>`;
     // Página 2: el protocolo innegociable. Página 3: «Cómo entrenar». Después, la rutina.
-    const protocol = [
-      ['Feedback visual (vídeos).', 'Grábate la serie más pesada de cada ejercicio. Sin esto no se puede corregir la técnica ni la intensidad.'],
-      ['Registro de pesos.', 'Apunta el peso máximo logrado en cada serie pesada para asegurar la sobrecarga progresiva.'],
-      ['Check-in y reporte.', 'Es obligatorio cumplir con el reporte semanal o mensual.'],
-      ['Sinceridad e integridad.', 'No modifiques el plan ni la dieta por tu cuenta. Informa de inmediato ante cualquier dolor, lesión o exceso de estrés.'],
-      ['Comunicación directa.', 'Ante cualquier duda, contáctame por WhatsApp de inmediato. No asumas nada.'],
-      ['Gestión de ausencias.', 'Si fallas un día, cuenta como descanso. Retoma el plan exactamente donde lo dejaste. No te saltes sesiones.'],
-      ['Calendario continuo.', 'No te rijas por semanas naturales. El objetivo es completar todas las sesiones en el orden establecido, aunque el ciclo tarde más de 7 días.'],
-      ['Gestión de agujetas.', 'Si el dolor muscular es excesivo, sáltate ese día, haz el siguiente entrenamiento del ciclo y recupera el anterior cuando estés recuperado.'],
-    ];
-    out.push(simple('Para que el plan funcione', 'Protocolo innegociable', `<p class="rs-proto-intro">Su incumplimiento impide la supervisión y la evolución del plan.</p>
+    const protocol = window.GUIDES.protocol;
+    out.push(simple('Para que el plan funcione', 'Protocolo innegociable', `<p class="rs-proto-intro">${window.GUIDES.protocolIntro}</p>
       <ol class="rs-tips rs-proto">${protocol.map(([t, d], i) => `<li><i>${i + 1}</i><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ol>`));
     out.push(simple('Antes de cada entreno', 'Cómo entrenar', `<ul class="rs-tips">${tips.map(([t, d]) => `<li><b>${t}</b>${Array.isArray(d) ? `<span class="rs-steps">${d.map((x) => `<span>${x}</span>`).join('')}</span>` : `<span>${d}</span>`}</li>`).join('')}</ul>`));
     if (r.notes) out.push(simple('Para tener en cuenta', 'Indicaciones', `<div class="ds-notes">${esc(r.notes).replace(/\n/g, '<br>')}</div>`));
@@ -2069,6 +2044,116 @@
     App.render();
     UI.toast('Enlace preparado en WhatsApp', { label: 'Copiar enlace', onClick: () => copyText(url, 'Enlace copiado') });
   }
+  /* ---------- Zona del cliente (cliente.html) ----------
+   * Cada cliente con zona tiene un código (c.portalToken). En la nube (portal/{código}) se publica lo que ve:
+   * su rutina (con fotos, series y descansos), su dieta y la guía. Se vuelve a publicar sola cuando cambias
+   * algo de ese cliente. El cliente entra con su correo y su contraseña (los crea al abrir la invitación). */
+  const portalUrl = (token) => new URL(`cliente.html?c=${token}`, location.href.split('#')[0]).href;
+
+  function portalPayload(c) {
+    const r = !c.noTraining && Store.routineFor(c.id);
+    const days = r ? (r.days || []).filter((d) => (d.exercises || []).length).map((d, di) => ({
+      name: d.name || `Día ${di + 1}`,
+      groups: dayMuscles(d).map((g, gi) => ({
+        g,
+        color: RS_TONES[gi % RS_TONES.length],
+        exs: (d.exercises || []).filter((ex) => exGroup(ex) === g).map((ex) => {
+          const lib = ex.libraryId && Store.get('library', ex.libraryId);
+          const img = lib && imgOf(lib);
+          return { id: ex.id, name: ex.name || '', sets: ex.sets || '', reps: ex.reps || '', rest: ex.rest || '', load: ex.load || '', notes: ex.notes || '', img0: img ? exImg(lib, 0) : '', img1: img ? exImg(lib, 1) : '' };
+        }),
+      })).filter((x) => x.exs.length),
+    })) : [];
+    const d = !c.noDiet && Store.dietFor(c.id);
+    return {
+      clientName: c.name,
+      noRoutine: !!c.noTraining,
+      noDiet: !!c.noDiet,
+      routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
+      dietHtml: d && dietSendable(d) ? dietSheet(c, d) : '',
+    };
+  }
+
+  const portalSent = new Map(); // código → lo último publicado (para no subirlo otra vez si no ha cambiado)
+  const portalKey = (token) => `entrenapro:portal:${token}`;
+  async function publishPortal(c, force) {
+    const payload = portalPayload(c);
+    const json = JSON.stringify(payload);
+    let last = portalSent.get(c.portalToken);
+    if (last === undefined) { try { last = localStorage.getItem(portalKey(c.portalToken)); } catch (e) { last = null; } }
+    if (!force && last === json) return;
+    await Sync.publishPortal(c.portalToken, payload);
+    portalSent.set(c.portalToken, json);
+    try { localStorage.setItem(portalKey(c.portalToken), json); } catch (e) { /* sin espacio: se volverá a subir */ }
+  }
+
+  // Cada vez que guardas algo, la zona de los clientes que la tienen se pone al día (si ha cambiado).
+  let portalTimer = null;
+  Store.onSave(() => {
+    clearTimeout(portalTimer);
+    portalTimer = setTimeout(() => {
+      if (!window.Sync || !Sync.state.user) return;
+      for (const c of Store.data.clients) {
+        if (c.portalToken) publishPortal(c).catch((e) => console.error('Zona del cliente sin actualizar', e));
+      }
+    }, 3000);
+  });
+
+  async function invitePortal(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    if (await needCloud()) return;
+    const token = c.portalToken || newToken();
+    const win = window.open('about:blank', '_blank');
+    try {
+      await publishPortal(Object.assign({}, c, { portalToken: token }), true);
+    } catch (e) {
+      console.error(e);
+      if (win) win.close();
+      UI.toast('No se ha podido preparar su zona. Revisa la conexión e inténtalo otra vez.');
+      return;
+    }
+    Store.update('clients', clientId, { portalToken: token, portalInvitedAt: today() });
+    const url = portalUrl(token);
+    const text = `Hola ${c.name.split(' ')[0]} 👋 Ya tienes tu zona de entrenamiento: tu rutina, tu dieta y la guía, siempre en el móvil 💪\nEntra aquí y crea tu cuenta con tu correo y una contraseña (solo la primera vez):\n${url}\nGuarda el enlace o añádelo a la pantalla de inicio para entrar cuando quieras.`;
+    const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
+    if (win) win.location.href = wa; else window.open(wa, '_blank');
+    App.render();
+    UI.toast('Invitación preparada en WhatsApp', { label: 'Copiar enlace', onClick: () => copyText(url, 'Enlace copiado') });
+  }
+
+  const portalInfo = {}; // código → { loading } | datos de la nube (para saber si ya creó su cuenta)
+  function portalCard(c) {
+    if (!c.portalToken) {
+      return `<section class="card portal-card">
+        <div class="card-header"><h2>Zona del cliente</h2></div>
+        <p class="muted">${esc(c.name.split(' ')[0])} entra con su correo y su contraseña y tiene siempre en el móvil su rutina (con fotos, series y descansos), su dieta y la guía de entrenamiento. Se actualiza sola cada vez que cambias su rutina o su dieta.</p>
+        <div class="actions"><button class="btn primary wa-btn" data-action="portal-invite" data-client="${c.id}">${U.icon('message')}Invitar por WhatsApp</button></div>
+      </section>`;
+    }
+    const info = portalInfo[c.portalToken];
+    if (!info && window.Sync && Sync.state.user) {
+      portalInfo[c.portalToken] = { loading: true };
+      Sync.fetchPortal(c.portalToken)
+        .then((data) => { portalInfo[c.portalToken] = data || { missing: true }; })
+        .catch(() => { portalInfo[c.portalToken] = { error: true }; })
+        .finally(() => { if (location.hash === `#/clientes/${c.id}`) App.render(); });
+    }
+    const status = !info || info.loading ? '<span class="muted">Comprobando…</span>'
+      : info.memberEmail ? `${badge('Activa', 'success')} <span>Entra con <strong>${esc(info.memberEmail)}</strong>${info.joinedAt ? ` · desde el ${esc(fmtDate(String(info.joinedAt).slice(0, 10)))}` : ''}</span>`
+      : info.error ? '<span class="muted">No se ha podido comprobar (sin conexión).</span>'
+      : `${badge('Invitación enviada', 'warning')} <span class="muted">Todavía no ha creado su cuenta${c.portalInvitedAt ? ` (invitado el ${esc(fmtDate(c.portalInvitedAt))})` : ''}.</span>`;
+    return `<section class="card portal-card">
+      <div class="card-header"><h2>Zona del cliente</h2></div>
+      <p class="portal-status">${status}</p>
+      <p class="muted">Ve su rutina, su dieta y la guía. Se actualiza sola cuando cambias su rutina o su dieta.</p>
+      <div class="actions">
+        <button class="btn wa-btn" data-action="portal-invite" data-client="${c.id}">${U.icon('message')}${info && info.memberEmail ? 'Enviarle el enlace' : 'Reenviar invitación'}</button>
+        <button class="btn" data-action="portal-copy" data-client="${c.id}">${U.icon('file')}Copiar enlace</button>
+      </div>
+    </section>`;
+  }
+
   const planUrl = (kind, token) => new URL(`${PLAN_KIND[kind].page}?t=${token}`, location.href.split('#')[0]).href;
 
   async function copyText(text, msg) {
@@ -2648,7 +2733,7 @@
         ${tabs.map(([k, l]) => `<button role="tab" aria-selected="${state.clientTab === k}" class="${state.clientTab === k ? 'active' : ''}" data-action="client-tab" data-value="${k}">${l}</button>`).join('')}
       </div>
       ${body}
-      ${state.clientTab === 'resumen' ? questionnaireCard(c) + clientManage(c) : ''}`;
+      ${state.clientTab === 'resumen' ? questionnaireCard(c) + portalCard(c) + clientManage(c) : ''}`;
   }
 
   /** Sección al final del perfil para pausar, dar de baja, reactivar o eliminar al cliente. */
@@ -4063,6 +4148,8 @@
       App.render();
     },
     'new-injury': (d) => openInjuryForm(null, d.client),
+    'portal-invite': (d) => invitePortal(d.client),
+    'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),
     'injury-recovered': (d) => markInjuryRecovered(d.id),
     'new-payment': (d) => openPaymentForm(null, d.client ? { clientId: d.client } : {}),

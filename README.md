@@ -27,6 +27,7 @@ Identidad: logo del hexágono con «DO» (la D como botón de play), en degradad
 - **Ajustes**: tu nombre, moneda, cuota por defecto, tema oscuro/claro, exportar/importar copia de seguridad (JSON) y exportar clientes a CSV (Excel).
 
 - **Vista previa en WhatsApp**: al enviar el enlace del cuestionario, WhatsApp muestra una tarjeta negra con el degradado de la marca, tu logo, «Cuestionario inicial» y el lema (`img/og-cuestionario.jpg`, etiquetas Open Graph de `cuestionario.html`). La dirección de la imagen apunta a `https://aleuhiro7.github.io/Aplicacionweb/`; si publicas la app en otra dirección, cámbiala allí.
+- **Zona del cliente** (`cliente.html`, `js/cliente.js`): desde el perfil (Resumen → «Zona del cliente») se invita al cliente por WhatsApp. Al abrir la invitación crea su cuenta con su correo y una contraseña y, a partir de ahí, entra cuando quiera para ver su rutina por días (fotos, series, repeticiones, descansos y notas), su dieta (con descarga en PDF) y la guía (protocolo innegociable y «Cómo entrenar», textos en `js/guides.js`, los mismos del PDF). Lo que ve se publica en `portal/{código}` y se actualiza solo cuando cambias su rutina o su dieta; su cuenta queda en `members/{uid}`. Usa una sesión de Firebase aparte de la del entrenador. Requiere activar «Correo electrónico/contraseña» en Firebase Authentication y las reglas de `firestore.rules`.
 
 ## Cómo usarla
 

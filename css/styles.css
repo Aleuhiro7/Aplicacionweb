@@ -1754,3 +1754,60 @@ body { background: radial-gradient(900px 600px at 100% -10%, rgba(110, 139, 255,
 .rs-tips.rs-proto b { font-size: 11.5pt; }
 .rs-tips.rs-proto span { font-size: 10pt; line-height: 1.4; }
 .ds-page .rs-proto-intro { margin: -1mm 0 4mm; }
+
+/* ===================== Zona del cliente (cliente.html) ===================== */
+.cz-card { margin-bottom: 14px; }
+.cz-card h2 { font: 700 1.5rem/1.1 "Barlow Condensed", sans-serif; margin: 0 0 10px; }
+.cz-form { display: grid; gap: 14px; }
+.cz-form .btn { justify-content: center; padding: 14px; font-size: 1.02rem; }
+.cz-error { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); font-weight: 600; font-size: .92rem; }
+.cz-error.ok { background: var(--primary-soft); color: var(--primary); }
+.cz-links { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; }
+.link-btn { appearance: none; border: 0; background: none; padding: 4px; font: inherit; font-weight: 600; color: var(--primary); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.cz-hello { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.cz-hello h1 { font: 700 2rem/1.05 "Barlow Condensed", sans-serif; margin: 0; }
+.cz-hello p { margin: 4px 0 0; }
+.cz-tabs { width: 100%; }
+.cz-tabs a { flex: 1 1 0; text-align: center; font-weight: 700; color: var(--muted); padding: 9px 12px; border-radius: 10px; text-decoration: none; white-space: nowrap; }
+.cz-tabs a.active { color: var(--primary); background: var(--primary-soft); }
+.cz-days { display: grid; gap: 10px; margin-bottom: 14px; }
+.cz-day { display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit; margin: 0; }
+.cz-day .grow { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cz-day strong { font-size: 1.08rem; }
+.cz-day small { color: var(--muted); }
+.cz-day-n { flex-shrink: 0; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #6e8bff, #22d3ee); color: #0b0f19; font: 800 1.2rem/1 "Archivo", sans-serif; }
+.cz-day-count { flex-shrink: 0; color: var(--muted); font-size: .85rem; font-weight: 600; }
+.cz-daynav { display: flex; align-items: center; gap: 8px; margin: 6px 0 14px; }
+.cz-daynav .btn { text-decoration: none; }
+.cz-day-title { font: 700 2.1rem/1.05 "Barlow Condensed", sans-serif; margin: 0 0 14px; }
+.cz-day-title small { display: block; font: 700 .78rem/1.4 "Archivo", sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--primary); }
+.cz-group { border-top: 3px solid var(--cz-accent); margin-bottom: 14px; }
+.cz-glabel { display: flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: .82rem; color: var(--cz-accent); margin-bottom: 6px; }
+.cz-glabel i { width: 8px; height: 8px; border-radius: 50%; background: var(--cz-accent); }
+.cz-glabel em { margin-left: auto; font-style: normal; letter-spacing: 0; text-transform: none; color: var(--muted); font-weight: 600; }
+.cz-ex { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.cz-ex:last-child { border-bottom: 0; padding-bottom: 2px; }
+.cz-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.cz-photos figure { position: relative; margin: 0; border-radius: 12px; overflow: hidden; background: var(--surface-2); aspect-ratio: 4 / 3; }
+.cz-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cz-photos figcaption { position: absolute; left: 8px; bottom: 8px; padding: 2px 9px; border-radius: 999px; background: rgba(10, 13, 20, .75); color: #fff; font-size: .75rem; font-weight: 700; }
+.cz-ex-head { display: flex; align-items: center; gap: 10px; }
+.cz-ex-head h3 { margin: 0; font-size: 1.08rem; line-height: 1.25; }
+.cz-num { flex-shrink: 0; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--cz-accent) 22%, transparent); color: var(--cz-accent); font-weight: 800; font-size: .85rem; }
+.cz-series { margin: 8px 0 0; font-weight: 700; color: var(--cz-accent); }
+.cz-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; font-size: .92rem; }
+.cz-meta:empty { display: none; }
+.cz-meta b { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.cz-notes { margin: 8px 0 0; color: var(--muted); font-size: .92rem; white-space: pre-line; }
+.cz-guide-intro { font-style: italic; margin: -2px 0 12px; }
+.cz-proto, .cz-tips { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.cz-proto li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border-left: 3px solid #f87171; }
+.cz-proto i { flex-shrink: 0; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #f87171; color: #121722; font-style: normal; font-weight: 800; font-size: .85rem; }
+.cz-proto li > div, .cz-tips li { display: flex; flex-direction: column; gap: 4px; }
+.cz-proto span, .cz-tips span { color: var(--muted); font-size: .93rem; line-height: 1.45; }
+.cz-tips li { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border-left: 3px solid var(--primary); }
+.cz-tips span b { color: var(--primary); }
+.cz-diet-bar { margin-bottom: 12px; }
+.cz-diet-bar .btn { width: 100%; justify-content: center; padding: 14px; }
+.cz-page .grow { flex: 1 1 auto; }
+.cz-days > .card, .cz-days > .card + .card { margin: 0; }

@@ -19,5 +19,24 @@ service cloud.firestore {
             && request.resource.data.answers.size() <= 60);
       allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
+
+    // Zona del cliente (cliente.html): la publica el entrenador. El cliente la lee con su código
+    // (aleatorio, imposible de adivinar) y, al crear su cuenta, solo puede apuntar quién es, una vez.
+    match /portal/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      allow update: if (request.auth != null && resource.data.owner == request.auth.uid)
+        || (request.auth != null
+            && resource.data.get('memberUid', null) == null
+            && request.resource.data.memberUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUid', 'memberEmail', 'joinedAt']));
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+    }
+
+    // Cuenta de cada cliente: qué zona es la suya. Solo la ve y la cambia él.
+    match /members/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }

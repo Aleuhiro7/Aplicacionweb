@@ -64,6 +64,9 @@ async function push() {
 Store.onSave(() => { push(); });
 
 onAuthStateChanged(auth, (user) => {
+  // La app de gestión es solo para el entrenador (cuenta de Google): una cuenta de cliente (correo y
+  // contraseña) nunca se sincroniza aquí. La zona del cliente usa su propia sesión aparte (cliente.js).
+  if (user && !user.providerData.some((p) => p.providerId === 'google.com')) { signOut(auth); return; }
   if (unsub) { unsub(); unsub = null; }
   ref = null;
   ready = false;
@@ -159,6 +162,23 @@ async function publishPlan(token, payload) {
   }));
 }
 
+/* ---------- Zona del cliente: portal/{token} ----------
+ * Lo que ve cada cliente en su zona (cliente.html): su rutina, su dieta y la guía. Lo publica el
+ * entrenador; el cliente, al crear su cuenta, solo puede apuntar quién es (memberUid). Ver firestore.rules. */
+async function publishPortal(token, payload) {
+  if (!state.user) throw new Error('Inicia sesión con Google para publicar la zona del cliente');
+  // merge: no se pisan los datos de la cuenta del cliente (memberUid, memberEmail, joinedAt).
+  await setDoc(doc(db, 'portal', token), Object.assign({}, payload, { owner: state.user.uid, updatedAt: serverTimestamp() }), { merge: true });
+}
+
+async function fetchPortal(token) {
+  if (!state.user) return null;
+  const ref = doc(db, 'portal', token);
+  let snap;
+  try { snap = await getDocFromServer(ref); } catch (e) { snap = await getDoc(ref); }
+  return snap.exists() ? snap.data() : null;
+}
+
 async function fetchQuestionnaire(token) {
   if (!state.user) return null;
   const ref = doc(db, 'cuestionarios', token);
@@ -214,6 +234,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal };
 setStatus(state.status);
 App.render();
