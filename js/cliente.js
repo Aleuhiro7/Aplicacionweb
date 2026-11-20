@@ -200,10 +200,10 @@ function render() {
   if (h === 'entreno' && wk) { renderWorkout(); return; }
   stopTicker();
   const diaryRoute = h === 'diario' || h.startsWith('diario/') || h.startsWith('resumen/') || h === 'empezar';
-  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'rutina'));
+  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'diario'));
   const tabs = [
-    portal.noRoutine ? null : ['rutina', 'Rutina'],
     portal.noRoutine ? null : ['diario', 'Diario'],
+    portal.noRoutine ? null : ['rutina', 'Rutina'],
     portal.noDiet ? null : ['dieta', 'Dieta'],
     portal.noRoutine ? null : ['guia', 'Guía'],
   ].filter(Boolean);
