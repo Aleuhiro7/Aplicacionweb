@@ -1929,3 +1929,5 @@ button.cz-day { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .cz-approach strong { color: #fb923c; font-size: .92rem; }
 .cz-approach span { color: var(--text); }
 .cz-approach b { color: #fb923c; }
+p.cz-approach { display: block; margin: 0 0 12px; padding: 8px 12px; font-size: .8rem; line-height: 1.4; color: var(--muted); }
+p.cz-approach b { color: #fb923c; font-weight: 700; }

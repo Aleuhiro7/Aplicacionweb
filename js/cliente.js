@@ -535,11 +535,6 @@ function renderWorkout() {
   let step;
   if (wk.phase === 'set') {
     step = `<section class="card cz-step">
-      ${wk.set === 0 ? `<div class="cz-approach">
-        <strong>Antes de empezar · series de aproximación</strong>
-        <span>De 1 a 3 series de <b>7–8 repeticiones</b> subiendo el peso: <b>50 %, 70 % y 90 %</b> del peso que vas a usar.</span>
-        <span>Músculo grande o todavía frío: las 3. Pequeño o ya caliente: 2 (70 % y 90 %) o solo 1 (70 %).</span>
-      </div>` : ''}
       <small class="cz-kicker">Ahora · ${esc(label)}</small>
       <p class="muted cz-step-hint">${esc(hint)}</p>
       <div class="cz-step-inputs">
@@ -577,6 +572,7 @@ function renderWorkout() {
       <button type="button" class="btn sm" id="cz-wk-finish">Terminar</button>
     </section>
     <div class="cz-progress"><i style="width:${Math.round((doneSets / allSets) * 100)}%"></i></div>
+    ${wk.phase === 'set' && wk.set === 0 ? `<p class="cz-approach"><b>Antes de empezar · aproximación:</b> 1–3 series de 7–8 reps al 50 %, 70 % y 90 % del peso. Músculo grande o frío: 3 · pequeño o ya caliente: 2 (70 y 90 %) o 1 (70 %).</p>` : ''}
     <section class="card cz-group cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
       <div class="cz-glabel"><i></i>${esc(e.group)}</div>
       ${e.img0 ? `<div class="cz-photos"><figure><img src="${esc(e.img0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${esc(e.img1)}" alt=""><figcaption>Final</figcaption></figure></div>` : ''}
