@@ -535,6 +535,11 @@ function renderWorkout() {
   let step;
   if (wk.phase === 'set') {
     step = `<section class="card cz-step">
+      ${wk.set === 0 ? `<div class="cz-approach">
+        <strong>Antes de empezar · series de aproximación</strong>
+        <span>De 1 a 3 series de <b>7–8 repeticiones</b> subiendo el peso: <b>50 %, 70 % y 90 %</b> del peso que vas a usar.</span>
+        <span>Músculo grande o todavía frío: las 3. Pequeño o ya caliente: 2 (70 % y 90 %) o solo 1 (70 %).</span>
+      </div>` : ''}
       <small class="cz-kicker">Ahora · ${esc(label)}</small>
       <p class="muted cz-step-hint">${esc(hint)}</p>
       <div class="cz-step-inputs">

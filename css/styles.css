@@ -1925,3 +1925,7 @@ button.cz-day { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .cz-ask p { font-size: 1.1rem; font-weight: 600; margin: 10px 0 0; }
 .cz-ask p small { display: block; color: var(--muted); font-weight: 500; font-size: .92rem; margin-top: 4px; }
 .cz-ask .link-btn { margin-top: 12px; }
+.cz-approach { display: flex; flex-direction: column; gap: 4px; text-align: left; margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #fb923c 12%, var(--surface)); border-left: 3px solid #fb923c; font-size: .9rem; line-height: 1.4; }
+.cz-approach strong { color: #fb923c; font-size: .92rem; }
+.cz-approach span { color: var(--text); }
+.cz-approach b { color: #fb923c; }
