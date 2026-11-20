@@ -2078,10 +2078,16 @@
   const portalKey = (token) => `entrenapro:portal:${token}`;
   async function publishPortal(c, force) {
     const payload = portalPayload(c);
-    const json = JSON.stringify(payload);
+    // La hoja de la rutina (para que el cliente se descargue el PDF): se compara la hoja sin preparar,
+    // y solo si ha cambiado algo se prepara (ajustar cada día a su página tarda un poco).
+    const r = !c.noTraining && Store.routineFor(c.id);
+    const hasRoutine = !!(r && (r.days || []).some((d) => (d.exercises || []).length));
+    const rawSheet = hasRoutine ? routineSheet(c, r) : '';
+    const json = JSON.stringify(Object.assign({ rawSheet }, payload));
     let last = portalSent.get(c.portalToken);
     if (last === undefined) { try { last = localStorage.getItem(portalKey(c.portalToken)); } catch (e) { last = null; } }
     if (!force && last === json) return;
+    payload.routineHtml = rawSheet ? await PdfMaker.prepared(rawSheet, paginateRoutine) : '';
     await Sync.publishPortal(c.portalToken, payload);
     portalSent.set(c.portalToken, json);
     try { localStorage.setItem(portalKey(c.portalToken), json); } catch (e) { /* sin espacio: se volverá a subir */ }

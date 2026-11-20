@@ -213,13 +213,16 @@ function render() {
     ${body}`;
   bindLogout();
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
+  const rb = document.getElementById('cz-routine-pdf');
+  if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (h.startsWith('dia-')) window.scrollTo(0, 0);
 }
 
 function daysView(r) {
   const days = r.days || [];
   if (!days.length) return '<section class="card cz-card"><p class="muted">Tu entrenador está preparando tu rutina. Cuando esté lista, la verás aquí.</p></section>';
-  return `<section class="cz-days">
+  return `${portal.routineHtml ? '<div class="cz-diet-bar"><button type="button" class="btn primary" id="cz-routine-pdf">⬇ Descargar mi rutina en PDF</button></div>' : ''}
+  <section class="cz-days">
     ${days.map((d, i) => `<a class="card cz-day" href="#dia-${i}">
       <span class="cz-day-n">${i + 1}</span>
       <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
@@ -309,16 +312,20 @@ function setupDiet() {
   window.PdfMaker.loadFonts().then(fit);
   fit();
   window.onresize = fit;
-  const btn = document.getElementById('cz-diet-pdf');
+  pdfButton(document.getElementById('cz-diet-pdf'), portal.dietHtml, `Dieta ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
+}
+
+/** Botón que crea el PDF (en el propio móvil del cliente) a partir de la hoja y lo descarga. */
+function pdfButton(btn, html, name, done) {
   btn.onclick = async () => {
     if (btn.disabled) return;
     btn.disabled = true;
     const label = btn.textContent;
     btn.textContent = 'Creando el PDF…';
     try {
-      const blob = await window.PdfMaker.make(sanitize(portal.dietHtml));
-      window.PdfMaker.save(blob, window.PdfMaker.fileName(`Dieta ${portal.clientName || ''}`));
-      btn.textContent = '✓ Descargada · búscala en Descargas';
+      const blob = await window.PdfMaker.make(sanitize(html));
+      window.PdfMaker.save(blob, window.PdfMaker.fileName(name));
+      btn.textContent = done;
     } catch (e) {
       console.error(e);
       btn.textContent = 'No se pudo crear. Toca para reintentar';
