@@ -64,6 +64,9 @@
   const empty = (icon, text, extra = '') => `<div class="empty"><span class="empty-icon">${U.icon(icon)}</span><div>${text}</div>${extra}</div>`;
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+  /** Ya se sabe que no hay sesión de Google en este navegador (así que no ve los datos de la nube). */
+  const signedOut = () => !!(window.Sync && Sync.state && Sync.state.authChecked && !Sync.state.user);
+
   /** Saludo según la hora local del dispositivo: días 6–14 h, tardes 14–21 h, noches 21–6 h. */
   function greeting(date = new Date()) {
     const h = date.getHours();
@@ -2333,7 +2336,13 @@
         <div class="page-header"><div>${dateLine}<h1 class="display">¡Bienvenido, ${esc(firstName)}!</h1><p>Tu centro de control de asesorías online.</p></div></div>
         ${newFormsBanner()}
         <div class="card">
-          ${empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
+          ${signedOut()
+            // Sin la sesión de Google este navegador no ve la nube: primero, entrar (y nada de datos de ejemplo, que se mezclarían con los reales).
+            ? empty('logo', '<strong>No ves tus clientes porque no has entrado con tu cuenta de Google en este navegador.</strong><br>Tus clientes están guardados en la nube: entra y aparecerán.',
+              `<div class="actions" style="justify-content:center;margin-top:16px">
+                 <button class="btn primary" data-sync="login">${U.icon('cloud')}Entrar con Google</button>
+               </div>`)
+            : empty('logo', '<strong>Aún no tienes clientes.</strong><br>Empieza añadiendo tu primer cliente o explora la aplicación con datos de ejemplo.',
             `<div class="actions" style="justify-content:center;margin-top:16px">
                <button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button>
                <button class="btn" data-action="sample-data">Cargar datos de ejemplo</button>
@@ -2507,7 +2516,10 @@
     if (!list.length) {
       return Store.data.clients.length
         ? empty('search', 'Ningún cliente coincide con la búsqueda.')
-        : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
+        : signedOut()
+          // Sin la sesión de Google, este navegador no ve los clientes guardados en la nube.
+          ? empty('users', '<strong>No ves tus clientes porque no has entrado con tu cuenta de Google en este navegador.</strong><br>Tus clientes están guardados en la nube: entra y aparecerán.', `<div style="margin-top:12px"><button class="btn primary" data-sync="login">${U.icon('cloud')}Entrar con Google</button></div>`)
+          : empty('users', 'Todavía no tienes clientes.', `<div style="margin-top:12px"><button class="btn primary" data-action="new-client">${U.icon('plus')}Añadir cliente</button></div>`);
     }
     return `<div class="table-wrap"><table>
       <thead><tr><th>Cliente</th><th class="hide-sm">Email</th><th class="hide-sm">Teléfono</th><th class="num">Importe</th><th>Próximo pago</th><th class="hide-sm">Próxima revisión</th><th class="hide-sm">Último peso</th></tr></thead>

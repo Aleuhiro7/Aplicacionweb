@@ -68,6 +68,9 @@ onAuthStateChanged(auth, (user) => {
   ref = null;
   ready = false;
   state.user = user;
+  const first = !state.authChecked;
+  state.authChecked = true; // ya se sabe si hay sesión: las pantallas vacías pueden decir «entra con Google»
+  if (first && window.App) App.render();
   if (!user) { setStatus('off'); return; }
 
   setStatus('busy');
