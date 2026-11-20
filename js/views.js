@@ -2093,17 +2093,19 @@
     try { localStorage.setItem(portalKey(c.portalToken), json); } catch (e) { /* sin espacio: se volverá a subir */ }
   }
 
-  // Cada vez que guardas algo, la zona de los clientes que la tienen se pone al día (si ha cambiado).
+  // Cada vez que guardas algo (y al conectarse a la nube), la zona de los clientes que la tienen
+  // se pone al día, solo si ha cambiado.
   let portalTimer = null;
-  Store.onSave(() => {
+  function syncPortals(delay = 3000) {
     clearTimeout(portalTimer);
     portalTimer = setTimeout(() => {
       if (!window.Sync || !Sync.state.user) return;
       for (const c of Store.data.clients) {
         if (c.portalToken) publishPortal(c).catch((e) => console.error('Zona del cliente sin actualizar', e));
       }
-    }, 3000);
-  });
+    }, delay);
+  }
+  Store.onSave(() => syncPortals());
 
   async function invitePortal(clientId) {
     const c = Store.get('clients', clientId);
@@ -4338,7 +4340,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks,
+    renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks, syncPortals,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();

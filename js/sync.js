@@ -41,6 +41,7 @@ function syncedKey(uid) { return 'entrenapro:synced:' + uid; }
 function setStatus(status, error) {
   if (status === 'on' && state.status !== 'on' && window.Photos) setTimeout(() => window.Photos.uploadPending(), 0);
   if (status === 'on' && state.status !== 'on' && window.Views && Views.checkQuestionnaireLinks) setTimeout(() => Views.checkQuestionnaireLinks(), 500);
+  if (status === 'on' && state.status !== 'on' && window.Views && Views.syncPortals) Views.syncPortals(1500);
   state.status = status;
   state.error = error || '';
   const btn = document.querySelector('.sync-btn');
