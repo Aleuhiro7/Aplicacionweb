@@ -752,30 +752,34 @@ function summaryView(id) {
   const w = workouts.find((x) => x.id === id);
   if (!w) return '<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div><p class="muted">No se encuentra este entreno.</p>';
   const sets = w.exercises.flatMap((e) => e.sets.filter((st) => st.done));
-  const volume = sets.reduce((v, st) => v + (num(st.kg) || 0) * (num(st.reps) || 0), 0);
+  // Mejoras respecto a la vez anterior en cada ejercicio (mejor serie): más peso, o el mismo peso con más repeticiones.
+  const best = (list) => { let b = null; for (const st of list) { const kg = num(st.kg); if (!st.done || kg === null) continue; const r = num(st.reps) || 0; if (!b || kg > b.kg || (kg === b.kg && r > b.reps)) b = { kg, reps: r }; } return b; };
   const ups = [];
   const firsts = [];
   for (const e of w.exercises) {
-    const now = bestKg(e.sets);
-    if (!Number.isFinite(now)) continue;
+    const now = best(e.sets);
+    if (!now) continue;
     // «La vez anterior» = el entreno anterior a este con ese ejercicio.
-    const older = workouts.slice(workouts.indexOf(w) + 1).find((x) => (x.exercises || []).some((y) => ((e.id && y.id === e.id) || y.name === e.name) && y.sets.some((st) => st.done && num(st.kg) !== null)));
-    const before = older ? bestKg(older.exercises.find((y) => (e.id && y.id === e.id) || y.name === e.name).sets) : null;
-    if (before === null || !Number.isFinite(before)) firsts.push(e.name);
-    else if (now > before) ups.push({ name: e.name, before, now });
+    const same = (y) => (e.id && y.id === e.id) || y.name === e.name;
+    const older = workouts.slice(workouts.indexOf(w) + 1).find((x) => (x.exercises || []).some((y) => same(y) && best(y.sets)));
+    const before = older ? best(older.exercises.find(same).sets) : null;
+    if (!before) firsts.push(e.name);
+    else if (now.kg > before.kg) ups.push({ name: e.name, text: `${fmtKg(before.kg)} → ${fmtKg(now.kg)} kg`, plus: `+${fmtKg(now.kg - before.kg)} kg` });
+    else if (now.kg === before.kg && now.reps > before.reps) ups.push({ name: e.name, text: `${fmtKg(now.kg)} kg: ${before.reps} → ${now.reps} reps`, plus: `+${now.reps - before.reps} reps` });
   }
+  const fresh = workouts[0] === w && Date.now() - w.endedAt < 3600e3;
   return `<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div>
     <section class="card cz-card cz-summary">
       <small class="cz-kicker">${esc(fmtDay(w.date))}</small>
-      <h2>${workouts[0] === w && Date.now() - w.endedAt < 3600e3 ? '¡Entreno completado! 💪' : esc(w.dayName)}</h2>
-      ${workouts[0] === w && Date.now() - w.endedAt < 3600e3 ? `<p class="muted">${esc(w.dayName)}</p>` : ''}
+      <h2>${fresh ? '¡Entreno completado! 💪' : esc(w.dayName)}</h2>
+      ${fresh ? `<p class="muted">${esc(w.dayName)}</p>` : ''}
       <div class="cz-stats">
         <div><strong>${fmtDuration(w.durationSec || 0)}</strong><small>Tiempo</small></div>
         <div><strong>${sets.length}</strong><small>Series</small></div>
-        <div><strong>${volume ? `${fmtKg(Math.round(volume))} kg` : '—'}</strong><small>Kilos movidos<br>(peso × reps)</small></div>
+        <div class="${ups.length ? 'up' : ''}"><strong>${ups.length}</strong><small>${ups.length === 1 ? 'Mejora' : 'Mejoras'}</small></div>
       </div>
-      ${ups.length ? `<h3>Mejoras de peso</h3><ul class="cz-ups">${ups.map((u) => `<li><span>${esc(u.name)}</span><b>${fmtKg(u.before)} → ${fmtKg(u.now)} kg <em>+${fmtKg(u.now - u.before)}</em></b></li>`).join('')}</ul>`
-        : '<p class="muted">Sin mejoras de peso esta vez. Recuerda: aumentar la intensidad también es progreso.</p>'}
+      ${ups.length ? `<h3>Has mejorado en</h3><ul class="cz-ups">${ups.map((u) => `<li><span>${esc(u.name)}</span><b>${esc(u.text)} <em>${esc(u.plus)}</em></b></li>`).join('')}</ul>`
+        : '<p class="muted">Sin mejoras de peso ni repeticiones esta vez. Recuerda: aumentar la intensidad también es progreso.</p>'}
       ${firsts.length ? `<p class="muted cz-firsts">Primera vez que apuntas: ${esc(firsts.join(', '))}. La próxima vez verás si mejoras.</p>` : ''}
     </section>
     <section class="card cz-card">

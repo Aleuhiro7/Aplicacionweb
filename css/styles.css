@@ -1938,3 +1938,4 @@ p.cz-approach b { color: #fb923c; font-weight: 700; }
 .cz-sheet-in .btn { justify-content: center; padding: 14px; font-size: 1rem; }
 .cz-del { color: var(--danger); margin-bottom: 24px; }
 .cz-stats small { text-align: center; line-height: 1.25; }
+.cz-stats div.up strong { color: #3ee6a0; }
