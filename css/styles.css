@@ -1887,3 +1887,17 @@ button.cz-day { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .cz-sum-ex i.skip { color: var(--muted); font-weight: 500; }
 .cz-cal-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .cz-cal-cell { aspect-ratio: auto; height: 40px; min-width: 0; }
+/* Entrenos del cliente (vista del entrenador) */
+.wk-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 600px) { .wk-stats { grid-template-columns: 1fr 1fr; } .wk-stats .stat:first-child { grid-column: 1 / -1; } }
+.wk-list li.wk-item { display: block; padding: 0; }
+.wk-item summary { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; list-style: none; }
+.wk-item summary::-webkit-details-marker { display: none; }
+.wk-item .meta { white-space: normal; }
+.wk-detail { padding: 0 0 12px; display: grid; gap: 10px; }
+.wk-ex-name { font-weight: 600; }
+.wk-sets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.wk-sets span { padding: 3px 9px; border-radius: 999px; background: var(--surface-2); font-size: .85rem; font-weight: 600; }
+.wk-sets span.skip { color: var(--muted); font-weight: 500; }
+@media (max-width: 600px) { .wk-stats .stat:last-child { grid-column: auto; } }
+@media (max-width: 760px) { .stats.wk-stats > .stat:last-child:nth-child(odd) { grid-column: auto; } }

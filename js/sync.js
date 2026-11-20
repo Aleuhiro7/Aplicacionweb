@@ -8,7 +8,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, onSnapshot, setDoc, serverTimestamp,
-  getDoc, deleteDoc, getDocFromServer,
+  getDoc, deleteDoc, getDocFromServer, collection, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -180,6 +180,13 @@ async function fetchPortal(token) {
   return snap.exists() ? snap.data() : null;
 }
 
+/** Entrenos que el cliente ha apuntado en su diario (portal/{código}/workouts), del más reciente al más antiguo. */
+async function fetchWorkouts(token) {
+  if (!state.user) return null;
+  const snap = await getDocs(collection(db, 'portal', token, 'workouts'));
+  return snap.docs.map((d) => d.data()).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0));
+}
+
 async function fetchQuestionnaire(token) {
   if (!state.user) return null;
   const ref = doc(db, 'cuestionarios', token);
@@ -235,6 +242,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal, fetchWorkouts };
 setStatus(state.status);
 App.render();

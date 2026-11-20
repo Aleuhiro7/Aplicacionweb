@@ -2154,12 +2154,97 @@
     return `<section class="card portal-card">
       <div class="card-header"><h2>Zona del cliente</h2></div>
       <p class="portal-status">${status}</p>
+      ${(() => { if (info && info.memberEmail) loadClientWorkouts(c); const w = portalWk[c.portalToken]; if (!w || !w.list) return ''; if (!w.list.length) return '<p class="muted">Todavía no ha apuntado ningún entreno.</p>'; const d = U.daysBetween(w.list[0].date, today()); return `<p>Último entreno: <strong>${d === 0 ? 'hoy' : d === 1 ? 'ayer' : `hace ${d} días`}</strong> (${esc(w.list[0].dayName)}) · <button class="link-btn" data-action="client-tab" data-value="entrenos">ver sus entrenos</button></p>`; })()}
       <p class="muted">Ve su rutina, su dieta y la guía. Se actualiza sola cuando cambias su rutina o su dieta.</p>
       <div class="actions">
         <button class="btn wa-btn" data-action="portal-invite" data-client="${c.id}">${U.icon('message')}${info && info.memberEmail ? 'Enviarle el enlace' : 'Reenviar invitación'}</button>
         <button class="btn" data-action="portal-copy" data-client="${c.id}">${U.icon('file')}Copiar enlace</button>
       </div>
     </section>`;
+  }
+
+  /* ---------- Entrenos del cliente (los que apunta en el diario de su zona) ---------- */
+  const portalWk = {}; // código → { loading } | { list } | { error }
+  function loadClientWorkouts(c, force) {
+    const tok = c.portalToken;
+    if (!tok || !window.Sync || !Sync.state.user) return;
+    if (portalWk[tok] && !force && !portalWk[tok].error) return;
+    portalWk[tok] = { loading: true };
+    Sync.fetchWorkouts(tok)
+      .then((list) => { portalWk[tok] = { list: list || [] }; })
+      .catch((e) => { console.error(e); portalWk[tok] = { error: true }; })
+      .finally(() => { if (location.hash === `#/clientes/${c.id}`) App.render(); });
+  }
+  const kgNum = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+  const bestSet = (sets) => {
+    let best = null;
+    for (const st of sets || []) { const kg = kgNum(st.kg); if (st.done && kg !== null && (!best || kg > best.kg)) best = { kg, reps: st.reps }; }
+    return best;
+  };
+  const mins = (sec) => { const m = Math.round((sec || 0) / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
+
+  function clientWorkouts(c) {
+    if (!window.Sync || !Sync.state.user) return `<section class="card">${empty('cloud', 'Entra con tu cuenta de Google para ver los entrenos que apunta en su zona.')}</section>`;
+    const st = portalWk[c.portalToken];
+    if (!st) loadClientWorkouts(c);
+    const refresh = `<button class="btn sm" data-action="workouts-refresh" data-client="${c.id}">${U.icon('refresh')}Actualizar</button>`;
+    if (!st || st.loading) return `<section class="card"><div class="card-header"><h2>Entrenos</h2></div><p class="muted">Cargando sus entrenos…</p></section>`;
+    if (st.error) return `<section class="card"><div class="card-header"><h2>Entrenos</h2>${refresh}</div><p class="muted">No se han podido cargar (sin conexión o falta actualizar las reglas de Firebase).</p></section>`;
+    const list = st.list;
+    if (!list.length) return `<section class="card"><div class="card-header"><h2>Entrenos</h2>${refresh}</div>${empty('calendar', `${esc(c.name.split(' ')[0])} todavía no ha apuntado ningún entreno en el diario de su zona.`)}</section>`;
+    const t = today();
+    const last = list[0];
+    const sinceLast = U.daysBetween(last.date, t);
+    const in30 = list.filter((w) => U.daysBetween(w.date, t) < 30).length;
+    const doneSets = (w) => (w.exercises || []).reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0);
+    const allSets = (w) => (w.exercises || []).reduce((n, e) => n + e.sets.length, 0);
+    const avgMin = list.reduce((s2, w) => s2 + (w.durationSec || 0), 0) / list.length;
+    // Progresión por ejercicio: mejor peso de cada entreno, del primero al último.
+    const prog = new Map();
+    for (const w of list.slice().reverse()) {
+      for (const e of w.exercises || []) {
+        const b = bestSet(e.sets);
+        if (!b) continue;
+        if (!prog.has(e.name)) prog.set(e.name, []);
+        prog.get(e.name).push({ date: w.date, kg: b.kg, reps: b.reps });
+      }
+    }
+    const progRows = [...prog.entries()].sort((a, b) => b[1][b[1].length - 1].date.localeCompare(a[1][a[1].length - 1].date));
+    return `
+      <div class="stats wk-stats">
+        <div class="card stat"><div class="stat-label">Último entreno</div><div class="stat-value" style="font-size:1.7rem">${sinceLast === 0 ? 'Hoy' : sinceLast === 1 ? 'Ayer' : `Hace ${sinceLast} días`}</div><div class="stat-sub">${esc(last.dayName)} · ${esc(fmtDate(last.date))}</div></div>
+        <div class="card stat"><div class="stat-label">Últimos 30 días</div><div class="stat-value">${in30}</div><div class="stat-sub">${in30 === 1 ? 'entreno' : 'entrenos'} · ${list.length} en total</div></div>
+        <div class="card stat"><div class="stat-label">Duración media</div><div class="stat-value" style="font-size:1.7rem">${mins(avgMin)}</div><div class="stat-sub">por entreno</div></div>
+      </div>
+      ${progRows.length ? `<section class="card">
+        <div class="card-header"><h2>Progresión de pesos</h2>${refresh}</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Ejercicio</th><th class="num">Primera vez</th><th class="num">Última vez</th><th class="num">Cambio</th></tr></thead>
+          <tbody>${progRows.map(([name, h]) => {
+            const a = h[0], b = h[h.length - 1];
+            const d = b.kg - a.kg;
+            return `<tr><td>${esc(name)}<div class="muted" style="font-size:.8rem">${plural(h.length, 'vez', 'veces')}</div></td>
+              <td class="num">${fmtNum(a.kg)} kg<div class="muted" style="font-size:.8rem">${esc(U.fmtDateShort(a.date))}</div></td>
+              <td class="num"><strong>${fmtNum(b.kg)} kg</strong><div class="muted" style="font-size:.8rem">${esc(U.fmtDateShort(b.date))}</div></td>
+              <td class="num">${h.length < 2 ? '<span class="muted">—</span>' : d ? `<span class="${d > 0 ? 'delta-down' : 'delta-up'}">${d > 0 ? '+' : ''}${fmtNum(d)} kg</span>` : '<span class="muted">=</span>'}</td></tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </section>` : ''}
+      <section class="card">
+        <div class="card-header"><h2>Entrenos (${list.length})</h2>${progRows.length ? '' : refresh}</div>
+        <ul class="list wk-list">${list.map((w, i) => {
+          const prevOf = (e) => list.slice(i + 1).map((x) => (x.exercises || []).find((y) => y.name === e.name)).find((y) => y && bestSet(y.sets));
+          return `<li class="wk-item"><details>
+            <summary><div class="grow"><strong>${esc(w.dayName)}</strong><div class="meta">${esc(fmtDate(w.date))} · ${mins(w.durationSec)} · ${doneSets(w)} de ${allSets(w)} series</div></div>${doneSets(w) < allSets(w) ? badge('Incompleto', 'warning') : badge('Completo', 'success')}</summary>
+            <div class="wk-detail">${(w.exercises || []).map((e) => {
+              const b = bestSet(e.sets); const p = prevOf(e); const pb = p && bestSet(p.sets);
+              const diff = b && pb ? b.kg - pb.kg : 0;
+              return `<div class="wk-ex"><div class="wk-ex-name">${esc(e.name)}${diff ? ` <span class="${diff > 0 ? 'delta-down' : 'delta-up'}">${diff > 0 ? '+' : ''}${fmtNum(diff)} kg</span>` : ''}</div>
+                <div class="wk-sets">${e.sets.map((x, k) => (x.done ? `<span>${kgNum(x.kg) !== null ? `${fmtNum(kgNum(x.kg))} kg` : '—'} × ${esc(x.reps || '—')}</span>` : `<span class="skip">S${k + 1} sin hacer</span>`)).join('')}</div></div>`;
+            }).join('')}</div>
+          </details></li>`;
+        }).join('')}</ul>
+      </section>`;
   }
 
   const planUrl = (kind, token) => new URL(`${PLAN_KIND[kind].page}?t=${token}`, location.href.split('#')[0]).href;
@@ -2701,7 +2786,7 @@
     }
     const pendingCount = Store.tasksFor(c.id).filter((t) => !t.done).length;
     const activeInjuries = Store.injuriesFor(c.id).filter((x) => !x.recoveredDate);
-    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['dieta', 'Dieta'], ['progreso', 'Progreso'], ['lesiones', `Lesiones${activeInjuries.length ? ` <span class="tab-count danger">${activeInjuries.length}</span>` : ''}`], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
+    const tabs = [['resumen', 'Resumen'], ['rutina', 'Rutina'], ['dieta', 'Dieta'], ['progreso', 'Progreso'], ...(c.portalToken ? [['entrenos', 'Entrenos']] : []), ['lesiones', `Lesiones${activeInjuries.length ? ` <span class="tab-count danger">${activeInjuries.length}</span>` : ''}`], ['pagos', 'Pagos'], ['fotos', 'Fotos'], ['tareas', `Tareas${pendingCount ? ` <span class="tab-count">${pendingCount}</span>` : ''}`]];
     if (!tabs.some(([k]) => k === state.clientTab)) state.clientTab = 'resumen';
     const ageVal = U.age(c.birthDate);
     const sub = [ageVal !== null ? `${ageVal} años` : null, c.startDate ? `Cliente desde ${fmtDate(c.startDate)}` : null].filter(Boolean).join(' · ');
@@ -2714,6 +2799,7 @@
       case 'dieta': body = clientDiet(c); break;
       case 'tareas': body = clientTasks(c); break;
       case 'lesiones': body = clientInjuries(c); break;
+      case 'entrenos': body = clientWorkouts(c); break;
       default: body = clientSummary(c);
     }
     return `
@@ -4157,6 +4243,7 @@
     },
     'new-injury': (d) => openInjuryForm(null, d.client),
     'portal-invite': (d) => invitePortal(d.client),
+    'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },
     'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),
     'injury-recovered': (d) => markInjuryRecovered(d.id),
