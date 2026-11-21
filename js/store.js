@@ -284,7 +284,24 @@
   function onSave(fn) { saveListeners.push(fn); }
 
   /** Sustituye todos los datos por los que llegan de la nube (sin volver a subirlos). */
+  /* Copia de seguridad automática en este dispositivo antes de que la nube sustituya o junte los datos
+   * (se guardan las 3 últimas). Se pueden recuperar en Ajustes → «Recuperar datos». */
+  const BACKUP_KEY = 'entrenapro:copias';
+  function backupLocal(reason) {
+    try {
+      if (!data || !(data.clients || []).length) return;
+      const json = JSON.stringify(data);
+      const list = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+      if (list.length && list[0].json === json) return;
+      list.unshift({ at: new Date().toISOString(), reason, json });
+      while (list.length > 3) list.pop();
+      try { localStorage.setItem(BACKUP_KEY, JSON.stringify(list)); } catch (e) { list.pop(); localStorage.setItem(BACKUP_KEY, JSON.stringify(list)); }
+    } catch (e) { /* sin espacio: no se guarda la copia */ }
+  }
+  function backups() { try { return JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]'); } catch (e) { return []; } }
+
   function replaceAll(raw) {
+    if (data && JSON.stringify(normalize(JSON.parse(JSON.stringify(raw)))) !== JSON.stringify(data)) backupLocal('antes de recibir los datos de la nube');
     migrated = false;
     data = normalize(raw);
     if (migrated) { migrated = false; save(); } else writeLocal();
@@ -292,6 +309,7 @@
 
   /** Une los datos de la nube con los de este navegador (por id) sin perder nada. */
   function mergeIn(raw) {
+    backupLocal('antes de juntar con otros datos');
     const remote = normalize(raw);
     // Por id: lo que solo está aquí se añade; si está en los dos sitios, gana el cambio más reciente.
     const stamp = (r) => r.updatedAt || r.createdAt || '';
@@ -580,7 +598,7 @@
   function today() { return U.today(); }
 
   window.Store = {
-    load, save, onSave, replaceAll, mergeIn, add, update, remove, get, reset, exportJSON, importJSON,
+    load, save, onSave, replaceAll, mergeIn, backups, add, update, remove, get, reset, exportJSON, importJSON,
     clients, measurementsFor, paymentsFor, monthRange, dueInfo, receivables, pendingAmount, lastPaidAmount, REMIND_DAYS,
     tasksFor, injuriesFor, pendingTasks, photosFor, routineFor, dietFor, planGaps, library, removeLibraryExercise, foods, removeFood, blocksForFood, snapToStart, startOnOrAfter, nextDueAfter, reviewInfo, reviewsFor, reviewSchedule, REVIEW_NOTICE, REVIEW_TYPES, FOLLOWUP_DAY,
     lastMeasurement, paidBetween, clientName,

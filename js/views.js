@@ -2175,6 +2175,42 @@
     </section>`;
   }
 
+  /* ---------- Recuperar datos de este dispositivo (ver rescate.js) ---------- */
+  let rescue = null; // null | { loading } | { items } | { error }
+  function rescueList() {
+    if (!rescue) return '';
+    if (rescue.loading) return '<p class="muted" style="margin:12px 0 0">Buscando…</p>';
+    if (rescue.error) return `<p class="muted" style="margin:12px 0 0">No se ha podido buscar: ${esc(rescue.error)}</p>`;
+    if (!rescue.items.length) return '<p class="muted" style="margin:12px 0 0">No hay en este dispositivo ninguna versión de tus datos distinta de la que tienes ahora. Prueba a buscar desde el otro dispositivo (el móvil o la tablet donde estaban los datos).</p>';
+    const now = new Set(Store.data.clients.map((c) => c.id));
+    return `<ul class="list rescue-items">${rescue.items.map((it, i) => {
+      const cl = it.data.clients || [];
+      const extra = cl.filter((c) => !now.has(c.id));
+      const when = it.time ? new Date(it.time).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      const count = (k) => (it.data[k] || []).length;
+      return `<li><div class="grow">
+          <div class="title">${esc(it.source)}${when ? ` · ${esc(when)}` : ''}</div>
+          <div class="meta" style="white-space:normal">${plural(cl.length, 'cliente', 'clientes')}${extra.length ? ` · <strong>${extra.length} que ahora no tienes</strong>: ${esc(extra.slice(0, 6).map((c) => c.name).join(', '))}${extra.length > 6 ? '…' : ''}` : ''} · ${plural(count('routines'), 'rutina', 'rutinas')} · ${plural(count('diets'), 'dieta', 'dietas')} · ${plural(count('measurements'), 'peso', 'pesos')} · ${plural(count('payments'), 'pago', 'pagos')}</div>
+        </div>
+        <button class="btn sm primary" data-action="rescue-restore" data-value="${i}">Recuperar</button></li>`;
+    }).join('')}</ul>`;
+  }
+  async function rescueScan() {
+    rescue = { loading: true }; App.render();
+    try { rescue = { items: await Rescate.scan() }; } catch (e) { console.error(e); rescue = { error: e.message || String(e) }; }
+    App.render();
+  }
+  async function rescueRestore(i) {
+    const it = rescue && rescue.items && rescue.items[i];
+    if (!it) return;
+    const ok = await UI.confirm({ title: 'Recuperar estos datos', message: `Se juntarán con lo que tienes ahora (${plural(it.data.clients.length, 'cliente', 'clientes')} en esta versión). No se borra nada: si un dato está en los dos sitios, se queda el cambio más reciente. Después se sube a la nube.`, confirmLabel: 'Recuperar', danger: false });
+    if (!ok) return;
+    Rescate.restore(it);
+    rescue = null;
+    App.render();
+    UI.toast(`Recuperado: ahora tienes ${plural(Store.data.clients.length, 'cliente', 'clientes')}. Se está subiendo a la nube.`);
+  }
+
   /* ---------- Entrenos del cliente (los que apunta en el diario de su zona) ---------- */
   const portalWk = {}; // código → { loading } | { list } | { error }
   function loadClientWorkouts(c, force) {
@@ -4067,6 +4103,12 @@
     const d = Store.data;
     return `
       <div class="page-header"><div><h1 class="display">Ajustes y copias de seguridad</h1><p>Avisos, sincronización y copias de seguridad de tus datos</p></div></div>
+      <section class="card rescue-card">
+        <div class="card-header"><h2>Recuperar datos</h2></div>
+        <p class="muted" style="margin:0 0 12px">Si te falta algo que tenías en <strong>este dispositivo</strong> (por ejemplo, clientes o progresos que no llegaron a subirse a la nube), búscalo aquí. Se junta con lo que tienes ahora sin borrar nada y se sube a la nube.</p>
+        <button class="btn primary" data-action="rescue-scan">${U.icon('search')} Buscar datos guardados en este dispositivo</button>
+        <div id="rescue-list">${rescueList()}</div>
+      </section>
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Avisos de pago</h2></div>
@@ -4255,6 +4297,8 @@
     },
     'new-injury': (d) => openInjuryForm(null, d.client),
     'portal-invite': (d) => invitePortal(d.client),
+    'rescue-scan': () => rescueScan(),
+    'rescue-restore': (d) => rescueRestore(Number(d.value)),
     'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },
     'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),

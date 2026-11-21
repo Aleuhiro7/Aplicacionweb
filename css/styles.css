@@ -1947,3 +1947,4 @@ p.cz-approach b { color: #fb923c; font-weight: 700; }
 .cz-tour-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
 .cz-tour-dots i.on { width: 22px; border-radius: 999px; background: linear-gradient(90deg, #6e8bff, #22d3ee); }
 .cz-howto { margin: -2px 0 14px; }
+.rescue-card { margin-bottom: 18px; border: 1.5px solid var(--primary); } .rescue-items { margin-top: 12px; } .rescue-items li { align-items: flex-start; }
