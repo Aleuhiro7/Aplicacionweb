@@ -7,7 +7,7 @@ import {
   getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, onSnapshot, setDoc, serverTimestamp,
+  initializeFirestore, doc, onSnapshot, setDoc, serverTimestamp,
   getDoc, deleteDoc, getDocFromServer, collection, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
@@ -22,12 +22,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-let db;
-try {
-  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-} catch (e) {
-  db = initializeFirestore(app, {});
-}
+// Sin caché compartida entre pestañas: con ella, una pestaña o la app instalada dormida en segundo plano
+// puede quedarse con la conexión y las demás no reciben nunca los datos de la nube (se quedan en
+// «Sincronizando…»). Los datos ya se guardan en este dispositivo (localStorage) y los cambios sin subir
+// se juntan con la nube al volver a conectar (ver «pendiente»), así que no hace falta.
+const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 
 const state = { user: null, status: 'off', error: '' }; // off | busy | on | error
 let ref = null;
@@ -79,8 +78,7 @@ async function syncNow() {
   if (!ref) { signIn(); return; }
   setStatus('busy');
   try {
-    let snap;
-    try { snap = await getDocFromServer(ref); } catch (e) { snap = await getDoc(ref); }
+    const snap = await getDocFromServer(ref); // si no hay conexión con la nube, falla (y se avisa)
     if (snap.exists()) Store.mergeIn(JSON.parse(snap.data().json));
     ready = true;
     await push();
@@ -89,8 +87,8 @@ async function syncNow() {
     if (state.status !== 'error') { setStatus('on'); UI.toast('Sincronizado: este dispositivo y la nube tienen ya los mismos datos'); }
   } catch (e) {
     console.error(e);
-    setStatus('error', 'No se pudo sincronizar: ' + (e.code || e.message));
-    UI.toast('No se pudo sincronizar. Comprueba la conexión.');
+    setStatus('error', 'No se puede conectar con la nube desde este dispositivo (' + (e.code || e.message) + ')');
+    UI.toast('No se puede conectar con la nube. Comprueba internet y cierra otras ventanas de la app.');
   }
 }
 
@@ -108,6 +106,8 @@ onAuthStateChanged(auth, (user) => {
   if (!user) { setStatus('off'); return; }
 
   setStatus('busy');
+  // Si en 20 s no llegan los datos de la nube, se dice claro en vez de quedarse en «Sincronizando…».
+  setTimeout(() => { if (state.user === user && state.status === 'busy') setStatus('error', 'No llega la conexión con la nube. Comprueba internet y cierra las otras ventanas o pestañas de la app.'); }, 20000);
   ref = doc(db, 'users', user.uid, 'app', 'data');
   let firstTime = !localStorage.getItem(syncedKey(user.uid));
 
@@ -139,7 +139,7 @@ onAuthStateChanged(auth, (user) => {
       push();
     } else {
       ready = true;
-      if (snap.data().json === JSON.stringify(Store.data)) { state.lastSync = state.lastSync || new Date(); setStatus(snap.metadata.fromCache ? 'busy' : 'on'); return; }
+      if (snap.data().json === JSON.stringify(Store.data)) { if (!snap.metadata.fromCache) state.lastSync = new Date(); setStatus(snap.metadata.fromCache ? 'busy' : 'on'); return; }
       Store.replaceAll(remote);
       if (!snap.metadata.fromCache) state.lastSync = new Date();
     }
