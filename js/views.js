@@ -2288,19 +2288,58 @@
       </section>` : ''}
       <section class="card">
         <div class="card-header"><h2>Entrenos (${list.length})</h2>${progRows.length ? '' : refresh}</div>
-        <ul class="list wk-list">${list.map((w, i) => {
-          const prevOf = (e) => list.slice(i + 1).map((x) => (x.exercises || []).find((y) => y.name === e.name)).find((y) => y && bestSet(y.sets));
-          return `<li class="wk-item"><details>
-            <summary><div class="grow"><strong>${esc(w.dayName)}</strong><div class="meta">${esc(fmtDate(w.date))} · ${mins(w.durationSec)} · ${doneSets(w)} de ${allSets(w)} series</div></div>${doneSets(w) < allSets(w) ? badge('Incompleto', 'warning') : badge('Completo', 'success')}</summary>
-            <div class="wk-detail">${(w.exercises || []).map((e) => {
-              const b = bestSet(e.sets); const p = prevOf(e); const pb = p && bestSet(p.sets);
-              const diff = b && pb ? b.kg - pb.kg : 0;
-              return `<div class="wk-ex"><div class="wk-ex-name">${esc(e.name)}${diff ? ` <span class="${diff > 0 ? 'delta-down' : 'delta-up'}">${diff > 0 ? '+' : ''}${fmtNum(diff)} kg</span>` : ''}</div>
-                <div class="wk-sets">${e.sets.map((x, k) => (x.done ? `<span>${kgNum(x.kg) !== null ? `${fmtNum(kgNum(x.kg))} kg` : '—'} × ${esc(x.reps || '—')}</span>` : `<span class="skip">S${k + 1} sin hacer</span>`)).join('')}</div></div>`;
-            }).join('')}</div>
-          </details></li>`;
-        }).join('')}</ul>
+        <ul class="list wk-list">${list.map((w) => `<li class="wk-item" data-action="workout-open" data-client="${c.id}" data-value="${esc(w.id)}" tabindex="0">
+            <div class="grow"><strong>${esc(w.dayName)}</strong><div class="meta">${esc(fmtDate(w.date))} · ${mins(w.durationSec)} · ${doneSets(w)} de ${allSets(w)} series${workoutUps(list, w).length ? ` · <span class="delta-down">${plural(workoutUps(list, w).length, 'mejora', 'mejoras')}</span>` : ''}</div></div>
+            ${doneSets(w) < allSets(w) ? badge('Incompleto', 'warning') : badge('Completo', 'success')}
+            <span class="wk-open">Ver ›</span>
+          </li>`).join('')}</ul>
       </section>`;
+  }
+
+  /** Mejoras de un entreno respecto a la vez anterior en cada ejercicio (más peso, o mismo peso con más reps). */
+  function workoutUps(list, w) {
+    const best = (sets) => { let b = null; for (const st of sets || []) { const kg = kgNum(st.kg); if (!st.done || kg === null) continue; const r = kgNum(st.reps) || 0; if (!b || kg > b.kg || (kg === b.kg && r > b.reps)) b = { kg, reps: r }; } return b; };
+    const ups = [];
+    const older = list.slice(list.indexOf(w) + 1);
+    for (const e of w.exercises || []) {
+      const now = best(e.sets);
+      if (!now) continue;
+      const same = (y) => (e.id && y.id === e.id) || y.name === e.name;
+      const prevW = older.find((x) => (x.exercises || []).some((y) => same(y) && best(y.sets)));
+      const before = prevW && best(prevW.exercises.find(same).sets);
+      if (!before) continue;
+      if (now.kg > before.kg) ups.push({ name: e.name, text: `${fmtNum(before.kg)} → ${fmtNum(now.kg)} kg`, plus: `+${fmtNum(now.kg - before.kg)} kg` });
+      else if (now.kg === before.kg && now.reps > before.reps) ups.push({ name: e.name, text: `${fmtNum(now.kg)} kg: ${before.reps} → ${now.reps} reps`, plus: `+${now.reps - before.reps} reps` });
+    }
+    return ups;
+  }
+
+  /** El entreno tal como lo ve el cliente en su resumen. */
+  function openWorkout(clientId, id) {
+    const c = Store.get('clients', clientId);
+    const st = c && portalWk[c.portalToken];
+    const list = (st && st.list) || [];
+    const w = list.find((x) => x.id === id);
+    if (!w) return;
+    const sets = (w.exercises || []).flatMap((e) => e.sets.filter((x) => x.done));
+    const all = (w.exercises || []).reduce((n, e) => n + e.sets.length, 0);
+    const ups = workoutUps(list, w);
+    UI.openModal({
+      title: `${w.dayName} · ${fmtDate(w.date)}`,
+      body: `<div class="wk-sum">
+        <div class="wk-sum-stats">
+          <div><strong>${mins(w.durationSec).replace(" min", "&nbsp;min")}</strong><small>Tiempo</small></div>
+          <div><strong>${sets.length}<span class="muted" style="font-size:.9rem"> / ${all}</span></strong><small>Series</small></div>
+          <div class="${ups.length ? 'up' : ''}"><strong>${ups.length}</strong><small>${ups.length === 1 ? 'Mejora' : 'Mejoras'}</small></div>
+        </div>
+        ${ups.length ? `<h3>Ha mejorado en</h3><ul class="wk-ups">${ups.map((u) => `<li><span>${esc(u.name)}</span><b>${esc(u.text)} <em>${esc(u.plus)}</em></b></li>`).join('')}</ul>`
+          : '<p class="muted">Sin mejoras de peso ni repeticiones respecto a la vez anterior.</p>'}
+        <h3>Detalle</h3>
+        ${(w.exercises || []).map((e) => `<div class="wk-ex"><div class="wk-ex-name">${esc(e.name)}${e.group ? ` <span class="muted" style="font-weight:400">· ${esc(e.group)}</span>` : ''}</div>
+          <div class="wk-sets">${e.sets.map((x, k) => (x.done ? `<span><small>S${k + 1}</small> ${kgNum(x.kg) !== null ? `${fmtNum(kgNum(x.kg))} kg` : '—'} × ${esc(x.reps || '—')}</span>` : `<span class="skip">S${k + 1} sin hacer</span>`)).join('')}</div></div>`).join('')}
+      </div>`,
+      footer: '<button type="button" class="btn primary" data-close>Cerrar</button>',
+    });
   }
 
   const planUrl = (kind, token) => new URL(`${PLAN_KIND[kind].page}?t=${token}`, location.href.split('#')[0]).href;
@@ -4307,6 +4346,7 @@
     'portal-invite': (d) => invitePortal(d.client),
     'rescue-scan': () => rescueScan(),
     'rescue-restore': (d) => rescueRestore(Number(d.value)),
+    'workout-open': (d) => openWorkout(d.client, d.value),
     'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },
     'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),

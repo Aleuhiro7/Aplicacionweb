@@ -2022,3 +2022,20 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
 .cz-wk-how b { display: block; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--cz-accent); margin-bottom: 2px; }
 .cz-wk-how p { margin: 0; white-space: pre-line; color: var(--muted); }
 @media (max-height: 700px) { .cz-wk .cz-photos { min-height: 64px; } .cz-wk-how { font-size: .74rem; padding: 5px 8px; min-height: 40px; } }
+.wk-list li.wk-item { display: flex; align-items: center; gap: 10px; padding: 12px 0; cursor: pointer; }
+.wk-list li.wk-item:hover .wk-open { color: var(--primary); }
+.wk-open { flex-shrink: 0; font-weight: 700; color: var(--muted); font-size: .9rem; }
+.wk-sum h3 { font-size: 1rem; margin: 16px 0 8px; }
+.wk-sum-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.wk-sum-stats div { display: flex; flex-direction: column; align-items: center; padding: 12px 6px; border-radius: 12px; background: var(--surface-2); }
+.wk-sum-stats strong { font: 800 1.25rem/1.1 "Archivo", sans-serif; }
+.wk-sum-stats small { color: var(--muted); font-size: .8rem; }
+.wk-sum-stats .up strong { color: #3ee6a0; }
+.wk-ups { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wk-ups li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #3ee6a0 12%, var(--surface)); }
+.wk-ups b { white-space: nowrap; }
+.wk-ups em { font-style: normal; color: #3ee6a0; margin-left: 6px; }
+.wk-sum .wk-ex { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.wk-sum .wk-ex:last-child { border-bottom: 0; }
+.wk-sets small { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.wk-sum-stats strong { text-align: center; font-size: 1.1rem; }
