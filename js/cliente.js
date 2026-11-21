@@ -635,8 +635,8 @@ function renderWorkout() {
         <div class="cz-glabel"><i></i>${esc(e.group)}</div>
         <h2 class="cz-wk-name">${esc(e.name)}</h2>
         <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))} · descanso ${esc(e.rest || '2 min')}</p>
-        ${e.notes ? `<details class="cz-wk-notes"><summary>Cómo se hace</summary><p>${esc(e.notes)}</p></details>` : ''}
       </div>
+      ${e.notes ? `<div class="cz-wk-how"><b>Cómo se hace</b><p>${esc(e.notes)}</p></div>` : ''}
       <ol class="cz-setlist">${e.sets.map((st, i) => {
         const state = st.done ? 'done' : i === wk.set ? 'now' : 'next';
         return `<li class="${state}"><span>S${i + 1}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
