@@ -80,6 +80,16 @@
         }
       }
     }
+    // Zonas de cliente que aparezcan en las copias automáticas de este dispositivo (por si al juntar datos
+    // un cliente se quedó apuntando a otra zona): así se recuperan los entrenos de su diario.
+    try {
+      const copies = JSON.parse(localStorage.getItem('entrenapro:copias') || '[]');
+      const byId = new Map(base.clients.map((c) => [c.id, c]));
+      for (const cp of copies) {
+        for (const old of (JSON.parse(cp.json).clients || [])) { const cl = byId.get(old.id); if (cl && addTokens(cl, old)) migrated = true; }
+      }
+      for (const cl of base.clients) if (cl.portalToken && addTokens(cl)) migrated = true;
+    } catch (e) { /* sin copias */ }
     // Una sola vez: los descansos de las rutinas ya hechas pasan a la regla nueva
     // (3 min en los ejercicios de pierna y 2 min en el resto de músculos).
     if (!base.settings.restV2) {
@@ -308,6 +318,18 @@
   }
 
   /** Une los datos de la nube con los de este navegador (por id) sin perder nada. */
+  /** Junta en c.portalTokens todos los códigos de zona que haya tenido el cliente (en cualquier versión). */
+  function addTokens(cl, ...others) {
+    const all = new Set(cl.portalTokens || []);
+    for (const x of [cl, ...others]) {
+      if (!x) continue;
+      if (x.portalToken) all.add(x.portalToken);
+      for (const t of x.portalTokens || []) all.add(t);
+    }
+    if (all.size && (!cl.portalTokens || all.size !== cl.portalTokens.length)) { cl.portalTokens = [...all]; return true; }
+    return false;
+  }
+
   function mergeIn(raw) {
     backupLocal('antes de juntar con otros datos');
     const remote = normalize(raw);
@@ -319,6 +341,10 @@
       remote[c] = remote[c].map((r) => { const l = local.get(r.id); return l && stamp(l) > stamp(r) ? l : r; })
         .concat(data[c].filter((r) => !ids.has(r.id)));
     }
+    // Las zonas del cliente (enlaces de invitación) no se pierden nunca: se guardan todas las que haya tenido.
+    const before = new Map(data.clients.map((r) => [r.id, r]));
+    const rem = new Map(normalize(raw).clients.map((r) => [r.id, r]));
+    for (const cl of remote.clients) addTokens(cl, before.get(cl.id), rem.get(cl.id));
     remote.settings = Object.assign({}, data.settings, remote.settings);
     data = remote;
     writeLocal();

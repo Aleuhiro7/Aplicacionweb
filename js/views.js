@@ -2101,6 +2101,7 @@
     if (!force && last === json) return;
     payload.routineHtml = rawSheet ? await PdfMaker.prepared(rawSheet, paginateRoutine) : '';
     await Sync.publishPortal(c.portalToken, payload);
+    for (const t of (c.portalTokens || []).filter((x) => x !== c.portalToken)) Sync.publishPortal(t, payload).catch(() => {});
     portalSent.set(c.portalToken, json);
     try { localStorage.setItem(portalKey(c.portalToken), json); } catch (e) { /* sin espacio: se volverá a subir */ }
   }
@@ -2213,13 +2214,20 @@
 
   /* ---------- Entrenos del cliente (los que apunta en el diario de su zona) ---------- */
   const portalWk = {}; // código → { loading } | { list } | { error }
+  /** Todas las zonas que ha tenido el cliente (la actual primero). */
+  const clientTokens = (c) => [...new Set([c.portalToken, ...(c.portalTokens || [])].filter(Boolean))];
   function loadClientWorkouts(c, force) {
     const tok = c.portalToken;
     if (!tok || !window.Sync || !Sync.state.user) return;
     if (portalWk[tok] && !force && !portalWk[tok].error) return;
     portalWk[tok] = { loading: true };
-    Sync.fetchWorkouts(tok)
-      .then((list) => { portalWk[tok] = { list: list || [] }; })
+    // Se juntan los entrenos de todas sus zonas (sin repetir).
+    Promise.all(clientTokens(c).map((t) => Sync.fetchWorkouts(t).catch((e) => { if (t === tok) throw e; return []; })))
+      .then((lists) => {
+        const seen = new Set();
+        const list = lists.flat().filter((w) => (seen.has(w.id) ? false : seen.add(w.id))).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0));
+        portalWk[tok] = { list };
+      })
       .catch((e) => { console.error(e); portalWk[tok] = { error: true }; })
       .finally(() => { if (location.hash === `#/clientes/${c.id}`) App.render(); });
   }
