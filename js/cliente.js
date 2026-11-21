@@ -673,10 +673,10 @@ function bindWorkout() {
   on('cz-t-pause', () => { wk.timer = { running: false, left: timerLeft() }; saveWk(); renderWorkout(); });
   on('cz-t-resume', () => { wk.timer = { running: true, endAt: Date.now() + wk.timer.left * 1000 }; saveWk(); renderWorkout(); });
   on('cz-t-reset', () => { wk.timer = null; saveWk(); renderWorkout(); });
-  on('cz-t-again', () => { wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-t-again', () => { stopAlarm(); wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
   on('cz-edit', () => { e.sets[wk.set].done = false; wk.phase = 'set'; wk.timer = null; saveWk(); renderWorkout(); });
-  on('cz-next', () => advance());
-  on('cz-wk-finish', () => finishWorkout());
+  on('cz-next', () => { stopAlarm(); advance(); });
+  on('cz-wk-finish', () => { stopAlarm(); finishWorkout(); });
 }
 
 /** Siguiente paso tras el descanso: siguiente serie, o primera serie del siguiente ejercicio, o terminar. */
@@ -699,19 +699,18 @@ function updateClock() {
 }
 
 function startTicker() {
-  stopTicker();
+  if (ticker) { clearInterval(ticker); ticker = null; } // (sin parar la alarma: suena hasta que respondes)
   ticker = setInterval(() => {
     if (!wk || location.hash !== '#entreno') { stopTicker(); return; }
     updateClock();
     if (wk.phase === 'rest' && wk.timer && wk.timer.running && timerLeft() <= 0) restDone();
   }, 250);
 }
-function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); document.body.classList.remove('cz-in-workout'); }
+function stopTicker() { stopAlarm(); if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); document.body.classList.remove('cz-in-workout'); }
 
 /** Fin del descanso: aviso (pitido y vibración) y la pregunta de si pasamos a la siguiente serie. */
 function restDone() {
-  beep();
-  if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+  startAlarm();
   wk.timer = null;
   wk.phase = 'ask';
   saveWk();
@@ -729,14 +728,35 @@ function flash(text) {
 /* Pitido al terminar el descanso (el móvil necesita que el sonido se active con un toque). */
 let audio = null;
 function unlockAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { audio = null; } }
-function beep() {
+/* Alarma de fin de descanso: fuerte y repetida (pitidos + vibración) hasta que respondes a la pregunta. */
+let alarm = null;
+function beepBurst() {
   if (!audio) return;
-  [0, 0.25, 0.5].forEach((t) => {
+  if (audio.state === 'suspended') audio.resume();
+  const out = audio.createDynamicsCompressor(); // más volumen sin distorsionar
+  out.connect(audio.destination);
+  [0, 0.18, 0.36, 0.54].forEach((t, k) => {
     const o = audio.createOscillator(); const g = audio.createGain();
-    o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
-    g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.18);
-    o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
+    o.type = 'square';
+    o.frequency.value = k % 2 ? 1320 : 990;
+    o.connect(g); g.connect(out);
+    const at = audio.currentTime + t;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(1, at + 0.01);
+    g.gain.setValueAtTime(1, at + 0.13);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.15);
+    o.start(at); o.stop(at + 0.16);
   });
+}
+function startAlarm() {
+  stopAlarm();
+  const ring = () => { beepBurst(); if (navigator.vibrate) navigator.vibrate([400, 150, 400]); };
+  ring();
+  alarm = setInterval(ring, 1300);
+}
+function stopAlarm() {
+  if (alarm) { clearInterval(alarm); alarm = null; }
+  if (navigator.vibrate) navigator.vibrate(0);
 }
 
 /* La pantalla no se apaga mientras entrenas (si el móvil lo permite). */
