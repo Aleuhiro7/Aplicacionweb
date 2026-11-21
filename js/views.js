@@ -4114,7 +4114,7 @@
       <section class="card rescue-card">
         <div class="card-header"><h2>Recuperar datos</h2></div>
         <p class="muted" style="margin:0 0 12px">Si te falta algo que tenías en <strong>este dispositivo</strong> (por ejemplo, clientes o progresos que no llegaron a subirse a la nube), búscalo aquí. Se junta con lo que tienes ahora sin borrar nada y se sube a la nube.</p>
-        <button class="btn primary" data-action="rescue-scan">${U.icon('search')} Buscar datos guardados en este dispositivo</button>
+        <button class="btn primary" data-action="rescue-scan">${U.icon('search')} Buscar datos en este dispositivo</button>
         <div id="rescue-list">${rescueList()}</div>
       </section>
       <div class="grid-2">
