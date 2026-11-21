@@ -1950,3 +1950,69 @@ p.cz-approach b { color: #fb923c; font-weight: 700; }
 .rescue-card { margin-bottom: 18px; border: 1.5px solid var(--primary); } .rescue-items { margin-top: 12px; } .rescue-items li { align-items: flex-start; }
 .rescue-card [data-action=rescue-scan] { max-width: 100%; white-space: normal; text-align: center; justify-content: center; }
 @media (max-width: 600px) { .rescue-card [data-action=rescue-scan] { width: 100%; } }
+
+/* ---------- Entreno: todo en una sola pantalla, sin deslizar ---------- */
+body.cz-in-workout .q-brand { display: none; }
+body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
+.cz-wkscreen { height: 100vh; height: 100dvh; display: flex; flex-direction: column; gap: 7px; padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); box-sizing: border-box; overflow: hidden; }
+.cz-wk-bar { display: flex; align-items: center; gap: 10px; }
+.cz-wk-bar .grow { display: flex; flex-direction: column; min-width: 0; }
+.cz-wk-bar small { color: var(--muted); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cz-wk-bar strong { font: 700 1.35rem/1.1 "Archivo", sans-serif; font-variant-numeric: tabular-nums; }
+.cz-wkscreen .cz-progress { margin: 0; flex-shrink: 0; height: 5px; }
+.cz-wkscreen p.cz-approach { margin: 0; padding: 6px 10px; font-size: .74rem; line-height: 1.3; flex-shrink: 0; }
+.cz-wk { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--cz-accent); }
+.cz-wk .cz-photos { flex: 1 1 auto; min-height: 60px; max-height: 30vh; margin: 0; }
+.cz-wk .cz-photos figure { aspect-ratio: auto; height: 100%; }
+.cz-wk-info { flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; }
+.cz-wk .cz-glabel { margin: 0; font-size: .72rem; }
+.cz-wk .cz-wk-name { font-size: 1.3rem; margin: 0; line-height: 1.1; }
+.cz-wk .cz-series { margin: 0; font-size: .82rem; line-height: 1.3; }
+.cz-wk-notes { font-size: .82rem; color: var(--muted); }
+.cz-wk-notes summary { cursor: pointer; color: var(--primary); font-weight: 600; }
+.cz-wk-notes p { margin: 4px 0 0; max-height: 18vh; overflow: auto; }
+.cz-wk .cz-setlist { flex-shrink: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow: column; gap: 6px; }
+.cz-wk .cz-setlist li { flex-direction: column; align-items: center; gap: 0; padding: 5px 4px; font-size: .78rem; text-align: center; }
+.cz-wk .cz-setlist li b { font-size: .88rem; }
+.cz-wk-step { flex-shrink: 0; }
+.cz-wk-step > .card { margin: 0; padding: 12px 14px; }
+.cz-wk-step .cz-kicker { font-size: .72rem; }
+.cz-wk-step .cz-step-hint { margin: 2px 0 8px; font-size: .85rem; }
+.cz-wk-step .cz-step-inputs { gap: 8px; }
+.cz-wk-step .cz-in.big input { font-size: 1.5rem; padding: 8px 6px 20px; }
+.cz-wk-step .cz-in.big span { bottom: 5px; }
+.cz-wk-step .cz-step-prev { margin: 6px 0 0; font-size: .78rem; }
+.cz-wk-step .cz-play { margin-top: 10px; padding: 13px; font-size: 1.02rem; }
+.cz-wk-step .cz-timer small { font-size: .7rem; }
+.cz-wk-step .cz-timer strong { font-size: 3.2rem; margin: 2px 0 4px; }
+.cz-wk-step .cz-timer .cz-play { margin-top: 0; }
+.cz-wk-step .cz-timer .btn { padding: 11px 16px; }
+.cz-wk-step .cz-edit-set { margin-top: 8px; font-size: .8rem; }
+.cz-wk-step .cz-ask-title { font-size: 1.4rem; }
+.cz-wk-step .cz-ask p { margin: 4px 0 0; font-size: 1rem; }
+.cz-wk-step .cz-ask .link-btn { margin-top: 8px; }
+@media (max-height: 700px) { .cz-wk .cz-photos { max-height: 22vh; } .cz-wk-step .cz-timer strong { font-size: 2.6rem; } }
+.cz-wk { justify-content: space-between; }
+.cz-wk .cz-photos { max-height: 46vh; }
+@media (max-height: 700px) { .cz-wk .cz-photos { max-height: 30vh; } }
+.cz-wk .cz-photos { min-height: 0; }
+.cz-wk-info, .cz-wk .cz-setlist { flex-shrink: 0; }
+@media (max-height: 700px) {
+  .cz-wkscreen { gap: 5px; padding-top: 6px; }
+  .cz-wk-bar strong { font-size: 1.15rem; }
+  .cz-wkscreen p.cz-approach { font-size: .68rem; padding: 4px 8px; }
+  .cz-wk { padding: 8px 10px; gap: 5px; }
+  .cz-wk .cz-photos { flex: 1 1 0; }
+  .cz-wk .cz-wk-name { font-size: 1.1rem; }
+  .cz-wk .cz-series { font-size: .74rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cz-wk .cz-glabel { display: none; }
+  .cz-wk .cz-setlist li { padding: 3px; }
+  .cz-wk-step > .card { padding: 8px 12px; }
+  .cz-wk-step .cz-step-hint { display: none; }
+  .cz-wk-step .cz-timer strong { font-size: 2.3rem; margin: 0 0 4px; }
+  .cz-wk-step .cz-in.big input { font-size: 1.25rem; padding: 6px 6px 18px; }
+  .cz-wk-step .cz-play { padding: 11px; margin-top: 8px; }
+  .cz-wk-step .cz-timer .btn { padding: 9px 14px; }
+  .cz-wk-step .cz-edit-set { margin-top: 4px; }
+  .cz-wk-step .cz-ask-title { font-size: 1.2rem; }
+}

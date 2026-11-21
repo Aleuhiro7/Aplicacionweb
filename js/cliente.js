@@ -602,7 +602,7 @@ function renderWorkout() {
     </section>`;
   } else if (wk.phase === 'rest') {
     step = `<section class="card cz-timer${t && t.running ? ' running' : ''}">
-      <small>Descanso · ${esc(label)} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
+      <small>Descanso · serie ${wk.set + 1} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
       <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSeconds(e.rest))}</strong>
       <p class="muted cz-step-hint">${!t ? 'Cuando termines la serie, pulsa ▶ para empezar el descanso.' : t.running ? 'Descansando…' : 'En pausa.'}</p>
       <div class="cz-row">
@@ -622,34 +622,33 @@ function renderWorkout() {
       <button type="button" class="link-btn" id="cz-t-again">↺ Repetir el descanso</button>
     </section>`;
   }
-  root.innerHTML = `
-    <section class="card cz-wk-top">
+  root.innerHTML = `<div class="cz-wkscreen">
+    <header class="cz-wk-bar">
       <div class="grow"><small>${esc(wk.dayName)} · ejercicio ${wk.ex + 1} de ${total}</small><strong id="cz-elapsed">${fmtClock((Date.now() - wk.startedAt) / 1000)}</strong></div>
       <button type="button" class="btn sm" id="cz-wk-finish">Terminar</button>
-    </section>
+    </header>
     <div class="cz-progress"><i style="width:${Math.round((doneSets / allSets) * 100)}%"></i></div>
-    <p class="cz-approach"><b>Antes de empezar · aproximación:</b> 1–3 series de 7–8 reps al 50 %, 70 % y 90 % del peso. Músculo grande o frío: 3 · pequeño o ya caliente: 2 (70 y 90 %) o 1 (70 %).</p>
-    <section class="card cz-group cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
-      <div class="cz-glabel"><i></i>${esc(e.group)}</div>
+    <p class="cz-approach"><b>Aproximación:</b> 1–3 series de 7–8 reps al 50, 70 y 90 % del peso · grande o frío: 3 · pequeño o caliente: 2 (70 y 90 %) o 1 (70 %)</p>
+    <section class="cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
       ${e.img0 ? `<div class="cz-photos"><figure><img src="${esc(e.img0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${esc(e.img1)}" alt=""><figcaption>Final</figcaption></figure></div>` : ''}
-      <h2 class="cz-wk-name">${esc(e.name)}</h2>
-      <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))} · descanso ${esc(e.rest || '2 min')}</p>
-      ${e.notes ? `<p class="cz-notes">${esc(e.notes)}</p>` : ''}
+      <div class="cz-wk-info">
+        <div class="cz-glabel"><i></i>${esc(e.group)}</div>
+        <h2 class="cz-wk-name">${esc(e.name)}</h2>
+        <p class="cz-series">${esc([`${e.sets.length} series`, e.reps].filter(Boolean).join(' × '))} · descanso ${esc(e.rest || '2 min')}</p>
+        ${e.notes ? `<details class="cz-wk-notes"><summary>Cómo se hace</summary><p>${esc(e.notes)}</p></details>` : ''}
+      </div>
       <ol class="cz-setlist">${e.sets.map((st, i) => {
-        const [l2] = setInfo(e, i);
         const state = st.done ? 'done' : i === wk.set ? 'now' : 'next';
-        return `<li class="${state}"><span>${esc(l2)}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)} kg` : '—'} × ${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : 'Pendiente'}</b></li>`;
+        return `<li class="${state}"><span>S${i + 1}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
       }).join('')}</ol>
     </section>
-    ${step}`;
+    <div class="cz-wk-step">${step}</div>
+  </div>`;
   bindWorkout();
   startTicker();
   keepAwake();
-  // La pantalla baja sola hasta el paso que toca (en un ejercicio nuevo, se ve primero el ejercicio).
-  if (wk.phase !== 'set' || wk.set > 0) {
-    const el = root.querySelector('.cz-step, .cz-timer, .cz-ask');
-    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'end' }));
-  }
+  document.body.classList.add('cz-in-workout');
+  window.scrollTo(0, 0);
 }
 
 function bindWorkout() {
@@ -707,7 +706,7 @@ function startTicker() {
     if (wk.phase === 'rest' && wk.timer && wk.timer.running && timerLeft() <= 0) restDone();
   }, 250);
 }
-function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); }
+function stopTicker() { if (ticker) { clearInterval(ticker); ticker = null; } releaseAwake(); document.body.classList.remove('cz-in-workout'); }
 
 /** Fin del descanso: aviso (pitido y vibración) y la pregunta de si pasamos a la siguiente serie. */
 function restDone() {
