@@ -293,9 +293,13 @@
   /** Une los datos de la nube con los de este navegador (por id) sin perder nada. */
   function mergeIn(raw) {
     const remote = normalize(raw);
+    // Por id: lo que solo está aquí se añade; si está en los dos sitios, gana el cambio más reciente.
+    const stamp = (r) => r.updatedAt || r.createdAt || '';
     for (const c of COLLECTIONS) {
+      const local = new Map(data[c].map((r) => [r.id, r]));
       const ids = new Set(remote[c].map((r) => r.id));
-      remote[c] = remote[c].concat(data[c].filter((r) => !ids.has(r.id)));
+      remote[c] = remote[c].map((r) => { const l = local.get(r.id); return l && stamp(l) > stamp(r) ? l : r; })
+        .concat(data[c].filter((r) => !ids.has(r.id)));
     }
     remote.settings = Object.assign({}, data.settings, remote.settings);
     data = remote;

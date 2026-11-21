@@ -52,17 +52,47 @@ function setStatus(status, error) {
   if (location.hash.startsWith('#/ajustes')) App.render();
 }
 
+/* Cambios de este dispositivo que aún no han llegado a la nube (por ejemplo, hechos justo al abrir la app,
+ * antes de conectar, o sin cobertura). Mientras haya, al llegar los datos de la nube se JUNTAN con los de
+ * aquí (gana el cambio más reciente) en vez de sustituirlos, así no se pierde nada. */
+const DIRTY = 'entrenapro:pendiente';
+const markDirty = (v) => { try { if (v) localStorage.setItem(DIRTY, '1'); else localStorage.removeItem(DIRTY); } catch (e) { /* sin almacenamiento */ } };
+const isDirty = () => { try { return !!localStorage.getItem(DIRTY); } catch (e) { return false; } };
+
 async function push() {
   if (!ref || !ready) return;
   try {
     await setDoc(ref, { json: JSON.stringify(Store.data), updatedAt: serverTimestamp() });
+    state.lastSync = new Date();
+    markDirty(false);
   } catch (e) {
     console.error(e);
+    markDirty(true);
     setStatus('error', 'No se pudieron subir los cambios: ' + (e.code || e.message));
   }
 }
 
-Store.onSave(() => { push(); });
+Store.onSave(() => { if (state.user) markDirty(true); push(); });
+
+/** «Sincronizar ahora» (Ajustes): junta lo de este dispositivo con lo de la nube y lo sube. */
+async function syncNow() {
+  if (!ref) { signIn(); return; }
+  setStatus('busy');
+  try {
+    let snap;
+    try { snap = await getDocFromServer(ref); } catch (e) { snap = await getDoc(ref); }
+    if (snap.exists()) Store.mergeIn(JSON.parse(snap.data().json));
+    ready = true;
+    await push();
+    App.applyTheme();
+    App.render();
+    if (state.status !== 'error') { setStatus('on'); UI.toast('Sincronizado: este dispositivo y la nube tienen ya los mismos datos'); }
+  } catch (e) {
+    console.error(e);
+    setStatus('error', 'No se pudo sincronizar: ' + (e.code || e.message));
+    UI.toast('No se pudo sincronizar. Comprueba la conexión.');
+  }
+}
 
 onAuthStateChanged(auth, (user) => {
   // La app de gestión es solo para el entrenador (cuenta de Google): una cuenta de cliente (correo y
@@ -102,10 +132,16 @@ onAuthStateChanged(auth, (user) => {
       firstTime = false;
       localStorage.setItem(syncedKey(user.uid), '1');
       push();
+    } else if (isDirty() && !snap.metadata.fromCache) {
+      // Hay cambios de aquí sin subir: se juntan con los de la nube y se sube el resultado.
+      Store.mergeIn(remote);
+      ready = true;
+      push();
     } else {
       ready = true;
-      if (snap.data().json === JSON.stringify(Store.data)) { setStatus(snap.metadata.fromCache ? 'busy' : 'on'); return; }
+      if (snap.data().json === JSON.stringify(Store.data)) { state.lastSync = state.lastSync || new Date(); setStatus(snap.metadata.fromCache ? 'busy' : 'on'); return; }
       Store.replaceAll(remote);
+      if (!snap.metadata.fromCache) state.lastSync = new Date();
     }
     App.applyTheme();
     App.render();
@@ -222,10 +258,15 @@ function settingsHTML() {
     </div>`;
   }
   const label = state.status === 'on' ? '✅ Sincronizado' : state.status === 'error' ? '⚠️ ' + esc(state.error) : '⏳ Sincronizando…';
+  const t = state.lastSync;
+  const when = t ? `${t.toLocaleDateString('es-ES')} a las ${t.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : '';
+  const kb = Math.round(new Blob([JSON.stringify(Store.data)]).size / 1024);
   return `<div class="sync-box">
-    <p><strong>${label}</strong></p>
-    <p class="muted">Conectado como ${esc(state.user.email)}. Entra con esta misma cuenta en tus otros dispositivos y verás los mismos clientes.</p>
-    <div class="actions"><button class="btn" data-sync="logout">Cerrar sesión</button></div>
+    <p><strong>${label}</strong>${when ? ` <span class="muted">· última vez: ${esc(when)}</span>` : ''}</p>
+    <p class="muted">Conectado como <strong>${esc(state.user.email)}</strong>. En el móvil y en la tablet tiene que salir <strong>esta misma cuenta</strong>: si en otro dispositivo sale otra, cierra sesión allí y entra con esta.</p>
+    <p class="muted">En este dispositivo: ${Store.data.clients.length} ${Store.data.clients.length === 1 ? "cliente" : "clientes"} · ${kb} KB${isDirty() ? ' · <strong>hay cambios pendientes de subir</strong>' : ''}${kb > 850 ? ' · <strong>cerca del límite de la nube (1 MB)</strong>' : ''}.</p>
+    <div class="actions"><button class="btn primary" data-sync="now">${U.icon('refresh')} Sincronizar ahora</button><button class="btn" data-sync="logout">Cerrar sesión</button></div>
+    <p class="muted" style="font-size:.85rem;margin-top:8px">Si el móvil y la tablet no muestran lo mismo, pulsa «Sincronizar ahora» en los dos (uno después del otro): se juntan los datos de los dos sin perder nada.</p>
   </div>`;
 }
 
@@ -236,6 +277,7 @@ document.addEventListener('click', (e) => {
   const what = el.dataset.sync;
   if (what === 'login') signIn();
   else if (what === 'logout') logout();
+  else if (what === 'now') syncNow();
   else if (what === 'open') {
     if (!state.user) signIn();
     else location.hash = '#/ajustes';
