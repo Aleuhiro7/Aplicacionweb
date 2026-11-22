@@ -219,19 +219,26 @@ function bindInstall() {
   if (x) x.onclick = () => { try { sessionStorage.setItem('cz:noinstall', '1'); } catch (e) { /* sin almacenamiento */ } render(); };
 }
 
-/** Rutina: en cada tarjeta, los ejercicios ocupan las líneas que quepan (sin tapar el nombre del día). */
+/** Rutina: cada tarjeta enseña lo que le quepa. Con sitio, los ejercicios en lista (uno por línea); si no, en
+ * una línea de texto recortada; si tampoco, se ocultan; y si no caben los músculos, solo el nombre del día. */
 function fitDayCards() {
   for (const card of root.querySelectorAll('.cz-day')) {
-    const ex = card.querySelector('.cz-day-exs');
-    if (!ex) continue;
-    ex.style.webkitLineClamp = '';
+    const list = card.querySelector('.cz-day-list');
+    const join = card.querySelector('.cz-day-exs');
+    const mus = card.querySelector('.grow small');
+    const title = card.querySelector('.grow strong');
+    if (!list || !join) continue;
+    list.style.display = 'none'; join.style.display = 'none'; mus.style.display = '';
     const cs = getComputedStyle(card);
     const inner = card.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const head = card.querySelector('strong').offsetHeight + card.querySelector('.grow small').offsetHeight;
-    const lh = parseFloat(getComputedStyle(ex).lineHeight) || 16;
-    const lines = Math.floor((inner - head - 8) / lh);
-    ex.style.display = lines >= 1 ? '' : 'none';
-    ex.style.webkitLineClamp = String(Math.max(1, lines));
+    if (title.offsetHeight + mus.offsetHeight > inner) { mus.style.display = 'none'; continue; }
+    const free = inner - title.offsetHeight - mus.offsetHeight - 6;
+    const lh = parseFloat(getComputedStyle(join).lineHeight) || 16;
+    const n = list.children.length;
+    const listLh = lh + 2;
+    if (n && free >= n * listLh) { list.style.display = ''; continue; }
+    const lines = Math.floor(free / lh);
+    if (lines >= 1) { join.style.display = ''; join.style.webkitLineClamp = String(lines); }
   }
 }
 window.addEventListener('resize', () => { if (document.body.dataset.tab === 'rutina') fitDayCards(); });
@@ -320,10 +327,11 @@ function render() {
 function daysView(r) {
   const days = r.days || [];
   if (!days.length) return '<section class="card cz-card"><p class="muted">Tu entrenador está preparando tu rutina. Cuando esté lista, la verás aquí.</p></section>';
-  return `<section class="cz-days">
+  return `<section class="cz-days" style="--n:${days.length}" data-n="${days.length}">
     ${days.map((d, i) => `<a class="card cz-day" href="#dia-${i}">
       <span class="cz-day-n">${i + 1}</span>
       <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small>
+        <span class="cz-day-list">${d.groups.flatMap((g) => g.exs).map((ex) => `<i>${esc(ex.name)}</i>`).join('')}</span>
         <span class="cz-day-exs">${esc(d.groups.flatMap((g) => g.exs).map((ex) => ex.name).join(' · '))}</span></span>
       <span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)}<small>ejerc.</small></span>
     </a>`).join('')}

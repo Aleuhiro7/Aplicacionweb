@@ -2259,3 +2259,15 @@ body.cz-lock[data-tab="rutina"] .cz-day-exs { display: flex; flex-wrap: wrap; ga
 body.cz-lock[data-tab="rutina"] .cz-day { align-items: center; }
 body.cz-lock[data-tab="rutina"] .cz-day .grow { align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
 body.cz-lock[data-tab="rutina"] .cz-day-exs { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: .76rem; line-height: 1.35; color: var(--muted); max-height: none; flex-wrap: nowrap; }
+/* Rutina adaptable al número de días */
+.cz-day-list { display: none; }
+body.cz-lock[data-tab="rutina"] .cz-day-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+body.cz-lock[data-tab="rutina"] .cz-day-list i { font-style: normal; font-size: .8rem; line-height: 1.35; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 12px; position: relative; }
+body.cz-lock[data-tab="rutina"] .cz-day-list i::before { content: ""; position: absolute; left: 2px; top: .55em; width: 5px; height: 5px; border-radius: 50%; background: #6e8bff; }
+body.cz-lock[data-tab="rutina"] .cz-days { gap: clamp(6px, calc(14px - var(--n) * 1px), 12px); }
+body.cz-lock[data-tab="rutina"] .cz-day { padding: clamp(6px, calc(20px - var(--n) * 2px), 16px) 14px; border-radius: clamp(14px, calc(24px - var(--n) * 1px), 20px); }
+body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day-n, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day-n { width: 30px; height: 30px; font-size: .9rem; border-radius: 10px; }
+body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day strong, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day strong { font-size: .95rem; }
+body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day small, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day small { font-size: .74rem; }
+body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day-count, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day-count { font-size: 1rem; }
+body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
