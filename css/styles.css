@@ -2351,3 +2351,6 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 .cmp-stats em { font-style: normal; font-weight: 800; font-size: .9rem; color: var(--muted); }
 .cmp-stats em.down { color: #3ee6a0; } .cmp-stats em.up { color: #fb923c; }
 .cmp-stats b { font-size: .85rem; white-space: nowrap; } .cmp-stats em { font-size: .85rem; } @media (max-width: 420px) { .cmp-stats { grid-template-columns: repeat(3, 1fr); gap: 6px; } .cmp-stats div { padding: 8px 4px; } .cmp-stats b { font-size: .78rem; } }
+.cmp-side figure img.aligned, .cmp-slide img.aligned { position: absolute; max-width: none; object-fit: fill; }
+.cmp-side figure, .cmp-before { overflow: hidden; }
+.cmp-note { margin: 8px 0 0; font-size: .78rem; text-align: center; }

@@ -2513,7 +2513,7 @@
       return `<div><span>${label}</span><b>${fmtNum(x[key])} → ${fmtNum(y[key])} ${unit}</b><em class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))} ${unit}</em></div>`;
     };
     const opt = (sel) => dates.map((d) => `<option value="${d}" ${d === sel ? 'selected' : ''}>${esc(fmtDate(d))}</option>`).join('');
-    const img = (p) => (p ? `<img data-photo="${p.id}" alt="">` : '<span class="cmp-none">Sin foto</span>');
+    const img = (p) => (p ? `<img data-photo="${p.id}" data-align="${p.id}" alt="">` : '<span class="cmp-none">Sin foto</span>');
     return `<section class="card cmp-card">
       <div class="card-header"><h2>Comparar fotos</h2>
         <div class="cmp-mode" role="group">
@@ -2539,6 +2539,7 @@
             <span class="cmp-tag l">Antes · ${esc(U.fmtDateShort(st.a))}</span><span class="cmp-tag r">Después · ${esc(U.fmtDateShort(st.b))}</span>
             <input type="range" class="cmp-range" min="0" max="100" value="50" aria-label="Deslizar entre antes y después">
           </div>`}
+      <p class="cmp-note muted" id="cmp-note">Centrando el cuerpo…</p>
       <div class="cmp-stats">
         <div><span>Tiempo</span><b>${days === 0 ? 'Mismo día' : `${plural(Math.abs(days), 'día', 'días')}`}</b><em>${Math.abs(days) >= 14 ? `≈ ${fmtNum(Math.abs(days) / 7, 0)} semanas` : ''}</em></div>
         ${stat('weight', 'kg', 'Peso')}
@@ -2546,6 +2547,72 @@
       </div>
     </section>`;
   }
+
+  /* Centrado automático: un detector de postura (MediaPipe, dentro del propio móvil) encuentra hombros y caderas.
+   * Con el tronco de cada foto se encuadran las dos igual: mismo tamaño de cuerpo y en el mismo sitio. */
+  let poseLib = null;
+  function poseDetector() {
+    if (!poseLib) {
+      poseLib = (async () => {
+        const base = new URL('js/vendor/mediapipe/', location.href).href;
+        const { PoseLandmarker } = await import(`${base}vision_bundle.mjs`);
+        return PoseLandmarker.createFromOptions({ wasmLoaderPath: `${base}vision_wasm_internal.js`, wasmBinaryPath: `${base}vision_wasm_internal.wasm` }, {
+          baseOptions: { modelAssetPath: `${base}pose_landmarker_lite.task`, delegate: 'CPU' }, runningMode: 'IMAGE', numPoses: 1,
+        });
+      })().catch((e) => { console.error('Detector de postura no disponible', e); poseLib = null; return null; });
+    }
+    return poseLib;
+  }
+  /** Encuadre del cuerpo en una foto: centro del tronco (cx, cy) y largo del tronco (t), en fracción de la imagen. */
+  async function bodyFrame(id, img) {
+    const meta = Store.get('photos', id);
+    if (meta && meta.frame !== undefined) return meta.frame;
+    const det = await poseDetector();
+    if (!det) return null;
+    let frame = null;
+    try {
+      const lm = (det.detect(img).landmarks || [])[0];
+      if (lm) {
+        const P = (i) => lm[i];
+        const sh = [P(11), P(12)], hp = [P(23), P(24)];
+        const avg = (a) => ({ x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 });
+        const s = avg(sh), h = avg(hp);
+        const t = Math.abs(h.y - s.y);
+        if (t > 0.04) frame = { cx: (s.x + h.x) / 2, cy: (s.y + h.y) / 2, t };
+      }
+    } catch (e) { console.error(e); }
+    if (meta) Store.update('photos', id, { frame });
+    return frame;
+  }
+  /** Coloca la foto en su recuadro: el tronco ocupa el 30 % del alto y su centro queda al 45 % (y centrado). */
+  function placeImg(img, frame) {
+    const box = img.parentElement.getBoundingClientRect();
+    const W = img.naturalWidth, H = img.naturalHeight;
+    if (!frame || !W || !box.width) { img.classList.remove('aligned'); img.removeAttribute('style'); return; }
+    const sc = (0.30 * box.height) / (frame.t * H);
+    img.classList.add('aligned');
+    img.style.width = `${W * sc}px`;
+    img.style.height = `${H * sc}px`;
+    img.style.left = `${box.width / 2 - frame.cx * W * sc}px`;
+    img.style.top = `${box.height * 0.45 - frame.cy * H * sc}px`;
+  }
+  /** Se llama tras pintar la pantalla: centra las fotos del comparador cuando terminan de cargar. */
+  function alignCompare(rootEl) {
+    const imgs = [...(rootEl || document).querySelectorAll('.cmp-card img[data-align]')];
+    if (!imgs.length) return;
+    const note = document.getElementById('cmp-note');
+    let ok = 0, done = 0;
+    for (const img of imgs) {
+      const go = async () => {
+        const frame = await bodyFrame(img.dataset.align, img);
+        placeImg(img, frame);
+        if (frame) ok++;
+        if (++done === imgs.length && note) note.textContent = ok === imgs.length ? 'Cuerpo centrado y a la misma escala automáticamente.' : ok ? 'No se ha encontrado el cuerpo en alguna foto: se muestra sin ajustar.' : 'No se ha podido centrar automáticamente (foto sin cuerpo entero o detector no disponible).';
+      };
+      if (img.complete && img.naturalWidth) go(); else img.addEventListener('load', go, { once: true });
+    }
+  }
+  window.addEventListener('resize', () => document.querySelectorAll('.cmp-card img.aligned').forEach((img) => { const m = Store.get('photos', img.dataset.align); placeImg(img, m && m.frame); }));
 
   function clientPhotos(c) {
     const photos = Store.photosFor(c.id);
@@ -4653,7 +4720,7 @@
 
   window.Views = {
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
-    renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks, syncPortals,
+    renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks, syncPortals, alignCompare,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
   };
 })();
