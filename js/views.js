@@ -2081,6 +2081,12 @@
       clientName: c.name,
       noRoutine: !!c.noTraining,
       noDiet: !!c.noDiet,
+      // «Tus datos» en su zona: altura y medidas (peso y cintura).
+      statsJson: JSON.stringify({
+        height: Number(c.height) || null,
+        startDate: c.startDate || '',
+        measures: Store.measurementsFor(c.id).map((m) => ({ date: m.date, weight: Number(m.weight) || null, waist: Number(m.waist) || null })),
+      }),
       routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
       dietHtml: d && dietSendable(d) ? dietSheet(c, d) : '',
     };

@@ -184,6 +184,7 @@ const NAV_ICONS = {
   rutina: '<svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>',
   dieta: '<svg viewBox="0 0 24 24"><path d="M12 6.5c-1.5-1.5-5-1.5-6.5 1S4 15 7 19c1.5 2 3 2 5 1 2 1 3.5 1 5-1 3-4 3-9 1.5-11.5S13.5 5 12 6.5Z"/><path d="M12 6.5C12 4 13 3 15 2.5"/></svg>',
   guia: '<svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
+  datos: '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>',
 };
 
 const logoutBtn = () => '<div class="cz-links"><button type="button" class="link-btn" id="cz-logout">Cerrar sesión</button></div>';
@@ -197,12 +198,7 @@ window.addEventListener('appinstalled', () => { installEvt = null; if (portal) r
 function installBar() {
   if (isInstalled()) return '';
   try { if (sessionStorage.getItem('cz:noinstall')) return ''; } catch (e) { /* sin almacenamiento */ }
-  return `<section class="card cz-install">
-    <img src="img/icon-192.png?v=11" alt="" width="44" height="44">
-    <div class="grow"><strong>Instala «Mi entreno» en tu móvil</strong><span class="muted">Para abrirla con un toque, como una app.</span></div>
-    <button type="button" class="btn primary sm" id="cz-install">Instalar</button>
-    <button type="button" class="cz-install-x" id="cz-install-x" aria-label="Ahora no">×</button>
-  </section>`;
+  return '<button type="button" class="cz-install-pill" id="cz-install" title="Instala «Mi entreno» en tu móvil">⬇ Instalar app</button>';
 }
 function bindInstall() {
   const b = document.getElementById('cz-install');
@@ -249,18 +245,20 @@ function render() {
   if (h === 'entreno' && wk) { renderWorkout(); return; }
   stopTicker();
   const diaryRoute = h === 'diario' || h.startsWith('diario/') || h.startsWith('resumen/') || h === 'empezar';
-  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'diario'));
+  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia', 'datos'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'diario'));
   const tabs = [
     portal.noRoutine ? null : ['diario', 'Diario'],
     portal.noRoutine ? null : ['rutina', 'Rutina'],
     portal.noDiet ? null : ['dieta', 'Dieta'],
     portal.noRoutine ? null : ['guia', 'Guía'],
+    ['datos', 'Tus datos'],
   ].filter(Boolean);
   let body;
   if (h.startsWith('dia-') && days[Number(h.slice(4))]) body = dayView(days, Number(h.slice(4)));
   else if (tab === 'diario') body = h === 'empezar' ? chooseDayView(days) : h.startsWith('resumen/') ? summaryView(h.slice(8)) : h.startsWith('diario/') ? dateView(h.slice(7)) : diaryView(days);
   else if (tab === 'dieta') body = dietView();
   else if (tab === 'guia') body = guideView();
+  else if (tab === 'datos') body = statsView();
   else body = daysView(r);
   const initials = String(portal.clientName || '').trim().split(/\s+/).slice(0, 2).map((x) => x[0] || '').join('').toUpperCase();
   const todayTxt = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -268,13 +266,11 @@ function render() {
     <header class="cz-hero">
       <div class="cz-hero-top">
         <span class="cz-hero-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="czlogo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path d="M50 6 88 28v44L50 94 12 72V28Z" fill="none" stroke="url(#czlogo)" stroke-width="9" stroke-linejoin="round"/><path fill="#fff" fill-rule="evenodd" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg><span>David Orihuela<small>Entrenador online</small></span></span>
-        <button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button>
+        <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
       </div>
       <small class="cz-hero-date">${esc(todayTxt)}</small>
-      <h1>Hola, ${esc(firstName(portal.clientName))} 👋</h1>
-      <p>Tu zona de entrenamiento con David Orihuela</p>
+      <h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
     </header>
-    ${installBar()}
     <div class="cz-body">${body}</div>
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
   bindLogout();
@@ -283,6 +279,8 @@ function render() {
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (tab === 'diario') bindDiary();
+  root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
+  root.querySelectorAll('[data-open-w]').forEach((b) => { b.onclick = () => { location.hash = `#resumen/${b.dataset.openW}`; }; });
   if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
   const del = root.querySelector('[data-del]');
   if (del) del.onclick = async () => {
@@ -300,15 +298,15 @@ function render() {
 function daysView(r) {
   const days = r.days || [];
   if (!days.length) return '<section class="card cz-card"><p class="muted">Tu entrenador está preparando tu rutina. Cuando esté lista, la verás aquí.</p></section>';
-  return `${portal.routineHtml ? '<div class="cz-diet-bar"><button type="button" class="btn primary" id="cz-routine-pdf">⬇ Descargar mi rutina en PDF</button></div>' : ''}
-  <section class="cz-days">
+  return `<section class="cz-days">
     ${days.map((d, i) => `<a class="card cz-day" href="#dia-${i}">
       <span class="cz-day-n">${i + 1}</span>
       <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
       <span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>
     </a>`).join('')}
   </section>
-  ${r.notes ? `<section class="card cz-card"><h2>Indicaciones</h2><p class="cz-notes">${esc(r.notes)}</p></section>` : ''}`;
+  ${r.notes ? `<section class="card cz-card"><h2>Indicaciones</h2><p class="cz-notes">${esc(r.notes)}</p></section>` : ''}
+  ${portal.routineHtml ? '<div class="cz-pdf-bottom"><button type="button" class="btn cz-pdf-btn" id="cz-routine-pdf">⬇ Descargar mi rutina en PDF</button></div>' : ''}`;
 }
 
 function dayView(days, i) {
@@ -339,13 +337,27 @@ function dayView(days, i) {
 
 function guideView() {
   const G = window.GUIDES;
+  return `<button type="button" class="cz-guide-card proto" data-guide="proto">
+      <span class="cz-guide-ico">🛡️</span>
+      <span class="grow"><strong>Protocolo innegociable</strong><small>${G.protocol.length} normas para que el plan funcione</small></span><b>›</b>
+    </button>
+    <button type="button" class="cz-guide-card tips" data-guide="tips">
+      <span class="cz-guide-ico">🏋️</span>
+      <span class="grow"><strong>Cómo entrenar</strong><small>Calentamiento, las 3 series, técnica y progreso</small></span><b>›</b>
+    </button>
+    <ul class="cz-guide-mini">${G.protocol.map(([t]) => `<li>${t.replace(/\.$/, '')}</li>`).join('')}</ul>`;
+}
+
+/** Contenido completo de la guía (en una ventana). */
+function guideFull(which) {
+  const G = window.GUIDES;
   // Los textos de la guía son nuestros (guides.js), no vienen de la nube: pueden llevar <b>.
-  return `<section class="card cz-card cz-guide">
+  if (which === 'proto') return `<section class="card cz-card cz-guide">
       <h2>Protocolo innegociable</h2>
       <p class="muted cz-guide-intro">${G.protocolIntro}</p>
       <ol class="cz-proto">${G.protocol.map(([t, d], i) => `<li><i>${i + 1}</i><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ol>
-    </section>
-    <section class="card cz-card cz-guide">
+    </section>`;
+  return `<section class="card cz-card cz-guide">
       <h2>Cómo entrenar</h2>
       <ul class="cz-tips">${G.tips.map(([t, d]) => `<li><b>${t}</b>${Array.isArray(d) ? d.map((x) => `<span>${x}</span>`).join('') : `<span>${d}</span>`}</li>`).join('')}</ul>
     </section>`;
@@ -374,8 +386,8 @@ function sanitize(html) {
 
 function dietView() {
   if (!portal.dietHtml) return '<section class="card cz-card"><p class="muted">Tu entrenador está preparando tu dieta. Cuando esté lista, la verás aquí.</p></section>';
-  return `<div class="cz-diet-bar"><button type="button" class="btn primary" id="cz-diet-pdf">⬇ Descargar mi dieta en PDF</button></div>
-    <div id="cz-diet" class="pv-pages">${sanitize(portal.dietHtml)}</div>`;
+  return `<div id="cz-diet" class="pv-pages">${sanitize(portal.dietHtml)}</div>
+    <div class="cz-pdf-bottom"><button type="button" class="btn cz-pdf-btn" id="cz-diet-pdf">⬇ Descargar mi dieta en PDF</button></div>`;
 }
 
 function setupDiet() {
@@ -499,7 +511,7 @@ function diaryView(days) {
   for (const w of workouts) byDate.set(w.date, (byDate.get(w.date) || 0) + 1);
   const today = ymd();
   const cells = [];
-  for (let i = 0; i < lead; i++) cells.push('<span class="cz-cal-cell empty"></span>');
+  for (let i = 0; i < lead; i++) cells.push("<span class=\"cz-cal-cell cz-cal-blank\"></span>");
   for (let d = 1; d <= total; d++) {
     const key = `${cal.y}-${pad2(cal.m + 1)}-${pad2(d)}`;
     const n = byDate.get(key) || 0;
@@ -544,11 +556,8 @@ function diaryView(days) {
         <button type="button" class="btn sm" data-cal="1" aria-label="Mes siguiente">›</button>
       </div>
       <div class="cz-cal-grid">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((x) => `<span class="cz-cal-dow">${x}</span>`).join('')}${cells.join('')}</div>
-      <p class="muted cz-cal-foot">${monthCount ? `${monthCount} ${monthCount === 1 ? 'entreno' : 'entrenos'} este mes` : 'Aún no hay entrenos este mes'}</p>
-    </section>
-    ${recent.length ? `<section class="card cz-card"><h2>Últimos entrenos</h2>
-      <ul class="cz-wlist">${recent.map(workoutRow).join('')}</ul></section>` : ''}
-    <div class="cz-links cz-howto"><button type="button" class="link-btn" id="cz-tour">¿Cómo funciona el diario?</button></div>`;
+      <p class="muted cz-cal-foot">${monthCount ? `${monthCount} ${monthCount === 1 ? 'entreno' : 'entrenos'} este mes` : 'Aún no hay entrenos este mes'} · <button type="button" class="link-btn" id="cz-tour">¿Cómo funciona?</button></p>
+    </section>`;
 }
 
 const workoutRow = (w) => `<li><a href="#resumen/${esc(w.id)}">
@@ -933,4 +942,94 @@ function summaryView(id) {
         <span>${e.sets.map((st, i) => (st.done ? `<i>${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}</i>` : `<i class="skip">S${i + 1} sin hacer</i>`)).join('')}</span></div>`).join('')}
     </section>
     <div class="cz-links"><button type="button" class="link-btn cz-del" data-del="${esc(w.id)}">Borrar este entreno</button></div>`;
+}
+
+/* ---------- Ventana a pantalla completa (guía) ---------- */
+function openPanel(html) {
+  const box = document.createElement('div');
+  box.className = 'cz-panel';
+  box.innerHTML = `<div class="cz-panel-in"><button type="button" class="cz-panel-x" aria-label="Cerrar">✕</button>${html}</div>`;
+  box.onclick = (e) => { if (e.target === box || e.target.closest('.cz-panel-x')) box.remove(); };
+  document.body.appendChild(box);
+}
+
+/* ---------- Tus datos: resumen general ---------- */
+function spark(points, color) {
+  if (points.length < 2) return '';
+  const W = 300, H = 70, P = 6;
+  const ys = points.map((p) => p.v);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  if (hi === lo) { hi += 1; lo -= 1; }
+  const x = (i) => P + (i * (W - 2 * P)) / (points.length - 1);
+  const y = (v) => P + (1 - (v - lo) / (hi - lo)) * (H - 2 * P);
+  const d = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const id = `g${Math.random().toString(36).slice(2, 7)}`;
+  return `<svg class="cz-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d} L${x(points.length - 1)},${H} L${x(0)},${H} Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${x(points.length - 1)}" cy="${y(points[points.length - 1].v)}" r="4" fill="${color}"/></svg>`;
+}
+
+function statsView() {
+  let st = {};
+  try { st = JSON.parse(portal.statsJson || '{}'); } catch (e) { st = {}; }
+  const ms = (st.measures || []);
+  const wts = ms.filter((m) => m.weight).map((m) => ({ d: m.date, v: m.weight }));
+  const wsts = ms.filter((m) => m.waist).map((m) => ({ d: m.date, v: m.waist }));
+  const delta = (arr, unit) => {
+    if (arr.length < 2) return '<small class="muted">desde el inicio</small>';
+    const dd = Math.round((arr[arr.length - 1].v - arr[0].v) * 10) / 10;
+    return `<small class="${dd < 0 ? 'down' : dd > 0 ? 'up' : 'muted'}">${dd > 0 ? '+' : dd < 0 ? '−' : ''}${fmtKg(Math.abs(dd))} ${unit} desde el inicio</small>`;
+  };
+  const metric = (label, arr, unit, color) => `<div class="cz-metric">
+      <span class="cz-metric-l">${label}</span>
+      <strong>${arr.length ? `${fmtKg(arr[arr.length - 1].v)}<em>${unit}</em>` : '—'}</strong>
+      ${arr.length ? delta(arr, unit) : '<small class="muted">sin datos todavía</small>'}
+      ${spark(arr, color)}
+    </div>`;
+  // Entrenamiento
+  const today = ymd();
+  const in30 = workouts.filter((w) => (Date.parse(`${today}T12:00:00`) - Date.parse(`${w.date}T12:00:00`)) / 864e5 < 30);
+  const avg = workouts.length ? workouts.reduce((t, w) => t + (w.durationSec || 0), 0) / workouts.length : 0;
+  const ups30 = in30.reduce((n, w) => n + improvements(w).length, 0);
+  // Entrenos por semana (últimas 8)
+  const weekStart = (d) => { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+  const w0 = weekStart(new Date());
+  const bars = [];
+  for (let k = 7; k >= 0; k--) {
+    const a = new Date(w0); a.setDate(a.getDate() - 7 * k);
+    const b = new Date(a); b.setDate(b.getDate() + 7);
+    bars.push(workouts.filter((w) => { const t = new Date(`${w.date}T12:00:00`); return t >= a && t < b; }).length);
+  }
+  const maxB = Math.max(3, ...bars);
+  const last = workouts[0];
+  return `<div class="cz-metrics">
+      ${metric('Peso', wts, 'kg', '#6e8bff')}
+      ${metric('Cintura', wsts, 'cm', '#22d3ee')}
+    </div>
+    <section class="cz-train card">
+      <div class="cz-train-head"><span class="cz-metric-l">Entrenamiento</span><small class="muted">últimas 8 semanas</small></div>
+      <div class="cz-bars">${bars.map((n, i) => `<span style="--h:${Math.round((n / maxB) * 100)}%" class="${i === 7 ? 'now' : ''}"><i></i><b>${n || ''}</b></span>`).join('')}</div>
+      <div class="cz-train-kpis">
+        <div><strong>${in30.length}</strong><small>entrenos · 30 días</small></div>
+        <div><strong>${workouts.length ? fmtDuration(avg) : '—'}</strong><small>duración media</small></div>
+        <div class="${ups30 ? 'up' : ''}"><strong>${ups30}</strong><small>mejoras · 30 días</small></div>
+      </div>
+    </section>
+    ${last ? `<button type="button" class="cz-last-w card" data-open-w="${esc(last.id)}"><span class="cz-metric-l">Último entreno</span><span class="grow"><strong>${esc(last.dayName)}</strong><small class="muted">${esc(fmtDay(last.date))} · ${fmtDuration(last.durationSec || 0)}</small></span><b>›</b></button>` : ''}`;
+}
+
+/** Mejoras de un entreno respecto a la vez anterior en cada ejercicio (más peso, o mismo peso con más reps). */
+function improvements(w) {
+  const best = (list) => { let b = null; for (const st of list || []) { const kg = num(st.kg); if (!st.done || kg === null) continue; const r = num(st.reps) || 0; if (!b || kg > b.kg || (kg === b.kg && r > b.reps)) b = { kg, reps: r }; } return b; };
+  const out = [];
+  const older = workouts.slice(workouts.indexOf(w) + 1);
+  for (const e of w.exercises || []) {
+    const now = best(e.sets);
+    if (!now) continue;
+    const same = (y) => (e.id && y.id === e.id) || y.name === e.name;
+    const pw = older.find((x) => (x.exercises || []).some((y) => same(y) && best(y.sets)));
+    const before = pw && best(pw.exercises.find(same).sets);
+    if (before && (now.kg > before.kg || (now.kg === before.kg && now.reps > before.reps))) out.push(e.name);
+  }
+  return out;
 }
