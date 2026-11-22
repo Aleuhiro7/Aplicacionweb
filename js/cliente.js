@@ -1084,3 +1084,30 @@ function improvements(w) {
   }
   return out;
 }
+
+/* ---------- Tirar hacia abajo para actualizar (también con la app instalada y con la pantalla bloqueada) ---------- */
+(function pullToRefresh() {
+  let y0 = null; let dy = 0; let el = null;
+  const atTop = () => (window.scrollY || document.documentElement.scrollTop) <= 0;
+  const blocked = (t) => location.hash === '#entreno' || (t && t.closest && t.closest('.cz-sheet, .cz-panel, input, textarea, .pv-pages'));
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || !atTop() || blocked(e.target)) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0) { if (el) el.style.opacity = 0; return; }
+    if (!el) { el = document.createElement('div'); el.className = 'cz-ptr'; el.innerHTML = '<span>↻</span>'; document.body.appendChild(el); }
+    const d = Math.min(dy, 140);
+    el.style.opacity = Math.min(1, d / 70);
+    el.style.transform = `translate(-50%, ${d * 0.6}px) rotate(${d * 2.5}deg)`;
+    el.classList.toggle('ready', dy > 90);
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (y0 === null) return;
+    y0 = null;
+    if (dy > 90 && el) { el.classList.add('spin'); setTimeout(() => location.reload(), 250); return; }
+    if (el) { el.remove(); el = null; }
+  });
+})();
