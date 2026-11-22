@@ -2225,3 +2225,34 @@ body:has(.cz-hero) .cz-wrap { padding-top: 14px; }
   .cz-nav a { padding: 5px 2px; }
 }
 .cz-cal-cell.cz-cal-blank { visibility: hidden; }
+
+/* ---------- Pestañas principales a pantalla completa, sin deslizar y con el espacio repartido ---------- */
+html:has(body.cz-lock), body.cz-lock { height: 100%; overflow: hidden; overscroll-behavior: none; }
+body.cz-lock .cz-wrap { height: 100vh; height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+body.cz-lock #cz-root { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+body.cz-lock .cz-hero { flex: 0 0 auto; }
+body.cz-lock .cz-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+body.cz-lock .cz-body > * { margin: 0 !important; flex: 0 0 auto; }
+/* Diario: el calendario ocupa el resto */
+body.cz-lock[data-tab="diario"] .cz-cal { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+body.cz-lock[data-tab="diario"] .cz-cal-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); align-items: stretch; }
+body.cz-lock[data-tab="diario"] .cz-cal-cell { height: auto; min-height: 0; max-height: 46px; align-self: center; width: 100%; aspect-ratio: auto; padding: 4px 0; }
+/* Rutina: los días se reparten el espacio */
+body.cz-lock[data-tab="rutina"] .cz-days { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+body.cz-lock[data-tab="rutina"] .cz-day { flex: 0 1 110px; min-height: 52px; }
+/* Guía: las normas se reparten el espacio */
+body.cz-lock[data-tab="guia"] .cz-guide-mini { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: space-evenly; }
+/* Tus datos: las gráficas crecen */
+body.cz-lock[data-tab="datos"] .cz-metrics { flex: 1 1 auto; min-height: 0; }
+body.cz-lock[data-tab="datos"] .cz-metric { min-height: 0; }
+body.cz-lock[data-tab="datos"] .cz-spark { flex: 1 1 auto; height: auto; min-height: 40px; }
+body.cz-lock[data-tab="datos"] .cz-train { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+body.cz-lock[data-tab="datos"] .cz-bars { flex: 1 1 auto; min-height: 40px; height: auto; }
+.cz-day-exs { display: none; }
+body.cz-lock[data-tab="rutina"] .cz-days { justify-content: stretch; }
+body.cz-lock[data-tab="rutina"] .cz-day { flex: 1 1 0; min-height: 0; max-height: none; align-items: center; overflow: hidden; }
+body.cz-lock[data-tab="rutina"] .cz-day .grow { min-height: 0; overflow: hidden; }
+body.cz-lock[data-tab="rutina"] .cz-day-exs { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; overflow: hidden; max-height: 100%; }
+.cz-day-exs i { font-style: normal; font-size: .74rem; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, .06); color: var(--muted); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.cz-day-count { display: flex; flex-direction: column; align-items: center; font: 800 1.3rem/1 "Archivo", sans-serif; color: var(--text); }
+.cz-day-count small { font: 600 .66rem/1.2 "Archivo", sans-serif; color: var(--muted); margin-top: 2px; }

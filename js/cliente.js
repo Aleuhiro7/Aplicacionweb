@@ -273,6 +273,10 @@ function render() {
     </header>
     <div class="cz-body">${body}</div>
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
+  // Pestañas principales (no la dieta ni las subpáginas): ocupan justo la pantalla y no se desliza.
+  const main = (h === '' || h === tab) && tab !== 'dieta';
+  document.body.classList.toggle('cz-lock', main);
+  document.body.dataset.tab = main ? tab : '';
   bindLogout();
   bindInstall();
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
@@ -301,8 +305,9 @@ function daysView(r) {
   return `<section class="cz-days">
     ${days.map((d, i) => `<a class="card cz-day" href="#dia-${i}">
       <span class="cz-day-n">${i + 1}</span>
-      <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
-      <span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>
+      <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small>
+        <span class="cz-day-exs">${d.groups.flatMap((g) => g.exs).map((ex) => `<i>${esc(ex.name)}</i>`).join('')}</span></span>
+      <span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)}<small>ejerc.</small></span>
     </a>`).join('')}
   </section>
   ${r.notes ? `<section class="card cz-card"><h2>Indicaciones</h2><p class="cz-notes">${esc(r.notes)}</p></section>` : ''}
@@ -737,6 +742,7 @@ function renderWorkout() {
   startTicker();
   keepAwake();
   document.body.classList.add('cz-in-workout');
+  document.body.classList.remove('cz-lock');
   window.scrollTo(0, 0);
 }
 
@@ -966,7 +972,7 @@ function spark(points, color) {
   const id = `g${Math.random().toString(36).slice(2, 7)}`;
   return `<svg class="cz-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
     <path d="${d} L${x(points.length - 1)},${H} L${x(0)},${H} Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-    <circle cx="${x(points.length - 1)}" cy="${y(points[points.length - 1].v)}" r="4" fill="${color}"/></svg>`;
+</svg>`;
 }
 
 function statsView() {
