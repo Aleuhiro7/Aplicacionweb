@@ -1027,6 +1027,36 @@
     return `<svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Reparto de macronutrientes: ${split.map((m) => `${m.label} ${Math.round(m.pct)} %`).join(', ')}">${segs}${labels}</svg>`;
   }
 
+  /** Qué datos de la ficha faltan para calcular el mantenimiento. */
+  function maintMissing(c) {
+    const w = Store.lastMeasurement(c.id);
+    return [
+      !(w && Number(w.weight) > 0) ? 'peso (en Progreso)' : '',
+      !(Number(c.height) > 0) ? 'altura' : '',
+      U.age(c.birthDate) == null ? 'fecha de nacimiento' : '',
+    ].filter(Boolean);
+  }
+
+  /** Balance de energía: mantenimiento, kcal de la dieta, diferencia y estimación semanal (o qué falta para calcularlo). */
+  function energyBox(c, t) {
+    const di = deficitInfo(t);
+    if (!(Number(t.maintenance) > 0)) {
+      const miss = maintMissing(c);
+      return `<div class="energy-box missing">
+        <strong>Mantenimiento sin calcular</strong>
+        <span>Para calcularlo solo falta en su ficha: <b>${esc(miss.join(', ') || 'algún dato')}</b>${c.gender ? '' : ' (y mejor también el sexo)'}.</span>
+        <button class="btn sm" data-action="${miss.length === 1 && miss[0].startsWith('peso') ? 'new-measurement' : 'edit-client'}" data-id="${c.id}" data-client="${c.id}">${U.icon('edit')}${miss.length === 1 && miss[0].startsWith('peso') ? 'Apuntar peso' : 'Completar ficha'}</button>
+      </div>`;
+    }
+    const cls = !di || di.kind === 'mant' ? '' : di.kind === 'deficit' ? 'def' : 'sup';
+    return `<div class="energy-box">
+      <div><span>Mantenimiento${t.maintAuto ? ' <small>(calculado)</small>' : ''}</span><b>${fmtNum(t.maintenance, 0)}</b></div>
+      <div><span>Kcal dieta</span><b class="main">${fmtNum(t.kcal, 0)}</b></div>
+      <div><span>Diferencia</span><b class="${cls}">${di ? (di.diff === 0 ? '0' : `${di.diff > 0 ? '−' : '+'}${fmtNum(Math.abs(di.diff), 0)}`) : '—'}</b></div>
+      <div><span>Por semana</span><b class="${cls}">${di && di.kind !== 'mant' ? `${di.kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(di.weekKg), 2)} kg` : '='}</b></div>
+    </div>`;
+  }
+
   /** Objetivos con el mantenimiento: el que fijaste o, si no, calculado con peso, altura, edad y actividad. */
   function withMaint(c, t) {
     if (!t || Number(t.maintenance) > 0) return t;
@@ -1053,6 +1083,7 @@
         <span class="grow"><span class="kcal-label">Objetivo de calorías</span><span class="kcal-value">${fmtNum(t.kcal, 0)} kcal</span></span>
         ${U.icon('right')}
       </button>
+      ${energyBox(c, t)}
       <h3 class="macro-title">Macronutrientes</h3>
       <div class="macro-cols">${split.map((m) => `
         <div class="macro-col ${m.cls}">
@@ -1065,8 +1096,6 @@
       <div class="donut-legend">${split.map((m) => `<span class="${m.cls}"><i></i>${m.label === 'Carbohidratos' ? 'Carbohidratos' : m.label}</span>`).join('')}</div>
       <div class="diet-rows">
         <div class="diet-row"><span>Tipo de dieta</span><strong class="accent">${esc(presetName(t))}</strong></div>
-        ${deficitInfo(t) ? `<div class="diet-row"><span>Mantenimiento ${fmtNum(t.maintenance, 0)} kcal${t.maintAuto ? ' <small class="muted">(calculado)</small>' : ''}</span><strong class="accent">${esc(deficitInfo(t).label)}${deficitInfo(t).kind === 'mant' ? '' : ` ${fmtNum(Math.abs(deficitInfo(t).diff), 0)} kcal (${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${deficitInfo(t).pct} %)`}</strong></div>` : ''}
-        ${deficitInfo(t) && deficitInfo(t).kind !== 'mant' ? `<div class="diet-row"><span>Estimación semanal</span><strong class="accent">${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(deficitInfo(t).weekKg), 2)} kg/semana</strong></div>` : ''}
         <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
       </div>
       ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
