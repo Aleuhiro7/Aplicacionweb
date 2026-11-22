@@ -2294,3 +2294,16 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 .cz-ptr.ready { background: linear-gradient(135deg, #6e8bff, #22d3ee); color: #0b0f19; }
 .cz-ptr.spin span { display: inline-block; animation: czspin .6s linear infinite; }
 @keyframes czspin { to { transform: rotate(360deg); } }
+.cz-estimate { margin: 0 0 8px; text-align: center; font-size: .82rem; color: var(--muted); }
+.cz-estimate b { font-weight: 800; }
+.cz-estimate.def b { color: #3ee6a0; }
+.cz-estimate.sup b { color: #fb923c; }
+.cz-estimate small { font-size: .72rem; }
+@media (max-height: 760px) { .cz-estimate { margin-bottom: 4px; font-size: .76rem; } }
+@media (max-height: 760px) {
+  body.cz-lock[data-tab="datos"] .cz-bars { min-height: 24px; margin: 4px 0 6px; }
+  body.cz-lock[data-tab="datos"] .cz-train { padding: 10px 12px; }
+  .cz-train-kpis strong { font-size: 1.05rem; }
+  .cz-estimate small { display: none; }
+  .cz-last-w { padding: 10px 12px; }
+}

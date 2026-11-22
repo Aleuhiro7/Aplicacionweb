@@ -977,10 +977,12 @@
     if (!(m > 0) || !(k > 0)) return null;
     const diff = m - k;
     const pct = Math.round((Math.abs(diff) / m) * 100);
-    if (Math.abs(diff) < 50) return { kind: 'mant', diff, pct, label: 'Mantenimiento', text: 'Calorías de mantenimiento' };
+    if (Math.abs(diff) < 50) return { kind: 'mant', diff, pct, label: 'Mantenimiento', text: 'Calorías de mantenimiento', weekKg: 0 };
+    // 7700 kcal ≈ 1 kg de grasa: cambio de peso estimado por semana.
+    const weekKg = Math.round((diff * 7 / 7700) * 100) / 100;
     return diff > 0
-      ? { kind: 'deficit', diff, pct, label: 'Déficit', text: `Déficit de ${fmtNum(diff, 0)} kcal al día (−${pct} %)` }
-      : { kind: 'superavit', diff, pct, label: 'Superávit', text: `Superávit de ${fmtNum(-diff, 0)} kcal al día (+${pct} %)` };
+      ? { kind: 'deficit', diff, pct, weekKg, label: 'Déficit', text: `Déficit de ${fmtNum(diff, 0)} kcal al día (−${pct} %)` }
+      : { kind: 'superavit', diff, pct, weekKg, label: 'Superávit', text: `Superávit de ${fmtNum(-diff, 0)} kcal al día (+${pct} %)` };
   }
 
   /**
@@ -1064,6 +1066,7 @@
       <div class="diet-rows">
         <div class="diet-row"><span>Tipo de dieta</span><strong class="accent">${esc(presetName(t))}</strong></div>
         ${deficitInfo(t) ? `<div class="diet-row"><span>Mantenimiento ${fmtNum(t.maintenance, 0)} kcal${t.maintAuto ? ' <small class="muted">(calculado)</small>' : ''}</span><strong class="accent">${esc(deficitInfo(t).label)}${deficitInfo(t).kind === 'mant' ? '' : ` ${fmtNum(Math.abs(deficitInfo(t).diff), 0)} kcal (${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${deficitInfo(t).pct} %)`}</strong></div>` : ''}
+        ${deficitInfo(t) && deficitInfo(t).kind !== 'mant' ? `<div class="diet-row"><span>Estimación semanal</span><strong class="accent">${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(deficitInfo(t).weekKg), 2)} kg/semana</strong></div>` : ''}
         <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
       </div>
       ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
@@ -1804,6 +1807,7 @@
             <div class="ds-kpi"><span>Calorías al día</span><b>${fmtNum(t.kcal, 0)}<small>kcal</small></b></div>
             ${Number(t.maintenance) > 0 ? `<div class="ds-kpi"><span>Mantenimiento</span><b>${fmtNum(t.maintenance, 0)}<small>kcal</small></b></div>` : ''}
             ${di ? `<div class="ds-kpi ds-kpi-${di.kind}"><span>${di.label}</span><b>${di.kind === 'mant' ? '0' : `${di.kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(di.diff), 0)}`}<small>kcal · ${di.pct} %</small></b></div>` : ''}
+            ${di && di.kind !== 'mant' ? `<div class="ds-kpi ds-kpi-${di.kind}"><span>Estimación semanal</span><b>${di.kind === 'deficit' ? '−' : '+'}${fmtNum(Math.abs(di.weekKg), 2)}<small>kg / semana</small></b></div>` : ''}
           </div>
           <table class="ds-table">
             <thead><tr><th>Macronutriente</th><th>Gramos</th><th>Kcal</th><th>%</th>${kg ? '<th>g/kg</th>' : ''}</tr></thead>

@@ -1048,6 +1048,7 @@ function statsView() {
         <div class="main"><strong>${dt.kcal.toLocaleString('es-ES')}</strong><small>kcal de tu dieta</small></div>
         <div><strong class="${diff < 0 ? 'def' : diff > 0 ? 'sup' : ''}">${diff === null ? '—' : `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff).toLocaleString('es-ES')}`}</strong><small>kcal diferencia</small></div>
       </div>
+      ${diff !== null && Math.abs(diff) >= 50 ? `<p class="cz-estimate ${diff < 0 ? 'def' : 'sup'}">Estimación: <b>${diff < 0 ? '−' : '+'}${fmtKg(Math.round((Math.abs(diff) * 7 / 7700) * 100) / 100)} kg por semana</b> <small>(≈ ${fmtKg(Math.round(Math.abs(diff) * 30 / 7700 * 10) / 10)} kg al mes)</small></p>` : ''}
       <div class="cz-macrobar">${mk.map(([, g, f, col]) => `<i style="flex:${(g * f) / totK};background:${col}"></i>`).join('')}</div>
       <div class="cz-macros">${mk.map(([l, g, , col]) => `<div><b style="color:${col}">${g} g</b><small>${l}</small></div>`).join('')}</div>
     </section>`;
