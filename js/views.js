@@ -1025,8 +1025,15 @@
     return `<svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Reparto de macronutrientes: ${split.map((m) => `${m.label} ${Math.round(m.pct)} %`).join(', ')}">${segs}${labels}</svg>`;
   }
 
+  /** Objetivos con el mantenimiento: el que fijaste o, si no, calculado con peso, altura, edad y actividad. */
+  function withMaint(c, t) {
+    if (!t || Number(t.maintenance) > 0) return t;
+    const est = estimateMaintenance(c, t.activity || 1.55);
+    return est ? Object.assign({}, t, { maintenance: est, maintAuto: true }) : t;
+  }
+
   function dietTargetsCard(c, d) {
-    const t = d && d.targets;
+    const t = withMaint(c, d && d.targets);
     if (!t || !(Number(t.kcal) > 0)) {
       return `<div class="diet-sec diet-goals">
         <div class="card-header"><h2>Objetivos</h2>${badge('Sin objetivos', 'warning')}</div>
@@ -1056,7 +1063,7 @@
       <div class="donut-legend">${split.map((m) => `<span class="${m.cls}"><i></i>${m.label === 'Carbohidratos' ? 'Carbohidratos' : m.label}</span>`).join('')}</div>
       <div class="diet-rows">
         <div class="diet-row"><span>Tipo de dieta</span><strong class="accent">${esc(presetName(t))}</strong></div>
-        ${deficitInfo(t) ? `<div class="diet-row"><span>Mantenimiento ${fmtNum(t.maintenance, 0)} kcal</span><strong class="accent">${esc(deficitInfo(t).label)}${deficitInfo(t).kind === 'mant' ? '' : ` ${fmtNum(Math.abs(deficitInfo(t).diff), 0)} kcal (${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${deficitInfo(t).pct} %)`}</strong></div>` : ''}
+        ${deficitInfo(t) ? `<div class="diet-row"><span>Mantenimiento ${fmtNum(t.maintenance, 0)} kcal${t.maintAuto ? ' <small class="muted">(calculado)</small>' : ''}</span><strong class="accent">${esc(deficitInfo(t).label)}${deficitInfo(t).kind === 'mant' ? '' : ` ${fmtNum(Math.abs(deficitInfo(t).diff), 0)} kcal (${deficitInfo(t).kind === 'deficit' ? '−' : '+'}${deficitInfo(t).pct} %)`}</strong></div>` : ''}
         <button class="diet-row" data-action="diet-targets" data-client="${c.id}"><span>Editar macronutrientes</span>${U.icon('right')}</button>
       </div>
       ${kg ? `<p class="muted" style="font-size:.8rem;margin:10px 0 0">g/kg calculado con su último peso: ${fmtNum(kg)} kg.</p>` : ''}
@@ -1721,7 +1728,7 @@
     const anyOptions = meals.some((m) => mealGroups(m).some((g) => g.key !== 'extra' && g.rows.length > 1));
     const notes = '';
     const supps = suppLines(d);
-    const t = d.targets && Number(d.targets.kcal) > 0 ? d.targets : null;
+    const t = d.targets && Number(d.targets.kcal) > 0 ? withMaint(c, d.targets) : null;
     // Orden de las páginas: portada, tu plan, comidas, plato saludable, agua y suplementos, indicaciones.
     const weights = Store.measurementsFor(c.id).filter((m) => Number(m.weight) > 0);
     const hasData = Number(c.height) > 0 || weights.length;
@@ -2091,7 +2098,7 @@
           const dd = !c.noDiet && Store.dietFor(c.id);
           const g = dd && dayTargets(dd);
           if (!g) return null;
-          return { kcal: Math.round(g.kcal), protein: Math.round(g.protein || 0), carbs: Math.round(g.carbs || 0), fat: Math.round(g.fat || 0), maintenance: Math.round(Number(dd.targets.maintenance) || 0) || null };
+          return { kcal: Math.round(g.kcal), protein: Math.round(g.protein || 0), carbs: Math.round(g.carbs || 0), fat: Math.round(g.fat || 0), maintenance: Math.round(Number(dd.targets.maintenance) || 0) || estimateMaintenance(c, dd.targets.activity || 1.55) || null };
         })(),
       }),
       routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
