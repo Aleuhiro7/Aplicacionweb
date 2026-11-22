@@ -856,26 +856,33 @@ let alarm = null;
 function beepBurst() {
   if (!audio) return;
   if (audio.state === 'suspended') audio.resume();
-  const out = audio.createDynamicsCompressor(); // más volumen sin distorsionar
-  out.connect(audio.destination);
-  [0, 0.18, 0.36, 0.54].forEach((t, k) => {
-    const o = audio.createOscillator(); const g = audio.createGain();
-    o.type = 'square';
-    o.frequency.value = k % 2 ? 1320 : 990;
-    o.connect(g); g.connect(out);
-    const at = audio.currentTime + t;
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(1, at + 0.01);
-    g.gain.setValueAtTime(1, at + 0.13);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.15);
-    o.start(at); o.stop(at + 0.16);
+  // Timbre de campanilla: tres notas que suben (Do–Mi–Sol agudos). Cada nota es una onda suave (seno) con un
+  // armónico que le da brillo de campana; ataque rápido y caída natural. Fuerte, pero sin el zumbido áspero.
+  const out = audio.createDynamicsCompressor();
+  out.threshold.value = -12; out.ratio.value = 4;
+  const master = audio.createGain();
+  master.gain.value = 0.85; // al máximo sin saturar (saturar es lo que lo hace áspero)
+  out.connect(master); master.connect(audio.destination);
+  const notes = [1046.5, 1318.5, 1568]; // Do6, Mi6, Sol6
+  notes.forEach((f, k) => {
+    const at = audio.currentTime + k * 0.16;
+    for (const [mult, vol, dur] of [[1, 0.9, 0.9], [2.01, 0.25, 0.45], [3, 0.08, 0.25]]) {
+      const o = audio.createOscillator(); const g = audio.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * mult;
+      o.connect(g); g.connect(out);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      o.start(at); o.stop(at + dur + 0.05);
+    }
   });
 }
 function startAlarm() {
   stopAlarm();
-  const ring = () => { beepBurst(); if (navigator.vibrate) navigator.vibrate([400, 150, 400]); };
+  const ring = () => { beepBurst(); if (navigator.vibrate) navigator.vibrate([250, 120, 250]); };
   ring();
-  alarm = setInterval(ring, 1300);
+  alarm = setInterval(ring, 1700);
 }
 function stopAlarm() {
   if (alarm) { clearInterval(alarm); alarm = null; }
