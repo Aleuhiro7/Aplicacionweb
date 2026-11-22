@@ -179,6 +179,13 @@ onAuthStateChanged(auth, async (user) => {
   render();
 });
 
+const NAV_ICONS = {
+  diario: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M8 15h3"/></svg>',
+  rutina: '<svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg>',
+  dieta: '<svg viewBox="0 0 24 24"><path d="M12 6.5c-1.5-1.5-5-1.5-6.5 1S4 15 7 19c1.5 2 3 2 5 1 2 1 3.5 1 5-1 3-4 3-9 1.5-11.5S13.5 5 12 6.5Z"/><path d="M12 6.5C12 4 13 3 15 2.5"/></svg>',
+  guia: '<svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
+};
+
 const logoutBtn = () => '<div class="cz-links"><button type="button" class="link-btn" id="cz-logout">Cerrar sesión</button></div>';
 /* ---------- Instalar la app en el móvil ----------
  * Chrome solo ofrece «Instalar» una vez por su cuenta; este botón está siempre mientras no esté instalada. */
@@ -218,7 +225,13 @@ function bindInstall() {
 
 function bindLogout() {
   const b = document.getElementById('cz-logout');
-  if (b) b.onclick = async () => { await signOut(auth); location.hash = ''; };
+  if (b) b.onclick = async () => {
+    if (b.classList.contains('cz-avatar')) {
+      const pick = await choose(portal ? portal.clientName : 'Tu cuenta', auth.currentUser ? auth.currentUser.email : '', [['salir', 'Cerrar sesión', 'danger'], ['no', 'Cancelar', '']]);
+      if (pick !== 'salir') return;
+    }
+    await signOut(auth); location.hash = '';
+  };
 }
 
 /* ---------- Su zona ---------- */
@@ -249,14 +262,21 @@ function render() {
   else if (tab === 'dieta') body = dietView();
   else if (tab === 'guia') body = guideView();
   else body = daysView(r);
+  const initials = String(portal.clientName || '').trim().split(/\s+/).slice(0, 2).map((x) => x[0] || '').join('').toUpperCase();
+  const todayTxt = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   root.innerHTML = `
-    <section class="card cz-hello">
-      <div class="grow"><h1>Hola, ${esc(firstName(portal.clientName))}</h1><p class="muted">Tu zona de entrenamiento con David Orihuela.</p></div>
-      <button type="button" class="link-btn" id="cz-logout">Salir</button>
-    </section>
+    <header class="cz-hero">
+      <div class="cz-hero-top">
+        <span class="cz-hero-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="czlogo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path d="M50 6 88 28v44L50 94 12 72V28Z" fill="none" stroke="url(#czlogo)" stroke-width="9" stroke-linejoin="round"/><path fill="#fff" fill-rule="evenodd" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg><span>David Orihuela<small>Entrenador online</small></span></span>
+        <button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button>
+      </div>
+      <small class="cz-hero-date">${esc(todayTxt)}</small>
+      <h1>Hola, ${esc(firstName(portal.clientName))} 👋</h1>
+      <p>Tu zona de entrenamiento con David Orihuela</p>
+    </header>
     ${installBar()}
-    ${tabs.length > 1 ? `<nav class="tabs cz-tabs">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${l}</a>`).join('')}</nav>` : ''}
-    ${body}`;
+    <div class="cz-body">${body}</div>
+    ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
   bindLogout();
   bindInstall();
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
@@ -488,12 +508,34 @@ function diaryView(days) {
   }
   const monthCount = workouts.filter((w) => w.date.startsWith(`${cal.y}-${pad2(cal.m + 1)}`)).length;
   const recent = workouts.slice(0, 6);
+  // Estadísticas: este mes, semanas seguidas entrenando y total.
+  const thisMonth = workouts.filter((w) => w.date.startsWith(today.slice(0, 7))).length;
+  const weekKey = (s) => { const d = new Date(`${s}T12:00:00`); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); };
+  const weeks = new Set(workouts.map((w) => weekKey(w.date)));
+  let streak = 0;
+  for (let d = new Date(`${weekKey(today)}T12:00:00`); ; d.setDate(d.getDate() - 7)) {
+    if (weeks.has(ymd(d))) streak++;
+    else if (!(streak === 0 && ymd(d) === weekKey(today))) break; // la semana actual aún puede no tener entreno
+  }
+  const next = days.length ? (workouts[0] && Number.isInteger(workouts[0].dayIndex) ? (workouts[0].dayIndex + 1) % days.length : 0) : -1;
+  const nd = next >= 0 ? days[next] : null;
   return `
-    ${wk ? `<section class="card cz-card cz-resume">
-      <h2>Tienes un entreno a medias</h2>
-      <p class="muted">${esc(wk.dayName)} · empezado el ${esc(fmtDay(wk.date))}.</p>
-      <div class="cz-row"><a class="btn primary" href="#entreno">▶ Continuar</a><button type="button" class="btn" id="cz-wk-discard">Descartar</button></div>
-    </section>` : `<a class="btn primary cz-big" href="#empezar">▶ Entrenar hoy</a>`}
+    ${wk ? `<section class="cz-today resume">
+      <small>Entreno a medias</small>
+      <h2>${esc(wk.dayName)}</h2>
+      <p>Empezado el ${esc(fmtDay(wk.date))}. Sigue donde lo dejaste.</p>
+      <div class="cz-row"><a class="btn cz-today-btn" href="#entreno">▶ Continuar</a><button type="button" class="btn cz-ghost" id="cz-wk-discard">Descartar</button></div>
+    </section>` : nd ? `<a class="cz-today" href="#empezar">
+      <small>Hoy te toca</small>
+      <h2>${esc(nd.name)}</h2>
+      <p>${esc(nd.groups.map((g) => g.g).join(' · '))} · ${nd.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</p>
+      <span class="btn cz-today-btn">▶ Entrenar hoy</span>
+    </a>` : ''}
+    <div class="cz-stats3">
+      <div><strong>${thisMonth}</strong><small>este mes</small></div>
+      <div><strong>${streak}<em>🔥</em></strong><small>${streak === 1 ? 'semana seguida' : 'semanas seguidas'}</small></div>
+      <div><strong>${workouts.length}</strong><small>en total</small></div>
+    </div>
     ${workoutsError ? '<p class="cz-error">No se han podido cargar tus entrenos. Comprueba la conexión.</p>' : ''}
     <section class="card cz-card cz-cal">
       <div class="cz-cal-head">
@@ -504,9 +546,9 @@ function diaryView(days) {
       <div class="cz-cal-grid">${['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((x) => `<span class="cz-cal-dow">${x}</span>`).join('')}${cells.join('')}</div>
       <p class="muted cz-cal-foot">${monthCount ? `${monthCount} ${monthCount === 1 ? 'entreno' : 'entrenos'} este mes` : 'Aún no hay entrenos este mes'}</p>
     </section>
-    <div class="cz-links cz-howto"><button type="button" class="link-btn" id="cz-tour">¿Cómo funciona el diario?</button></div>
     ${recent.length ? `<section class="card cz-card"><h2>Últimos entrenos</h2>
-      <ul class="cz-wlist">${recent.map(workoutRow).join('')}</ul></section>` : ''}`;
+      <ul class="cz-wlist">${recent.map(workoutRow).join('')}</ul></section>` : ''}
+    <div class="cz-links cz-howto"><button type="button" class="link-btn" id="cz-tour">¿Cómo funciona el diario?</button></div>`;
 }
 
 const workoutRow = (w) => `<li><a href="#resumen/${esc(w.id)}">

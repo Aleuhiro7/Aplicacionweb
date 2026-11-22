@@ -2045,3 +2045,64 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
 .cz-install strong { font-size: .95rem; }
 .cz-install .muted { font-size: .82rem; }
 .cz-install-x { appearance: none; border: 0; background: none; color: var(--muted); font-size: 1.4rem; line-height: 1; padding: 4px; cursor: pointer; }
+
+/* =================== Zona del cliente · diseño app (moderno) =================== */
+.cz-page { background: radial-gradient(900px 500px at 100% -10%, rgba(110, 139, 255, .16), transparent 60%), radial-gradient(700px 400px at -20% 30%, rgba(34, 211, 238, .07), transparent 60%), #0e131c; background-attachment: fixed; }
+body:has(.cz-hero) .q-brand { display: none; }
+body:has(.cz-nav) .cz-wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.cz-page .card { background: rgba(255, 255, 255, .035); border: 1px solid rgba(255, 255, 255, .07); border-radius: 20px; box-shadow: none; }
+.cz-page .card h2 { font: 700 1.35rem/1.15 "Barlow Condensed", sans-serif; letter-spacing: .01em; }
+/* Cabecera */
+.cz-hero { padding: 4px 2px 6px; margin-bottom: 14px; }
+.cz-hero-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.cz-hero-logo { width: 38px; height: 38px; display: block; }
+.cz-hero-logo svg { width: 100%; height: 100%; }
+.cz-avatar { width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: linear-gradient(135deg, #6e8bff, #22d3ee); color: #0b0f19; font: 800 .9rem/1 "Archivo", sans-serif; cursor: pointer; box-shadow: 0 6px 20px rgba(110, 139, 255, .35); }
+.cz-hero-date { display: block; color: var(--primary); font-weight: 700; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; }
+.cz-hero h1 { font: 700 2.4rem/1.05 "Barlow Condensed", sans-serif; margin: 4px 0 2px; }
+.cz-hero p { margin: 0; color: var(--muted); font-size: .95rem; }
+.cz-body { display: block; }
+/* Navegación inferior */
+.cz-nav { position: fixed; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 40; width: min(440px, calc(100% - 24px)); display: flex; justify-content: space-around; padding: 6px; border-radius: 22px; background: rgba(18, 23, 34, .82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, .08); box-shadow: 0 14px 40px rgba(0, 0, 0, .5); }
+.cz-nav a { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px; border-radius: 16px; color: var(--muted); text-decoration: none; font-size: .72rem; font-weight: 700; transition: color .15s, background .15s; }
+.cz-nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.cz-nav a.active { color: #fff; background: linear-gradient(135deg, rgba(110, 139, 255, .35), rgba(34, 211, 238, .22)); }
+.cz-nav a.active svg { stroke: #9fb3ff; }
+/* Diario: hoy toca */
+.cz-today { position: relative; display: block; overflow: hidden; padding: 20px 20px 18px; margin-bottom: 12px; border-radius: 24px; color: #fff; text-decoration: none; background: linear-gradient(135deg, #5b6cff 0%, #3aa8f0 55%, #2fd6b8 100%); box-shadow: 0 16px 40px rgba(64, 120, 255, .35); }
+.cz-today::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255, 255, 255, .12); }
+.cz-today small { position: relative; display: block; font-weight: 800; font-size: .74rem; letter-spacing: .16em; text-transform: uppercase; opacity: .85; }
+.cz-today h2 { position: relative; font: 700 2.1rem/1.05 "Barlow Condensed", sans-serif; margin: 4px 0 4px; color: #fff; }
+.cz-today p { position: relative; margin: 0 0 14px; font-size: .92rem; opacity: .92; }
+.cz-today .cz-row { position: relative; }
+.cz-today-btn { position: relative; display: inline-flex; justify-content: center; padding: 11px 20px; border-radius: 14px; background: #0e131c; color: #fff; font-weight: 800; border: 0; text-decoration: none; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+.cz-today.resume { background: linear-gradient(135deg, #f59e0b, #f97316 60%, #ef4444); box-shadow: 0 16px 40px rgba(249, 115, 22, .3); }
+.cz-ghost { background: rgba(255, 255, 255, .18); color: #fff; border: 0; }
+/* Estadísticas */
+.cz-stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.cz-stats3 div { display: flex; flex-direction: column; align-items: center; padding: 14px 6px; border-radius: 18px; background: rgba(255, 255, 255, .035); border: 1px solid rgba(255, 255, 255, .07); }
+.cz-stats3 strong { font: 800 1.6rem/1 "Archivo", sans-serif; }
+.cz-stats3 em { font-style: normal; font-size: 1rem; margin-left: 2px; }
+.cz-stats3 small { margin-top: 4px; color: var(--muted); font-size: .74rem; text-align: center; }
+/* Calendario */
+.cz-page .cz-cal-head .btn { border-radius: 12px; background: rgba(255, 255, 255, .05); border-color: transparent; }
+.cz-page .cz-cal-cell { border-radius: 12px; font-size: .9rem; }
+.cz-page .cz-cal-cell.done { background: linear-gradient(135deg, #6e8bff, #22d3ee); box-shadow: 0 4px 12px rgba(80, 140, 255, .35); }
+.cz-page .cz-cal-cell.today:not(.done) { outline: none; background: rgba(110, 139, 255, .16); color: #9fb3ff; font-weight: 800; }
+/* Listas y días */
+.cz-page .cz-wlist a { padding: 13px 4px; }
+.cz-page .cz-wlist-n { padding: 4px 10px; border-radius: 999px; background: rgba(110, 139, 255, .14); }
+.cz-page .cz-day { border-radius: 20px; padding: 16px; transition: transform .1s; }
+.cz-page .cz-day:active { transform: scale(.98); }
+.cz-page .cz-day-n { border-radius: 14px; box-shadow: 0 6px 16px rgba(80, 140, 255, .3); }
+.cz-page .cz-diet-bar .btn, .cz-page .cz-big { border-radius: 16px; }
+.cz-page .cz-install { border-radius: 20px; background: linear-gradient(135deg, rgba(110, 139, 255, .14), rgba(34, 211, 238, .06)); border-color: rgba(110, 139, 255, .45); margin: 0 0 14px; }
+.cz-page .cz-howto { margin: 6px 0 0; }
+/* Pantallas de entrar / crear cuenta */
+.cz-page .cz-card .q-title { font-size: 2rem; }
+.cz-page .cz-form input { border-radius: 14px; padding: 14px; background: rgba(255, 255, 255, .04); }
+.cz-page .cz-form .btn { border-radius: 14px; }
+.cz-hero-logo { width: auto; height: 38px; display: flex; align-items: center; gap: 10px; }
+.cz-hero-logo svg { width: 38px; height: 38px; flex-shrink: 0; }
+.cz-hero-logo > span { display: flex; flex-direction: column; font: 700 1.05rem/1 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+.cz-hero-logo small { margin-top: 3px; font: 700 .58rem/1 "Archivo", sans-serif; letter-spacing: .2em; color: #22d3ee; }
