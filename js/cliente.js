@@ -290,7 +290,7 @@ function render() {
     <header class="cz-hero">
       <div class="cz-hero-top">
         <span class="cz-hero-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="czlogo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path d="M50 6 88 28v44L50 94 12 72V28Z" fill="none" stroke="url(#czlogo)" stroke-width="9" stroke-linejoin="round"/><path fill="#fff" fill-rule="evenodd" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg><span>David Orihuela<small>Entrenador online</small></span></span>
-        <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
+        <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-refresh" id="cz-refresh" title="Actualizar" aria-label="Actualizar">↻</button><button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
       </div>
       <small class="cz-hero-date">${esc(todayTxt)}</small>
       <h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
@@ -303,6 +303,8 @@ function render() {
   document.body.dataset.tab = main ? tab : '';
   bindLogout();
   bindInstall();
+  const rf = document.getElementById('cz-refresh');
+  if (rf) rf.onclick = () => { rf.classList.add('spin'); refreshNow(true); };
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
@@ -1108,7 +1110,35 @@ function improvements(w) {
   document.addEventListener('touchend', () => {
     if (y0 === null) return;
     y0 = null;
-    if (dy > 90 && el) { el.classList.add('spin'); setTimeout(() => location.reload(), 250); return; }
+    if (dy > 90 && el) { el.classList.add('spin'); const x = el; el = null; refreshNow(true).finally(() => x.remove()); return; }
     if (el) { el.remove(); el = null; }
   });
 })();
+
+/* ---------- Actualizar: datos nuevos y versión nueva de la app ---------- */
+const MY_VERSION = (document.querySelector('script[src*="js/cliente.js"]') || { src: '' }).src.split('v=')[1] || '';
+let refreshing = false;
+async function refreshNow(manual) {
+  if (refreshing || location.hash === '#entreno') return;
+  refreshing = true;
+  try {
+    // ¿Hay una versión nueva publicada? Entonces se recarga la página entera.
+    const html = await fetch(`cliente.html?nc=${Date.now()}`, { cache: 'no-store' }).then((r) => r.text());
+    const m = html.match(/js\/cliente\.js\?v=([\w.-]+)/);
+    if (m && MY_VERSION && m[1] !== MY_VERSION) { location.reload(); return; }
+  } catch (e) { /* sin conexión: se sigue con los datos */ }
+  try {
+    if (token) { portal = (await readPortal(token)) || portal; await loadWorkouts(); }
+    if (portal) render();
+    if (manual) flash('Actualizado ✓');
+  } catch (e) {
+    console.error(e);
+    if (manual) flash('Sin conexión');
+  } finally {
+    refreshing = false;
+    const rf = document.getElementById('cz-refresh');
+    if (rf) rf.classList.remove('spin');
+  }
+}
+// Al volver a la app (desde otra app o tras bloquear el móvil) se pone al día sola.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && portal) refreshNow(false); });

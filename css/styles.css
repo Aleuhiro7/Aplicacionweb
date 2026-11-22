@@ -2307,3 +2307,5 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
   .cz-estimate small { display: none; }
   .cz-last-w { padding: 10px 12px; }
 }
+.cz-refresh { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: #c7d2ff; font-size: 1.15rem; font-weight: 800; cursor: pointer; display: grid; place-items: center; }
+.cz-refresh.spin { animation: czspin .7s linear infinite; }
