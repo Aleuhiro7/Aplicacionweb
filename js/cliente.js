@@ -180,6 +180,42 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 const logoutBtn = () => '<div class="cz-links"><button type="button" class="link-btn" id="cz-logout">Cerrar sesión</button></div>';
+/* ---------- Instalar la app en el móvil ----------
+ * Chrome solo ofrece «Instalar» una vez por su cuenta; este botón está siempre mientras no esté instalada. */
+let installEvt = null;
+const isInstalled = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; if (portal) render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; if (portal) render(); });
+function installBar() {
+  if (isInstalled()) return '';
+  try { if (sessionStorage.getItem('cz:noinstall')) return ''; } catch (e) { /* sin almacenamiento */ }
+  return `<section class="card cz-install">
+    <img src="img/icon-192.png?v=11" alt="" width="44" height="44">
+    <div class="grow"><strong>Instala «Mi entreno» en tu móvil</strong><span class="muted">Para abrirla con un toque, como una app.</span></div>
+    <button type="button" class="btn primary sm" id="cz-install">Instalar</button>
+    <button type="button" class="cz-install-x" id="cz-install-x" aria-label="Ahora no">×</button>
+  </section>`;
+}
+function bindInstall() {
+  const b = document.getElementById('cz-install');
+  if (b) b.onclick = async () => {
+    if (installEvt) {
+      installEvt.prompt();
+      try { await installEvt.userChoice; } catch (e) { /* cancelado */ }
+      installEvt = null;
+      render();
+      return;
+    }
+    // Sin el aviso de Chrome (iPhone, o Chrome ya lo usó): se explica cómo hacerlo a mano.
+    choose('Instalar «Mi entreno»', isIOS()
+      ? 'En Safari: toca el botón Compartir (el cuadrado con la flecha hacia arriba) y elige «Añadir a pantalla de inicio».'
+      : 'En Chrome: toca los tres puntos ⋮ de arriba a la derecha y elige «Instalar aplicación» o «Añadir a pantalla de inicio».', [['ok', 'Entendido', 'primary']]);
+  };
+  const x = document.getElementById('cz-install-x');
+  if (x) x.onclick = () => { try { sessionStorage.setItem('cz:noinstall', '1'); } catch (e) { /* sin almacenamiento */ } render(); };
+}
+
 function bindLogout() {
   const b = document.getElementById('cz-logout');
   if (b) b.onclick = async () => { await signOut(auth); location.hash = ''; };
@@ -218,9 +254,11 @@ function render() {
       <div class="grow"><h1>Hola, ${esc(firstName(portal.clientName))}</h1><p class="muted">Tu zona de entrenamiento con David Orihuela.</p></div>
       <button type="button" class="link-btn" id="cz-logout">Salir</button>
     </section>
+    ${installBar()}
     ${tabs.length > 1 ? `<nav class="tabs cz-tabs">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${l}</a>`).join('')}</nav>` : ''}
     ${body}`;
   bindLogout();
+  bindInstall();
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');

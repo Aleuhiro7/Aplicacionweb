@@ -2039,3 +2039,9 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
 .wk-sum .wk-ex:last-child { border-bottom: 0; }
 .wk-sets small { color: var(--muted); font-weight: 600; margin-right: 2px; }
 .wk-sum-stats strong { text-align: center; font-size: 1.1rem; }
+.cz-install { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 10px 0 0; border: 1.5px solid var(--primary); }
+.cz-install img { border-radius: 10px; flex-shrink: 0; }
+.cz-install .grow { display: flex; flex-direction: column; min-width: 0; }
+.cz-install strong { font-size: .95rem; }
+.cz-install .muted { font-size: .82rem; }
+.cz-install-x { appearance: none; border: 0; background: none; color: var(--muted); font-size: 1.4rem; line-height: 1; padding: 4px; cursor: pointer; }
