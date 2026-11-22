@@ -2086,6 +2086,13 @@
         height: Number(c.height) || null,
         startDate: c.startDate || '',
         measures: Store.measurementsFor(c.id).map((m) => ({ date: m.date, weight: Number(m.weight) || null, waist: Number(m.waist) || null })),
+        // Objetivos de la dieta: kcal, macros en gramos y mantenimiento.
+        diet: (() => {
+          const dd = !c.noDiet && Store.dietFor(c.id);
+          const g = dd && dayTargets(dd);
+          if (!g) return null;
+          return { kcal: Math.round(g.kcal), protein: Math.round(g.protein || 0), carbs: Math.round(g.carbs || 0), fat: Math.round(g.fat || 0), maintenance: Math.round(Number(dd.targets.maintenance) || 0) || null };
+        })(),
       }),
       routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
       dietHtml: d && dietSendable(d) ? dietSheet(c, d) : '',

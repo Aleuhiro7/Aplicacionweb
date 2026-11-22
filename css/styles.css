@@ -2271,3 +2271,22 @@ body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day strong, body.cz-loc
 body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day small, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day small { font-size: .74rem; }
 body.cz-lock[data-tab="rutina"] .cz-days[data-n="6"] .cz-day-count, body.cz-lock[data-tab="rutina"] .cz-days[data-n="7"] .cz-day-count { font-size: 1rem; }
 body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
+/* Tus datos · tu dieta */
+.cz-dietcard { padding: 12px 14px; }
+.cz-kind { padding: 2px 9px; border-radius: 999px; font-weight: 700; font-size: .7rem; background: rgba(255, 255, 255, .07); color: var(--muted); }
+.cz-kind.def { background: rgba(62, 230, 160, .14); color: #3ee6a0; }
+.cz-kind.sup { background: rgba(251, 146, 60, .14); color: #fb923c; }
+.cz-kcal3 { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin: 8px 0 10px; text-align: center; }
+.cz-kcal3 div { display: flex; flex-direction: column; }
+.cz-kcal3 strong { font: 800 1.15rem/1.1 "Archivo", sans-serif; }
+.cz-kcal3 .main strong { font-size: 1.5rem; background: linear-gradient(90deg, #6e8bff, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cz-kcal3 strong.def { color: #3ee6a0; }
+.cz-kcal3 strong.sup { color: #fb923c; }
+.cz-kcal3 small { color: var(--muted); font-size: .68rem; }
+.cz-macrobar { display: flex; gap: 3px; height: 8px; border-radius: 999px; overflow: hidden; }
+.cz-macrobar i { display: block; min-width: 4px; }
+.cz-macros { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 8px; text-align: center; }
+.cz-macros div { display: flex; flex-direction: column; }
+.cz-macros b { font: 800 1rem/1.1 "Archivo", sans-serif; }
+.cz-macros small { color: var(--muted); font-size: .68rem; }
+@media (max-height: 760px) { .cz-dietcard { padding: 8px 12px; } .cz-kcal3 { margin: 4px 0 6px; } .cz-kcal3 .main strong { font-size: 1.25rem; } .cz-macros { margin-top: 4px; } }

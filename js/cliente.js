@@ -1034,10 +1034,29 @@ function statsView() {
   }
   const maxB = Math.max(3, ...bars);
   const last = workouts[0];
+  const dt = st.diet;
+  let dietCard = '';
+  if (dt) {
+    const diff = dt.maintenance ? dt.kcal - dt.maintenance : null;
+    const kind = diff === null ? '' : Math.abs(diff) < 50 ? 'Mantenimiento' : diff < 0 ? 'Déficit' : 'Superávit';
+    const mk = [['Proteínas', dt.protein, 4, '#6e8bff'], ['Hidratos', dt.carbs, 4, '#22d3ee'], ['Grasas', dt.fat, 9, '#3ee6a0']];
+    const totK = mk.reduce((t, [, g, f]) => t + g * f, 0) || 1;
+    dietCard = `<section class="cz-dietcard card">
+      <div class="cz-train-head"><span class="cz-metric-l">Tu dieta</span>${kind ? `<small class="cz-kind ${kind === 'Déficit' ? 'def' : kind === 'Superávit' ? 'sup' : ''}">${kind}</small>` : ''}</div>
+      <div class="cz-kcal3">
+        <div><strong>${dt.maintenance ? dt.maintenance.toLocaleString('es-ES') : '—'}</strong><small>mantenimiento</small></div>
+        <div class="main"><strong>${dt.kcal.toLocaleString('es-ES')}</strong><small>kcal de tu dieta</small></div>
+        <div><strong class="${diff < 0 ? 'def' : diff > 0 ? 'sup' : ''}">${diff === null ? '—' : `${diff > 0 ? '+' : diff < 0 ? '−' : ''}${Math.abs(diff).toLocaleString('es-ES')}`}</strong><small>kcal diferencia</small></div>
+      </div>
+      <div class="cz-macrobar">${mk.map(([, g, f, col]) => `<i style="flex:${(g * f) / totK};background:${col}"></i>`).join('')}</div>
+      <div class="cz-macros">${mk.map(([l, g, , col]) => `<div><b style="color:${col}">${g} g</b><small>${l}</small></div>`).join('')}</div>
+    </section>`;
+  }
   return `<div class="cz-metrics">
       ${metric('Peso', wts, 'kg', '#6e8bff')}
       ${metric('Cintura', wsts, 'cm', '#22d3ee')}
     </div>
+    ${dietCard}
     <section class="cz-train card">
       <div class="cz-train-head"><span class="cz-metric-l">Entrenamiento</span><small class="muted">últimas 8 semanas</small></div>
       <div class="cz-bars">${bars.map((n, i) => `<span style="--h:${Math.round((n / maxB) * 100)}%" class="${i === 7 ? 'now' : ''}"><i></i><b>${n || ''}</b></span>`).join('')}</div>
