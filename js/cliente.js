@@ -219,6 +219,23 @@ function bindInstall() {
   if (x) x.onclick = () => { try { sessionStorage.setItem('cz:noinstall', '1'); } catch (e) { /* sin almacenamiento */ } render(); };
 }
 
+/** Rutina: en cada tarjeta, los ejercicios ocupan las líneas que quepan (sin tapar el nombre del día). */
+function fitDayCards() {
+  for (const card of root.querySelectorAll('.cz-day')) {
+    const ex = card.querySelector('.cz-day-exs');
+    if (!ex) continue;
+    ex.style.webkitLineClamp = '';
+    const cs = getComputedStyle(card);
+    const inner = card.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const head = card.querySelector('strong').offsetHeight + card.querySelector('.grow small').offsetHeight;
+    const lh = parseFloat(getComputedStyle(ex).lineHeight) || 16;
+    const lines = Math.floor((inner - head - 8) / lh);
+    ex.style.display = lines >= 1 ? '' : 'none';
+    ex.style.webkitLineClamp = String(Math.max(1, lines));
+  }
+}
+window.addEventListener('resize', () => { if (document.body.dataset.tab === 'rutina') fitDayCards(); });
+
 function bindLogout() {
   const b = document.getElementById('cz-logout');
   if (b) b.onclick = async () => {
@@ -283,6 +300,7 @@ function render() {
   const rb = document.getElementById('cz-routine-pdf');
   if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (tab === 'diario') bindDiary();
+  if (main && tab === 'rutina') requestAnimationFrame(fitDayCards);
   root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
   root.querySelectorAll('[data-open-w]').forEach((b) => { b.onclick = () => { location.hash = `#resumen/${b.dataset.openW}`; }; });
   if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
@@ -306,7 +324,7 @@ function daysView(r) {
     ${days.map((d, i) => `<a class="card cz-day" href="#dia-${i}">
       <span class="cz-day-n">${i + 1}</span>
       <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small>
-        <span class="cz-day-exs">${d.groups.flatMap((g) => g.exs).map((ex) => `<i>${esc(ex.name)}</i>`).join('')}</span></span>
+        <span class="cz-day-exs">${esc(d.groups.flatMap((g) => g.exs).map((ex) => ex.name).join(' · '))}</span></span>
       <span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)}<small>ejerc.</small></span>
     </a>`).join('')}
   </section>
