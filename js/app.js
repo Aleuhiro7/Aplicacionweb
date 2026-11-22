@@ -94,6 +94,7 @@
   });
 
   main.addEventListener('input', (e) => {
+    if (e.target.classList.contains('cmp-range')) e.target.parentElement.style.setProperty('--pos', `${e.target.value}%`);
     if (e.target.id === 'client-search') Views.onClientSearch(e.target.value);
     if (e.target.id === 'library-search') Views.onLibrarySearch(e.target.value);
     if (e.target.id === 'food-search') Views.onFoodSearch(e.target.value);

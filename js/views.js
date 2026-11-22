@@ -2481,6 +2481,72 @@
    * Fotos
    * ======================================================= */
 
+  /* ---------- Comparar fotos: antes / después ---------- */
+  const cmpState = {}; // id del cliente → { a, b, pose, mode }
+  /** Medida de ese día o, si no hay, la más cercana (para el peso y la cintura de cada foto). */
+  function measureNear(c, date, key) {
+    const ms = Store.measurementsFor(c.id).filter((m) => Number(m[key]) > 0);
+    if (!ms.length) return null;
+    return ms.reduce((best, m) => (Math.abs(U.daysBetween(m.date, date)) < Math.abs(U.daysBetween(best.date, date)) ? m : best));
+  }
+  function photoCompare(c, groups) {
+    if (groups.length < 2) {
+      return groups.length ? `<section class="card cmp-card"><div class="card-header"><h2>Comparar fotos</h2></div>
+        <p class="muted" style="margin:0">Cuando subas fotos de otro día, aquí podrás ver el antes y el después lado a lado o deslizando.</p></section>` : '';
+    }
+    const dates = groups.map((g) => g.date); // de la más reciente a la más antigua
+    const st = cmpState[c.id] = Object.assign({ a: dates[dates.length - 1], b: dates[0], pose: 0, mode: 'side' }, cmpState[c.id]);
+    if (!dates.includes(st.a)) st.a = dates[dates.length - 1];
+    if (!dates.includes(st.b)) st.b = dates[0];
+    // Fotos de cada día en el orden en que se subieron (frente, perfil, espalda…)
+    const of = (d) => (groups.find((g) => g.date === d) || { items: [] }).items.slice().sort((x, y) => (x.createdAt || '').localeCompare(y.createdAt || ''));
+    const A = of(st.a), B = of(st.b);
+    const poses = Math.max(A.length, B.length);
+    if (st.pose >= poses) st.pose = 0;
+    const pa = A[Math.min(st.pose, A.length - 1)];
+    const pb = B[Math.min(st.pose, B.length - 1)];
+    const days = U.daysBetween(st.a, st.b);
+    const stat = (key, unit, label) => {
+      const x = measureNear(c, st.a, key), y = measureNear(c, st.b, key);
+      if (!x || !y || x === y) return '';
+      const d = Number(y[key]) - Number(x[key]);
+      return `<div><span>${label}</span><b>${fmtNum(x[key])} → ${fmtNum(y[key])} ${unit}</b><em class="${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${d > 0 ? '+' : d < 0 ? '−' : ''}${fmtNum(Math.abs(d))} ${unit}</em></div>`;
+    };
+    const opt = (sel) => dates.map((d) => `<option value="${d}" ${d === sel ? 'selected' : ''}>${esc(fmtDate(d))}</option>`).join('');
+    const img = (p) => (p ? `<img data-photo="${p.id}" alt="">` : '<span class="cmp-none">Sin foto</span>');
+    return `<section class="card cmp-card">
+      <div class="card-header"><h2>Comparar fotos</h2>
+        <div class="cmp-mode" role="group">
+          <button type="button" class="${st.mode === 'side' ? 'active' : ''}" data-action="cmp-mode" data-client="${c.id}" data-value="side">Lado a lado</button>
+          <button type="button" class="${st.mode === 'slide' ? 'active' : ''}" data-action="cmp-mode" data-client="${c.id}" data-value="slide">Deslizar</button>
+        </div>
+      </div>
+      <div class="cmp-pick">
+        <label><span>Antes</span><select data-action-change="cmp-date" data-client="${c.id}" data-which="a">${opt(st.a)}</select></label>
+        <span class="cmp-arrow">→</span>
+        <label><span>Después</span><select data-action-change="cmp-date" data-client="${c.id}" data-which="b">${opt(st.b)}</select></label>
+      </div>
+      ${poses > 1 ? `<div class="cmp-poses">${Array.from({ length: poses }, (_, k) => `<button type="button" class="chip${k === st.pose ? ' active' : ''}" data-action="cmp-pose" data-client="${c.id}" data-value="${k}">Foto ${k + 1}</button>`).join('')}</div>` : ''}
+      ${st.mode === 'side'
+        ? `<div class="cmp-side">
+            <figure>${img(pa)}<figcaption>Antes · ${esc(U.fmtDateShort(st.a))}</figcaption></figure>
+            <figure>${img(pb)}<figcaption>Después · ${esc(U.fmtDateShort(st.b))}</figcaption></figure>
+          </div>`
+        : `<div class="cmp-slide" style="--pos:50%">
+            ${img(pb)}
+            <div class="cmp-before">${img(pa)}</div>
+            <i class="cmp-handle"></i>
+            <span class="cmp-tag l">Antes · ${esc(U.fmtDateShort(st.a))}</span><span class="cmp-tag r">Después · ${esc(U.fmtDateShort(st.b))}</span>
+            <input type="range" class="cmp-range" min="0" max="100" value="50" aria-label="Deslizar entre antes y después">
+          </div>`}
+      <div class="cmp-stats">
+        <div><span>Tiempo</span><b>${days === 0 ? 'Mismo día' : `${plural(Math.abs(days), 'día', 'días')}`}</b><em>${Math.abs(days) >= 14 ? `≈ ${fmtNum(Math.abs(days) / 7, 0)} semanas` : ''}</em></div>
+        ${stat('weight', 'kg', 'Peso')}
+        ${stat('waist', 'cm', 'Cintura')}
+      </div>
+    </section>`;
+  }
+
   function clientPhotos(c) {
     const photos = Store.photosFor(c.id);
     const groups = [];
@@ -2489,7 +2555,7 @@
       if (g && g.date === p.date) g.items.push(p);
       else groups.push({ date: p.date, items: [p] });
     }
-    return `<section class="card">
+    return `${photoCompare(c, groups)}<section class="card">
       <div class="card-header"><h2>Fotos ${photos.length ? `<span class="muted" style="font:500 1rem 'Archivo',sans-serif">${photos.length}</span>` : ''}</h2></div>
       <div class="photo-upload">
         <label class="btn primary" for="photo-input" tabindex="0">${U.icon('upload')}Subir fotos</label>
@@ -4397,6 +4463,9 @@
     },
     'new-injury': (d) => openInjuryForm(null, d.client),
     'portal-invite': (d) => invitePortal(d.client),
+    'cmp-mode': (d) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { mode: d.value }); App.render(); },
+    'cmp-pose': (d) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { pose: Number(d.value) }); App.render(); },
+    'cmp-date': (d, el) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { [d.which]: el.value }); App.render(); },
     'rescue-scan': () => rescueScan(),
     'rescue-restore': (d) => rescueRestore(Number(d.value)),
     'workout-open': (d) => openWorkout(d.client, d.value),
