@@ -2135,6 +2135,8 @@
         })(),
       }),
       routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
+      // Sonido de fin de descanso grabado por el entrenador (vacío = campanilla).
+      alarmAudio: Store.settings.alarmAudio || '',
       dietHtml: d && dietSendable(d) ? dietSheet(c, d) : '',
     };
   }
@@ -2227,6 +2229,71 @@
         <button class="btn" data-action="portal-copy" data-client="${c.id}">${U.icon('file')}Copiar enlace</button>
       </div>
     </section>`;
+  }
+
+  /* ---------- Sonido de fin de descanso (grabado por el entrenador) ---------- */
+  let alarmRec = null; // grabación en marcha { rec, stream, timer, t0 }
+  const ALARM_MAX_S = 8;
+  const ALARM_MAX_BYTES = 200 * 1024; // se guarda con tus datos en la nube (límite 1 MB en total)
+  function saveAlarm(dataUrl) {
+    Store.settings.alarmAudio = dataUrl;
+    Store.save();
+    App.render();
+    UI.toast(dataUrl ? 'Sonido guardado: tus clientes lo oirán al terminar el descanso' : 'Vuelve a sonar la campanilla');
+  }
+  const blobToDataUrl = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+  async function alarmRecord() {
+    if (!navigator.mediaDevices || !window.MediaRecorder) { UI.toast('Este navegador no permite grabar. Sube un audio grabado con el móvil.'); return; }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { UI.toast('Sin permiso para usar el micrófono'); return; }
+    const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
+    const rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 48000 } : undefined);
+    const chunks = [];
+    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearInterval(alarmRec && alarmRec.timer);
+      alarmRec = null;
+      const blob = new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' });
+      if (!blob.size) { App.render(); UI.toast('No se ha grabado nada'); return; }
+      const url = await blobToDataUrl(blob);
+      new Audio(url).play().catch(() => {});
+      const ok = await UI.confirm({ title: 'Guardar este sonido', message: 'Lo estás escuchando ahora. ¿Lo guardo como sonido de fin de descanso para tus clientes?', confirmLabel: 'Guardar', danger: false });
+      if (ok) saveAlarm(url); else App.render();
+    };
+    rec.start();
+    alarmRec = { rec, stream, t0: Date.now() };
+    alarmRec.timer = setInterval(() => {
+      const secs = Math.floor((Date.now() - alarmRec.t0) / 1000);
+      const el = document.getElementById('alarm-secs'); if (el) el.textContent = secs;
+      if (secs >= ALARM_MAX_S && rec.state === 'recording') rec.stop();
+    }, 250);
+    App.render();
+  }
+  async function alarmFile(el) {
+    const f = el.files && el.files[0];
+    el.value = '';
+    if (!f) return;
+    if (f.size > ALARM_MAX_BYTES) { UI.toast('El audio es demasiado grande: usa uno de menos de 8 segundos'); return; }
+    const url = await blobToDataUrl(f);
+    const dur = await new Promise((res) => { const a = new Audio(); a.onloadedmetadata = () => res(a.duration); a.onerror = () => res(NaN); a.src = url; });
+    if (!Number.isFinite(dur)) { UI.toast('No se reconoce ese archivo de audio'); return; }
+    if (dur > ALARM_MAX_S + 0.5) { UI.toast(`El audio dura ${Math.round(dur)} s: el máximo son ${ALARM_MAX_S} s`); return; }
+    saveAlarm(url);
+  }
+  function alarmPlay() {
+    if (Store.settings.alarmAudio) { new Audio(Store.settings.alarmAudio).play().catch(() => UI.toast('No se puede reproducir')); return; }
+    // Campanilla por defecto (la misma que suena en la zona del cliente)
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      [1046.5, 1318.5, 1568].forEach((f, k) => {
+        const at = ac.currentTime + k * 0.16;
+        for (const [m, v, d] of [[1, 0.6, 0.9], [2.01, 0.17, 0.45], [3, 0.05, 0.25]]) {
+          const o = ac.createOscillator(); const g = ac.createGain(); o.frequency.value = f * m; o.connect(g); g.connect(ac.destination);
+          g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(v, at + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, at + d); o.start(at); o.stop(at + d + 0.05);
+        }
+      });
+    } catch (e) { /* sin audio */ }
   }
 
   /* ---------- Recuperar datos de este dispositivo (ver rescate.js) ---------- */
@@ -4343,6 +4410,20 @@
         <div id="rescue-list">${rescueList()}</div>
       </section>
       <div class="grid-2">
+        <section class="card alarm-card">
+          <div class="card-header"><h2>Sonido de fin de descanso</h2></div>
+          <p class="muted" style="margin:0 0 12px">Lo que oyen tus clientes en su zona cuando termina el descanso entre series (se repite hasta que responden). Graba tu voz, por ejemplo «¡Vamos, a por la siguiente serie!», o sube un audio corto.</p>
+          ${alarmRec ? `<div class="alarm-rec"><span class="rec-dot"></span><strong>Grabando… <span id="alarm-secs">0</span> s</strong><button class="btn danger-solid sm" data-action="alarm-stop">■ Parar</button></div>`
+            : Store.settings.alarmAudio
+              ? `<div class="alarm-now"><span>🎙️ <strong>Tu grabación</strong></span><button class="btn sm" data-action="alarm-play">▶ Escuchar</button><button class="btn sm danger" data-action="alarm-delete">${U.icon('trash')}Quitar</button></div>`
+              : '<div class="alarm-now"><span>🔔 <strong>Campanilla</strong> <span class="muted">(por defecto)</span></span><button class="btn sm" data-action="alarm-play">▶ Escuchar</button></div>'}
+          ${alarmRec ? '' : `<div class="actions" style="margin-top:10px">
+            <button class="btn primary" data-action="alarm-record">● Grabar mi voz</button>
+            <label class="btn" for="alarm-file" tabindex="0">${U.icon('upload')}Subir audio</label>
+            <input type="file" id="alarm-file" accept="audio/*" hidden data-action-change="alarm-file">
+          </div>
+          <p class="muted" style="font-size:.8rem;margin:8px 0 0">Máximo 8 segundos. Los clientes lo oyen al momento (en cuanto tu app se conecte a la nube).</p>`}
+        </section>
         <section class="card">
           <div class="card-header"><h2>Avisos de pago</h2></div>
           <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen y, si lo activas, con una notificación del navegador.</p>
@@ -4534,6 +4615,11 @@
     'cmp-pose': (d) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { pose: Number(d.value) }); App.render(); },
     'cmp-date': (d, el) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { [d.which]: el.value }); App.render(); },
     'rescue-scan': () => rescueScan(),
+    'alarm-record': () => alarmRecord(),
+    'alarm-stop': () => { if (alarmRec && alarmRec.rec.state === 'recording') alarmRec.rec.stop(); },
+    'alarm-file': (d, el) => alarmFile(el),
+    'alarm-play': () => alarmPlay(),
+    'alarm-delete': async () => { const ok = await UI.confirm({ title: 'Quitar tu grabación', message: 'Tus clientes volverán a oír la campanilla.', confirmLabel: 'Quitar' }); if (ok) saveAlarm(''); },
     'rescue-restore': (d) => rescueRestore(Number(d.value)),
     'workout-open': (d) => openWorkout(d.client, d.value),
     'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },

@@ -850,7 +850,8 @@ function flash(text) {
 
 /* Pitido al terminar el descanso (el móvil necesita que el sonido se active con un toque). */
 let audio = null;
-function unlockAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { audio = null; } }
+function unlockAudio() { unlockAudioRaw(); loadVoice(); }
+function unlockAudioRaw() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { audio = null; } }
 /* Alarma de fin de descanso: fuerte y repetida (pitidos + vibración) hasta que respondes a la pregunta. */
 let alarm = null;
 function beepBurst() {
@@ -878,8 +879,38 @@ function beepBurst() {
     }
   });
 }
-function startAlarm() {
+/* Sonido grabado por el entrenador (portal.alarmAudio): se descodifica una vez y suena con el mismo audio
+ * del móvil que la campanilla (ya desbloqueado al pulsar ▶), así se oye aunque no se toque la pantalla. */
+let voice = null; // { src, buf }
+async function loadVoice() {
+  const src = portal && portal.alarmAudio;
+  if (!src || !audio) return null;
+  if (voice && voice.src === src) return voice.buf;
+  try {
+    const bin = atob(src.slice(src.indexOf(',') + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const buf = await audio.decodeAudioData(bytes.buffer);
+    voice = { src, buf };
+    return buf;
+  } catch (e) { console.error('No se pudo cargar el sonido del entrenador', e); voice = { src, buf: null }; return null; }
+}
+function playVoice(buf) {
+  if (audio.state === 'suspended') audio.resume();
+  const s = audio.createBufferSource(); const g = audio.createGain();
+  g.gain.value = 1;
+  s.buffer = buf; s.connect(g); g.connect(audio.destination); s.start();
+}
+
+async function startAlarm() {
   stopAlarm();
+  const buf = await loadVoice();
+  if (buf) {
+    const ring = () => { playVoice(buf); if (navigator.vibrate) navigator.vibrate([250, 120, 250]); };
+    ring();
+    alarm = setInterval(ring, Math.max(1700, (buf.duration + 0.9) * 1000));
+    return;
+  }
   const ring = () => { beepBurst(); if (navigator.vibrate) navigator.vibrate([250, 120, 250]); };
   ring();
   alarm = setInterval(ring, 1700);
