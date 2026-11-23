@@ -709,10 +709,17 @@ function renderWorkout() {
   const [label, hint] = setInfo(e, Math.min(wk.set, e.sets.length - 1));
   const isLastSet = wk.set >= e.sets.length - 1;
   const isLastEx = wk.ex >= total - 1;
+  // En la última serie de un ejercicio (y en su descanso) se avisa de cuál es el siguiente, para ir preparándolo.
+  const nx = isLastSet && !isLastEx ? wk.exercises[wk.ex + 1] : null;
+  const nextCard = nx ? `<div class="cz-nextex">
+      ${nx.img0 ? `<img src="${esc(nx.img0)}" alt="">` : ''}
+      <div class="grow"><small>${wk.phase === 'set' ? 'Después de esta serie' : 'Ve preparando'} · siguiente ejercicio</small><strong>${esc(nx.name)}</strong><span>${esc(nx.group)}${nx.rest ? ` · descanso ${esc(nx.rest)}` : ''}</span></div>
+    </div>` : '';
   const t = wk.timer;
   let step;
   if (wk.phase === 'set') {
     step = `<section class="card cz-step">
+      ${nextCard}
       <small class="cz-kicker">Ahora · ${esc(label)}</small>
       <p class="muted cz-step-hint">${esc(hint)}</p>
       <div class="cz-step-inputs">
@@ -727,6 +734,7 @@ function renderWorkout() {
       <small>Descanso · serie ${wk.set + 1} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
       <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSeconds(e.rest))}</strong>
       <p class="muted cz-step-hint">${!t ? 'Cuando termines la serie, pulsa ▶ para empezar el descanso.' : t.running ? 'Descansando…' : 'En pausa.'}</p>
+      ${nextCard}
       <div class="cz-row">
         ${!t ? '<button type="button" class="btn primary cz-play" id="cz-t-start">▶ Empezar descanso</button>'
           : t.running ? '<button type="button" class="btn primary" id="cz-t-pause">⏸ Pausar</button>'

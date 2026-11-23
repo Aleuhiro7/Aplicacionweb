@@ -2361,3 +2361,14 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 .alarm-rec strong { flex: 1; }
 .rec-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--danger); animation: recblink 1s infinite; }
 @keyframes recblink { 50% { opacity: .25; } }
+/* Aviso del siguiente ejercicio (última serie y su descanso) */
+.cz-nextex { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px 10px; border-radius: 12px; text-align: left; background: linear-gradient(135deg, rgba(110, 139, 255, .16), rgba(34, 211, 238, .08)); border: 1px solid rgba(110, 139, 255, .35); }
+.cz-nextex img { width: 52px; height: 40px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+.cz-nextex .grow { display: flex; flex-direction: column; min-width: 0; }
+.cz-nextex small { font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9fb3ff; }
+.cz-nextex strong { font-size: .9rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cz-nextex span { font-size: .74rem; color: var(--muted); }
+.cz-timer .cz-nextex { margin: 8px 0 0; }
+@media (max-height: 700px) { .cz-nextex { padding: 5px 8px; margin-bottom: 6px; } .cz-nextex img { width: 40px; height: 30px; } .cz-nextex strong { font-size: .8rem; } .cz-nextex span { display: none; } }
+.cz-timer .cz-nextex strong, .cz-wk-step .cz-timer .cz-nextex strong { display: block; font: 700 .9rem/1.2 "Archivo", sans-serif; margin: 0; color: var(--text); }
+.cz-timer .cz-nextex small { display: block; font-size: .66rem; letter-spacing: .08em; }
