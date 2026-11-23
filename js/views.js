@@ -2349,8 +2349,35 @@
         portalWk[tok] = { list };
       })
       .catch((e) => { console.error(e); portalWk[tok] = { error: true }; })
-      .finally(() => { if (location.hash === `#/clientes/${c.id}`) App.render(); });
+      .finally(() => { if (location.hash === `#/clientes/${c.id}` || isPanel()) App.render(); });
   }
+  const isPanel = () => ['', '#', '#/', '#/panel'].includes(location.hash);
+
+  /** Entrenos que el cliente ha guardado y todavía no has visto (para los avisos del panel). */
+  function unseenWorkouts() {
+    const out = [];
+    for (const c of Store.clients()) {
+      if (!c.portalToken || clientStatus(c) === 'inactivo') continue;
+      const st = portalWk[c.portalToken];
+      if (!st) { loadClientWorkouts(c); continue; }
+      if (!st.list) continue;
+      // Si nunca los has marcado como vistos, se avisa de los de los últimos 3 días.
+      const seen = Number(c.wkSeenAt) || Date.now() - 3 * 864e5;
+      for (const w of st.list) if ((w.endedAt || 0) > seen) out.push({ c, w, list: st.list });
+    }
+    return out.sort((a, b) => (b.w.endedAt || 0) - (a.w.endedAt || 0));
+  }
+  function markWorkoutsSeen(clientId) {
+    const ids = clientId ? [clientId] : [...new Set(unseenWorkouts().map((x) => x.c.id))];
+    for (const id of ids) {
+      const c = Store.get('clients', id);
+      const st = c && portalWk[c.portalToken];
+      const last = st && st.list && st.list.length ? Math.max(...st.list.map((w) => w.endedAt || 0)) : Date.now();
+      Store.update('clients', id, { wkSeenAt: Math.max(last, Number(c.wkSeenAt) || 0) });
+    }
+    App.render();
+  }
+  const agoText = (ms) => { const m = Math.round((Date.now() - ms) / 60000); if (m < 60) return `hace ${Math.max(1, m)} min`; const h = Math.round(m / 60); if (h < 24) return `hace ${h} h`; const d = Math.round(h / 24); return d === 1 ? 'ayer' : `hace ${d} días`; };
   const kgNum = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
   const bestSet = (sets) => {
     let best = null;
@@ -2360,6 +2387,8 @@
   const mins = (sec) => { const m = Math.round((sec || 0) / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
 
   function clientWorkouts(c) {
+    const stw = portalWk[c.portalToken];
+    if (stw && stw.list && stw.list.some((w) => (w.endedAt || 0) > (Number(c.wkSeenAt) || 0))) setTimeout(() => { const last = Math.max(...stw.list.map((w) => w.endedAt || 0)); Store.update('clients', c.id, { wkSeenAt: last }); }, 0);
     if (!window.Sync || !Sync.state.user) return `<section class="card">${empty('cloud', 'Entra con tu cuenta de Google para ver los entrenos que apunta en su zona.')}</section>`;
     const st = portalWk[c.portalToken];
     if (!st) loadClientWorkouts(c);
@@ -2922,7 +2951,27 @@
             <h2>${title}</h2><span class="ok-text">${U.icon('done')}${esc(okText)}</span>
           </section>`,
     });
+    const wkAlerts = unseenWorkouts();
     const alertSections = [
+      section('entrenos-nuevos', '💪 Entrenos completados', wkAlerts.length, wkAlerts.length ? '<button class="btn sm" data-action="wk-seen-all">Marcar todos como vistos</button>' : '',
+        `<ul class="list task-list">${wkAlerts.map(({ c, w, list }) => {
+          const done = (w.exercises || []).reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0);
+          const all = (w.exercises || []).reduce((n, e) => n + e.sets.length, 0);
+          const ups = workoutUps(list, w).length;
+          return `<li class="task review">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta" style="white-space:normal"><span>${esc(w.dayName)} · ${esc(agoText(w.endedAt || Date.now()))} · ${mins(w.durationSec)} · ${done}/${all} series${ups ? ` · <b class="delta-down">${plural(ups, 'mejora', 'mejoras')}</b>` : ''}</span></div>
+            </div>
+            <div class="review-actions">
+              ${done < all ? badge('Incompleto', 'danger') : badge('Completo', 'success')}
+              <button class="btn sm primary" data-action="wk-open-seen" data-client="${c.id}" data-value="${esc(w.id)}">Ver</button>
+              <button class="btn sm" data-action="wk-seen" data-client="${c.id}" aria-label="Marcar como visto">${U.icon('check')}</button>
+            </div>
+          </li>`;
+        }).join('')}</ul>`,
+        'No hay entrenos nuevos de tus clientes'),
       section('salud', 'Preguntar por su salud', healthAlerts.length, '',
         `<ul class="list task-list">${healthAlerts.map((a) => `
           <li class="task review">
@@ -4622,6 +4671,9 @@
     'alarm-delete': async () => { const ok = await UI.confirm({ title: 'Quitar tu grabación', message: 'Tus clientes volverán a oír la campanilla.', confirmLabel: 'Quitar' }); if (ok) saveAlarm(''); },
     'rescue-restore': (d) => rescueRestore(Number(d.value)),
     'workout-open': (d) => openWorkout(d.client, d.value),
+    'wk-open-seen': (d) => { openWorkout(d.client, d.value); markWorkoutsSeen(d.client); },
+    'wk-seen': (d) => markWorkoutsSeen(d.client),
+    'wk-seen-all': () => markWorkoutsSeen(),
     'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },
     'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),
