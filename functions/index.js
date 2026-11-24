@@ -160,6 +160,7 @@ export const avisoDescanso = onCall(
 
     if (accion === 'cancelar') {
       await ref.set({ cancelado: true, at: FieldValue.serverTimestamp() }, { merge: true });
+      await limpiarAvisos();
       return { ok: true };
     }
     if (accion !== 'programar') throw new HttpsError('invalid-argument', 'Acción desconocida.');
