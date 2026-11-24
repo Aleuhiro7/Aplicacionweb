@@ -112,7 +112,7 @@ export const resumenCliente = onCall(
 const SITE = 'https://aleuhiro7.github.io/Aplicacionweb/';
 const MAX_SEGUNDOS = 900; // descanso más largo que se avisa
 const CADA = 10; // segundos entre avisos mientras no vuelva a la app
-const LIMITE = 3500; // la función dura como mucho 1 hora: deja de avisar un poco antes
+const LIMITE = 1200; // como mucho 20 min de avisos (si el móvil se queda olvidado)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let vapid = null;
@@ -135,20 +135,21 @@ const cleanId = (v) => (typeof v === 'string' && /^[a-z0-9]{6,40}$/i.test(v) ? v
 
 export const avisoDescanso = onCall(
   // CPU pequeña y una llamada por instancia: esperar casi no gasta (queda dentro de la capa gratuita).
-  { region: 'europe-west1', timeoutSeconds: 3600, memory: '128MiB', cpu: 'gcf_gen1', concurrency: 1, maxInstances: 60 },
+  { region: 'europe-west1', timeoutSeconds: 2400, memory: '128MiB', cpu: 'gcf_gen1', concurrency: 1, maxInstances: 60 },
   async (request) => {
-    if (!request.auth) throw new HttpsError('unauthenticated', 'Entra con tu cuenta.');
     const data = request.data || {};
     const accion = data.accion;
-    const keys = await vapidKeys();
-    if (accion === 'clave') return { clave: keys.publicKey };
+    // «cancelar» también llega desde la propia notificación (botón «Parar» o al quitarla), que no lleva sesión:
+    // basta con el código del aviso, que es aleatorio.
+    if (!request.auth && accion !== 'cancelar') throw new HttpsError('unauthenticated', 'Entra con tu cuenta.');
+    if (accion === 'clave') return { clave: (await vapidKeys()).publicKey };
 
     const id = cleanId(data.id);
     if (!id) throw new HttpsError('invalid-argument', 'Falta el aviso.');
     const ref = getFirestore().doc(`avisos/${id}`);
 
     if (accion === 'cancelar') {
-      await ref.set({ uid: request.auth.uid, cancelado: true, at: FieldValue.serverTimestamp() }, { merge: true });
+      await ref.set({ cancelado: true, at: FieldValue.serverTimestamp() }, { merge: true });
       return { ok: true };
     }
     if (accion !== 'programar') throw new HttpsError('invalid-argument', 'Acción desconocida.');
@@ -159,6 +160,7 @@ export const avisoDescanso = onCall(
     if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys) {
       throw new HttpsError('invalid-argument', 'Suscripción no válida.');
     }
+    await vapidKeys();
     const prev = await ref.get();
     if (prev.exists && prev.data().cancelado) return { ok: false }; // se canceló antes de llegar aquí
     await ref.set({ uid: request.auth.uid, cancelado: false, at: FieldValue.serverTimestamp() });

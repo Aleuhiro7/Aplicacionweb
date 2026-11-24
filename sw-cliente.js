@@ -28,13 +28,26 @@ self.addEventListener('push', (event) => {
       icon: 'img/icon-192.png',
       badge: 'img/icon-192.png',
       data: { id: data.id },
+      actions: [{ action: 'parar', title: 'Parar avisos' }, { action: 'abrir', title: 'Abrir' }],
     });
   })());
 });
 
+/* Parar los avisos repetidos de ese descanso (el servidor deja de mandarlos). */
+const FN = 'https://europe-west1-aplicacionweb7.cloudfunctions.net/avisoDescanso';
+function stopNotices(n) {
+  const id = n && n.data && n.data.id;
+  if (!id) return Promise.resolve();
+  return fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: { accion: 'cancelar', id } }) }).catch(() => {});
+}
+// Quitar la notificación (deslizarla) también para los avisos.
+self.addEventListener('notificationclose', (event) => event.waitUntil(stopNotices(event.notification)));
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  if (event.action === 'parar') { event.waitUntil(stopNotices(event.notification)); return; }
   event.waitUntil((async () => {
+    await stopNotices(event.notification);
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const app = wins.find((w) => /cliente\.html/.test(w.url));
     if (app) return app.focus();
