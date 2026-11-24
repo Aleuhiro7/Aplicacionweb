@@ -18,7 +18,7 @@
       ['Calienta antes de empezar', [
         '<b>Movilidad:</b> 5–10 minutos antes de empezar el entreno.',
         '<b>Series de aproximación:</b> antes de las series efectivas de cada ejercicio, de 1 a 3 series de 7–8 repeticiones subiendo el peso: 50 %, 70 % y 90 % del peso que vas a usar.',
-        '<b>Cuántas:</b> músculo grande o todavía frío, las 3 (50 %, 70 % y 90 %). Pequeño o ya caliente, 2 (70 % y 90 %) o solo 1 (70 %).',
+        '<b>Cuántas:</b> músculo grande o todavía en frío, 3 series (al 50, 70 y 90 %). Músculo mediano o templado, 2 series (al 50 y 70 %). Músculo pequeño o ya caliente, 1 serie (al 50 %).',
       ]],
       ['Las 3 series de cada ejercicio', [
         '<b>1.ª serie · Efectiva:</b> 12–15 repeticiones, quedándote a 1 del fallo.',
