@@ -548,6 +548,8 @@ function upNow(ex, setIdx) {
   // Ya la hizo después de la marca (en otro entreno, o en este mismo si ya la tiene hecha): se quita.
   return !workouts.some((w) => (w.endedAt || 0) > since && (w.exercises || []).some((e) => normName(e.name) === normName(ex.name) && e.sets[setIdx] && e.sets[setIdx].done));
 }
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const shortDate = (ymdStr) => { const [, m, d] = String(ymdStr).split('-').map(Number); return m && d ? `${d} ${MESES[m - 1]}` : ''; };
 const bestKg = (sets) => Math.max(-Infinity, ...sets.filter((st) => st.done).map((st) => num(st.kg)).filter((n) => n !== null));
 
 /* ---------- Calendario y lista ---------- */
@@ -739,12 +741,14 @@ function renderWorkout() {
       ${nextCard}
       <small class="cz-kicker">Ahora · ${esc(label)}</small>
       <p class="muted cz-step-hint">${esc(hint)}</p>
+      ${prev && prev.done && prev.kg
+        ? `<p class="cz-last">Entreno anterior${last.w.date ? ` (${esc(shortDate(last.w.date))})` : ''}: <b>${esc(prev.kg)} kg × ${esc(prev.reps || '—')}</b></p>`
+        : `<p class="cz-last none">${last ? 'En el entreno anterior no hiciste esta serie' : 'Primera vez con este ejercicio: apunta el peso que uses'}</p>`}
       ${upNow(e, wk.set) ? '<p class="cz-up">⬆ <b>Toca subir el peso en esta serie</b> · según tu progreso, ya puedes con más</p>' : ''}
       <div class="cz-step-inputs">
         <label class="cz-in big"><input type="text" inputmode="decimal" id="cz-kg" value="${esc(cur.kg || '')}" placeholder="${prev && prev.kg ? esc(prev.kg) : '0'}"><span>kg</span></label>
         <label class="cz-in big"><input type="text" inputmode="numeric" id="cz-reps" value="${esc(cur.reps || '')}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
       </div>
-      ${prev && prev.kg ? `<p class="muted cz-step-prev">La última vez en esta serie: ${esc(prev.kg)} kg × ${esc(prev.reps || '—')}</p>` : ''}
       <button type="button" class="btn primary cz-play" id="cz-go">▶ ${isLastSet && isLastEx ? 'Última serie · terminar entreno' : 'Hecho · ir al descanso'}</button>
     </section>`;
   } else if (wk.phase === 'rest') {
