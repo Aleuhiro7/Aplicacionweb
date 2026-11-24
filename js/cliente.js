@@ -261,11 +261,6 @@ function routine() {
   try { return JSON.parse(portal.routineJson || '{}'); } catch (e) { return {}; }
 }
 
-/** Saludo según la hora: buenos días (hasta las 14 h), buenas tardes (hasta las 21 h) o buenas noches. */
-function greeting() { const h = new Date().getHours(); return h < 6 ? 'Buenas noches' : h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches'; }
-/** Números romanos para las series (I, II, III…). */
-const roman = (n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n);
-
 function render() {
   const r = routine();
   const days = r.days || [];
@@ -294,11 +289,11 @@ function render() {
   root.innerHTML = `
     <header class="cz-hero">
       <div class="cz-hero-top">
-        <span class="cz-hero-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="czlogo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E3C77E"/><stop offset=".55" stop-color="#C9A24B"/><stop offset="1" stop-color="#9C7A30"/></linearGradient></defs><path d="M50 6 88 28v44L50 94 12 72V28Z" fill="none" stroke="url(#czlogo)" stroke-width="6" stroke-linejoin="round"/><path fill="#EDE6D6" fill-rule="evenodd" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg><span>David Orihuela<small>Entrenador online</small></span></span>
+        <span class="cz-hero-logo"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="czlogo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6e8bff"/><stop offset=".55" stop-color="#22d3ee"/><stop offset="1" stop-color="#3ee6a0"/></linearGradient></defs><path d="M50 6 88 28v44L50 94 12 72V28Z" fill="none" stroke="url(#czlogo)" stroke-width="9" stroke-linejoin="round"/><path fill="#fff" fill-rule="evenodd" d="M23 35H40L49 44V56L40 65H23Z M30 42.5L42 50L30 57.5Z M57 35H72L79 42V58L72 65H57L50 58V42Z M58 43H71V57H58Z"/></svg><span>David Orihuela<small>Entrenador online</small></span></span>
         <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-refresh" id="cz-refresh" title="Actualizar" aria-label="Actualizar">↻</button><button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
       </div>
       <small class="cz-hero-date">${esc(todayTxt)}</small>
-      <h1>${tab === 'diario' ? `${greeting()},<br><i>${esc(firstName(portal.clientName))}.</i>` : `Tu <i>${esc({ rutina: 'rutina', dieta: 'dieta', guia: 'guía', datos: 'progreso' }[tab] || '')}.</i>`}</h1>
+      <h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
     </header>
     <div class="cz-body">${body}</div>
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
@@ -502,12 +497,12 @@ function setInfo(ex, i) {
   const method = /pesada/i.test(ex.reps || '') && ex.sets.length === 3;
   if (method) {
     return [
-      ['Serie I · Efectiva', '12–15 reps, a 1 del fallo'],
-      ['Serie II · Pesada', 'sube el peso · 6–8 reps al fallo total'],
-      ['Serie III · Agotamiento', 'peso de la serie I · al fallo total'],
+      ['Serie 1 · Efectiva', '12–15 reps, a 1 del fallo'],
+      ['Serie 2 · Pesada', 'sube el peso · 6–8 reps al fallo total'],
+      ['Serie 3 · Agotamiento', 'peso de la serie 1 · al fallo total'],
     ][i];
   }
-  return [`Serie ${roman(i + 1)}`, ex.reps || ''];
+  return [`Serie ${i + 1}`, ex.reps || ''];
 }
 
 async function loadWorkouts() {
@@ -594,7 +589,7 @@ function diaryView(days) {
       <h2>${esc(wk.dayName)}</h2>
       <p>Empezado el ${esc(fmtDay(wk.date))}. Sigue donde lo dejaste.</p>
       <div class="cz-row"><a class="btn cz-today-btn" href="#entreno">▶ Continuar</a><button type="button" class="btn cz-ghost" id="cz-wk-discard">Descartar</button></div>
-    </section>` : nd ? `<a class="cz-today" href="#empezar"${(() => { const im = (nd.groups.flatMap((g) => g.exs).find((x) => x.img0) || {}).img0; return im ? ` style="--cz-img:url('${esc(im)}')"` : ''; })()}>
+    </section>` : nd ? `<a class="cz-today" href="#empezar">
       <small>Hoy te toca</small>
       <h2>${esc(nd.name)}</h2>
       <p>${esc(nd.groups.map((g) => g.g).join(' · '))} · ${nd.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</p>
@@ -758,7 +753,7 @@ function renderWorkout() {
     </section>`;
   } else if (wk.phase === 'rest') {
     step = `<section class="card cz-timer${t && t.running ? ' running' : ''}">
-      <small>Descanso · serie ${roman(wk.set + 1)} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
+      <small>Descanso · serie ${wk.set + 1} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
       <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSeconds(e.rest))}</strong>
       <p class="muted cz-step-hint">${!t ? 'Cuando termines la serie, pulsa ▶ para empezar el descanso.' : t.running ? 'Descansando…' : 'En pausa.'}</p>
       ${nextCard}
@@ -771,7 +766,7 @@ function renderWorkout() {
       <button type="button" class="link-btn cz-edit-set" id="cz-edit">Corregir el peso de esta serie</button>
     </section>`;
   } else {
-    const nextText = !isLastSet ? `¿Pasamos a la serie ${roman(wk.set + 2)}?` : !isLastEx ? `¿Pasamos al siguiente ejercicio?<br><small>${esc(wk.exercises[wk.ex + 1].name)}</small>` : '¿Terminamos el entreno?';
+    const nextText = !isLastSet ? `¿Pasamos a la serie ${wk.set + 2}?` : !isLastEx ? `¿Pasamos al siguiente ejercicio?<br><small>${esc(wk.exercises[wk.ex + 1].name)}</small>` : '¿Terminamos el entreno?';
     step = `<section class="card cz-ask">
       <strong class="cz-ask-title">¡Descanso terminado!</strong>
       <p>${nextText}</p>
@@ -803,7 +798,7 @@ function renderWorkout() {
       ${e.notes ? `<div class="cz-wk-how"><b>Cómo se hace</b><p>${esc(e.notes)}</p></div>` : ''}
       <ol class="cz-setlist">${e.sets.map((st, i) => {
         const state = st.done ? 'done' : i === wk.set ? 'now' : 'next';
-        return `<li class="${state}${!st.done && upNow(e, i) ? ' up' : ''}"><span>Serie ${roman(i + 1)}${!st.done && upNow(e, i) ? ' ⬆' : ''}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
+        return `<li class="${state}${!st.done && upNow(e, i) ? ' up' : ''}"><span>S${i + 1}${!st.done && upNow(e, i) ? ' ⬆' : ''}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
       }).join('')}</ol>
     </section>
     <div class="cz-wk-step">${step}</div>
@@ -1065,7 +1060,7 @@ function summaryView(id) {
     <section class="card cz-card">
       <h2>Detalle</h2>
       ${w.exercises.map((e) => `<div class="cz-sum-ex"><strong>${esc(e.name)}</strong>
-        <span>${e.sets.map((st, i) => (st.done ? `<i>${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}</i>` : `<i class="skip">Serie ${roman(i + 1)} sin hacer</i>`)).join('')}</span></div>`).join('')}
+        <span>${e.sets.map((st, i) => (st.done ? `<i>${num(st.kg) !== null ? `${fmtKg(num(st.kg))} kg` : '—'} × ${esc(st.reps || '—')}</i>` : `<i class="skip">S${i + 1} sin hacer</i>`)).join('')}</span></div>`).join('')}
     </section>
     <div class="cz-links"><button type="button" class="link-btn cz-del" data-del="${esc(w.id)}">Borrar este entreno</button></div>`;
 }
