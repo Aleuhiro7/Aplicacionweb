@@ -1963,6 +1963,9 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
 .cz-wkscreen p.cz-approach { margin: 0; padding: 6px 10px; font-size: .74rem; line-height: 1.3; flex-shrink: 0; }
 /* Recordatorio de las series de aproximación en el entreno: título y las tres opciones repartidas a lo ancho. */
 .cz-approach.cz-approach-grid { display: block; margin: 0; padding: 5px 8px; flex-shrink: 0; }
+.cz-up { margin: 0 0 8px; padding: 5px 10px; border-radius: 9px; font-size: .8rem; line-height: 1.3; color: var(--text); background: color-mix(in srgb, #22c55e 16%, transparent); border: 1px solid color-mix(in srgb, #22c55e 45%, transparent); }
+.cz-up b { color: #4ade80; }
+.cz-setlist li.up span { color: #4ade80; font-weight: 700; }
 .cz-ap-title { margin: 0 0 4px; font-size: .74rem; line-height: 1.2; color: var(--text); }
 .cz-ap-title b { color: #fb923c; }
 .cz-ap-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
@@ -2392,3 +2395,12 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 .ai-text ul { margin: 4px 0; padding-left: 18px; }
 .ai-text li { margin: 2px 0; line-height: 1.45; }
 .ai-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: .8rem; }
+
+/* Resumen con IA: series en las que toca subir peso (se marcan en la app del cliente). */
+.ai-up { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #22c55e 10%, var(--surface)); border: 1px solid color-mix(in srgb, #22c55e 35%, transparent); }
+.ai-up h3 { margin: 0 0 6px; font-size: .9rem; color: #16a34a; }
+.ai-up ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ai-up li { display: flex; align-items: center; gap: 8px; }
+.ai-up li .grow { display: flex; flex-direction: column; gap: 1px; font-size: .88rem; }
+.ai-up li .muted { font-size: .8rem; }
+.ai-up p.muted { font-size: .8rem; }

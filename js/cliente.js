@@ -531,6 +531,23 @@ function lastSets(ex, beforeId) {
   }
   return null;
 }
+/* Series en las que toca subir peso (las marca el entrenador a partir del resumen de la IA). Cada marca se quita
+ * sola en cuanto el cliente hace esa serie en un entreno posterior a la marca. */
+const normName = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+function upMarks() {
+  let up = null;
+  try { up = JSON.parse((portal && portal.upJson) || 'null'); } catch (e) { up = null; }
+  return up && Array.isArray(up.list) ? up : null;
+}
+/** ¿Toca subir peso en esta serie (índice desde 0) de este ejercicio? */
+function upNow(ex, setIdx) {
+  const up = upMarks();
+  if (!up) return false;
+  if (!up.list.some((x) => normName(x.ex) === normName(ex.name) && Number(x.serie) === setIdx + 1)) return false;
+  const since = Date.parse(up.at) || 0;
+  // Ya la hizo después de la marca (en otro entreno, o en este mismo si ya la tiene hecha): se quita.
+  return !workouts.some((w) => (w.endedAt || 0) > since && (w.exercises || []).some((e) => normName(e.name) === normName(ex.name) && e.sets[setIdx] && e.sets[setIdx].done));
+}
 const bestKg = (sets) => Math.max(-Infinity, ...sets.filter((st) => st.done).map((st) => num(st.kg)).filter((n) => n !== null));
 
 /* ---------- Calendario y lista ---------- */
@@ -722,6 +739,7 @@ function renderWorkout() {
       ${nextCard}
       <small class="cz-kicker">Ahora · ${esc(label)}</small>
       <p class="muted cz-step-hint">${esc(hint)}</p>
+      ${upNow(e, wk.set) ? '<p class="cz-up">⬆ <b>Toca subir el peso en esta serie</b> · según tu progreso, ya puedes con más</p>' : ''}
       <div class="cz-step-inputs">
         <label class="cz-in big"><input type="text" inputmode="decimal" id="cz-kg" value="${esc(cur.kg || '')}" placeholder="${prev && prev.kg ? esc(prev.kg) : '0'}"><span>kg</span></label>
         <label class="cz-in big"><input type="text" inputmode="numeric" id="cz-reps" value="${esc(cur.reps || '')}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
@@ -776,7 +794,7 @@ function renderWorkout() {
       ${e.notes ? `<div class="cz-wk-how"><b>Cómo se hace</b><p>${esc(e.notes)}</p></div>` : ''}
       <ol class="cz-setlist">${e.sets.map((st, i) => {
         const state = st.done ? 'done' : i === wk.set ? 'now' : 'next';
-        return `<li class="${state}"><span>S${i + 1}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
+        return `<li class="${state}${!st.done && upNow(e, i) ? ' up' : ''}"><span>S${i + 1}${!st.done && upNow(e, i) ? ' ⬆' : ''}</span><b>${st.done ? `${st.kg ? `${esc(st.kg)}` : '—'}×${esc(st.reps || '—')}` : i === wk.set ? 'Ahora' : '·'}</b></li>`;
       }).join('')}</ol>
     </section>
     <div class="cz-wk-step">${step}</div>

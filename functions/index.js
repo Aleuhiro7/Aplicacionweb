@@ -35,7 +35,25 @@ Formato (texto sencillo, sin tablas):
 ## Mensaje para el cliente
 Un WhatsApp corto (3–5 líneas), cercano y motivador, en nombre de David, tuteando, con algún emoji.
 
-Máximo unas 300 palabras en total.`;
+Máximo unas 300 palabras en total.
+
+Al final, después del mensaje, añade una línea que sea exactamente <<<SUBIR_PESO>>> y debajo, en JSON, la lista de series en las que
+el cliente ya debería subir el peso según sus entrenos apuntados (por ejemplo, porque en las últimas sesiones llega o pasa del máximo de
+repeticiones de esa serie con el mismo peso). Formato: [{"ejercicio": "nombre exacto del ejercicio tal como sale en la rutina, sin lo de
+entre paréntesis", "serie": 1, "motivo": "frase corta con los datos"}]. "serie" es 1, 2 o 3. Solo cuando los datos lo justifiquen
+claramente; si no hay ninguna, pon []. No menciones esta lista en el texto.`;
+
+/** La lista de «subir peso» que la IA pone al final (JSON); si viene mal, se ignora. */
+function subirPeso(txt) {
+  const m = String(txt).match(/\[[\s\S]*\]/);
+  if (!m) return [];
+  try {
+    return JSON.parse(m[0])
+      .filter((x) => x && typeof x.ejercicio === 'string' && x.ejercicio.trim() && [1, 2, 3].includes(Number(x.serie)))
+      .slice(0, 20)
+      .map((x) => ({ ejercicio: x.ejercicio.trim().slice(0, 120), serie: Number(x.serie), motivo: String(x.motivo || '').slice(0, 200) }));
+  } catch (e) { return []; }
+}
 
 export const resumenCliente = onCall(
   { region: 'europe-west1', timeoutSeconds: 120, memory: '512MiB', maxInstances: 3 },
@@ -85,8 +103,9 @@ export const resumenCliente = onCall(
     if (response.stop_reason === 'refusal') {
       throw new HttpsError('failed-precondition', 'La IA no ha querido analizar estos datos. Revisa la ficha y prueba otra vez.');
     }
-    const texto = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    const todo = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    const [texto, lista = ''] = todo.split('<<<SUBIR_PESO>>>').map((x) => x.trim());
     if (!texto) throw new HttpsError('internal', 'La IA no ha devuelto texto.');
-    return { texto, modelo: response.model };
+    return { texto, modelo: response.model, subirPeso: subirPeso(lista) };
   },
 );

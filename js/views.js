@@ -2135,6 +2135,8 @@
         })(),
       }),
       routineJson: JSON.stringify({ name: r ? r.name || 'Rutina' : '', notes: r ? r.notes || '' : '', days }),
+      // Series en las que toca subir peso (las detectó la IA en el resumen y el entrenador las dejó marcadas).
+      upJson: JSON.stringify(!c.noTraining && c.aiSummary && (c.aiSummary.subir || []).length ? { at: c.aiSummary.at, list: c.aiSummary.subir.map((x) => ({ ex: x.ex, serie: x.serie })) } : null),
       // Sonido de fin de descanso grabado por el entrenador (vacío = campanilla).
       alarmAudio: Store.settings.alarmAudio || '',
       dietHtml: d && dietSendable(d) ? dietSheet(c, d) : '',
@@ -2339,6 +2341,15 @@
     }
     return out + (inList ? '</ul>' : '');
   }
+  const normName = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  /** Lista de «subir peso» de la IA, que se marca en la app de entreno del cliente (se puede quitar cada una). */
+  function aiUpList(c) {
+    const list = (c.aiSummary && c.aiSummary.subir) || [];
+    if (!list.length) return '';
+    return `<div class="ai-up"><h3>⬆ Subir peso · se le marca en su app de entreno</h3><ul>${list.map((x, i) => `<li><div class="grow"><strong>${esc(x.ex)} · serie ${x.serie}</strong>${x.motivo ? `<span class="muted">${esc(x.motivo)}</span>` : ''}</div>
+      <button class="icon-btn" data-action="ai-up-del" data-client="${c.id}" data-value="${i}" title="No marcar esta" aria-label="No marcar esta">${U.icon('close')}</button></li>`).join('')}</ul>
+      ${c.portalToken ? '' : '<p class="muted" style="margin:6px 0 0">No tiene la zona del cliente activada: no lo verá hasta que la active.</p>'}</div>`;
+  }
   function aiCard(c) {
     const s = c.aiSummary;
     const busy = aiBusy[c.id];
@@ -2346,7 +2357,7 @@
       <div class="card-header"><h2>✨ Resumen con IA</h2>
         <button class="btn sm ${s ? '' : 'primary'}" data-action="ai-summary" data-client="${c.id}" ${busy ? 'disabled' : ''}>${busy ? '<span class="pdf-spin sm"></span>Analizando…' : s ? `${U.icon('refresh')}Actualizar` : `Analizar a ${esc(c.name.split(' ')[0])}`}</button>
       </div>
-      ${s ? `<div class="ai-text">${aiHtml(s.text)}</div>
+      ${s ? `<div class="ai-text">${aiHtml(s.text)}</div>${aiUpList(c)}
         <div class="ai-foot"><span class="muted">Generado el ${esc(fmtDate(s.at.slice(0, 10)))} a las ${esc(s.at.slice(11, 16))} · revísalo antes de aplicarlo</span>
           ${U.waLink(c.phone) && /## Mensaje para el cliente/i.test(s.text) ? `<a class="btn sm wa-btn" target="_blank" rel="noopener" href="${U.waLink(c.phone)}?text=${encodeURIComponent(s.text.split(/## Mensaje para el cliente/i)[1].trim())}">${U.icon('message')}Enviar el mensaje</a>` : ''}</div>`
         : `<p class="muted" style="margin:0">La IA revisa sus medidas, su dieta, su rutina, sus entrenos y sus lesiones, y te dice cómo va, qué vigilar, qué ajustarías y te prepara un mensaje para enviarle.</p>`}
@@ -2365,7 +2376,11 @@
       const res = await Sync.aiSummary(aiClientData(c));
       const n = new Date();
       const at = `${today()}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
-      Store.update('clients', clientId, { aiSummary: { text: res.texto, at } });
+      // Series en las que la IA ve que ya toca subir peso: solo las de ejercicios que están en su rutina.
+      const r = !c.noTraining && Store.routineFor(c.id);
+      const names = new Map(((r && r.days) || []).flatMap((d) => d.exercises || []).map((ex) => [normName(ex.name), ex.name]));
+      const subir = (res.subirPeso || []).filter((x) => names.has(normName(x.ejercicio))).map((x) => ({ ex: names.get(normName(x.ejercicio)), serie: x.serie, motivo: x.motivo || '' }));
+      Store.update('clients', clientId, { aiSummary: { text: res.texto, at, subir } });
       UI.toast('Resumen listo');
     } catch (e) {
       console.error(e);
@@ -4747,6 +4762,13 @@
     'cmp-date': (d, el) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { [d.which]: el.value }); App.render(); },
     'rescue-scan': () => rescueScan(),
     'ai-summary': (d) => aiSummary(d.client),
+    'ai-up-del': (d) => {
+      const c = Store.get('clients', d.client);
+      if (!c || !c.aiSummary) return;
+      const subir = (c.aiSummary.subir || []).filter((_, i) => i !== Number(d.value));
+      Store.update('clients', c.id, { aiSummary: Object.assign({}, c.aiSummary, { subir }) });
+      App.render();
+    },
     'alarm-record': () => alarmRecord(),
     'alarm-stop': () => { if (alarmRec && alarmRec.rec.state === 'recording') alarmRec.rec.stop(); },
     'alarm-file': (d, el) => alarmFile(el),
