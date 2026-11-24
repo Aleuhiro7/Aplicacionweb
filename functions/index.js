@@ -100,8 +100,8 @@ export const resumenCliente = onCall(
  *
  * Con la app en segundo plano o el móvil bloqueado, el navegador congela la página y su cronómetro deja de
  * sonar. Por eso, al empezar un descanso, la app pide aquí un aviso: la función espera lo que dura el descanso y
- * manda una notificación al móvil (Web Push), que suena y vibra aunque la app esté cerrada. Si el cliente no
- * responde, la repite dos veces más (cada 30 s). Si pausa, reinicia o pasa de serie, la app lo cancela.
+ * manda una notificación al móvil (Web Push), que suena y vibra aunque la app esté cerrada, y la repite cada
+ * 10 s hasta que el cliente vuelve a la app (la app lo cancela al abrirse, igual que al pausar o pasar de serie).
  *
  * acción «clave»     → devuelve la clave pública para suscribir el móvil a las notificaciones.
  * acción «programar» → { id, segundos, sub, titulo, texto }: espera y avisa (la llamada dura lo que el descanso).
@@ -110,8 +110,9 @@ export const resumenCliente = onCall(
  * Las claves del envío (VAPID) se crean solas la primera vez y se guardan en Firestore (sistema/vapid), a donde
  * las apps no tienen acceso. Los avisos en curso están en avisos/{id} (se borran al terminar). */
 const SITE = 'https://aleuhiro7.github.io/Aplicacionweb/';
-const MAX_SEGUNDOS = 480; // descanso más largo que se avisa (la función puede durar 10 min)
-const REPETIR = [0, 30, 60]; // segundos tras el fin del descanso en que suena el aviso si no se responde
+const MAX_SEGUNDOS = 900; // descanso más largo que se avisa
+const CADA = 10; // segundos entre avisos mientras no vuelva a la app
+const LIMITE = 3500; // la función dura como mucho 1 hora: deja de avisar un poco antes
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let vapid = null;
@@ -134,7 +135,7 @@ const cleanId = (v) => (typeof v === 'string' && /^[a-z0-9]{6,40}$/i.test(v) ? v
 
 export const avisoDescanso = onCall(
   // CPU pequeña y una llamada por instancia: esperar casi no gasta (queda dentro de la capa gratuita).
-  { region: 'europe-west1', timeoutSeconds: 600, memory: '128MiB', cpu: 'gcf_gen1', concurrency: 1, maxInstances: 60 },
+  { region: 'europe-west1', timeoutSeconds: 3600, memory: '128MiB', cpu: 'gcf_gen1', concurrency: 1, maxInstances: 60 },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Entra con tu cuenta.');
     const data = request.data || {};
@@ -169,13 +170,13 @@ export const avisoDescanso = onCall(
     });
     const inicio = Date.now();
     let enviados = 0;
-    for (const extra of REPETIR) {
+    for (let extra = 0; segundos + extra < LIMITE; extra += CADA) {
       const espera = inicio + (segundos + extra) * 1000 - Date.now();
       if (espera > 0) await sleep(espera);
       const snap = await ref.get();
       if (!snap.exists || snap.data().cancelado) break;
       try {
-        await webpush.sendNotification(sub, payload(enviados), { TTL: 90, urgency: 'high', topic: 'descanso' });
+        await webpush.sendNotification(sub, payload(enviados), { TTL: 60, urgency: 'high' } /* sin «topic»: los avisos que se sustituyen entre sí los frena el servidor de Google */);
         enviados++;
       } catch (error) {
         console.error('No se pudo enviar el aviso', error.statusCode, error.body);

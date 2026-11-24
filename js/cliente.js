@@ -672,7 +672,7 @@ function bindDiary() {
   root.querySelectorAll('[data-cal]').forEach((b) => { b.onclick = () => { cal.m += Number(b.dataset.cal); if (cal.m < 0) { cal.m = 11; cal.y--; } if (cal.m > 11) { cal.m = 0; cal.y++; } render(); }; });
   root.querySelectorAll('[data-start]').forEach((b) => { b.onclick = () => startWorkout(Number(b.dataset.start)); });
   const disc = document.getElementById('cz-wk-discard');
-  if (disc) disc.onclick = () => { if (confirm('¿Descartar el entreno a medias? Se perderán los pesos que hayas apuntado.')) { wk = null; saveWk(); render(); } };
+  if (disc) disc.onclick = () => { if (confirm('¿Descartar el entreno a medias? Se perderán los pesos que hayas apuntado.')) { cancelNotice(); wk = null; saveWk(); render(); } };
 }
 
 /* ---------- Entreno en marcha ---------- */
@@ -700,6 +700,7 @@ function startWorkout(i) {
  *  - «ask»:  descanso terminado → «¿Pasamos a la siguiente serie?» (o al siguiente ejercicio)
  * Tras la última serie del último ejercicio se termina el entreno. */
 function renderWorkout() {
+  setTimeout(noticeSeen, 0);
   if (!wk.phase) { wk.phase = 'set'; wk.set = nextOpenSet(wk.exercises[wk.ex]); }
   const e = wk.exercises[wk.ex];
   const total = wk.exercises.length;
@@ -956,7 +957,8 @@ async function pushSub(ask = true) {
   }
   return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64Key(key) });
 }
-let noticeId = null;
+// El aviso en curso se guarda con el entreno (wk.notice): así se cancela aunque el móvil haya cerrado la página.
+const noticeNow = () => (wk && wk.notice) || null;
 function noticeText() {
   const e = wk.exercises[wk.ex];
   if (wk.set < e.sets.length - 1) return `Toca la serie ${wk.set + 2} de ${e.name}.`;
@@ -966,17 +968,18 @@ function noticeText() {
 async function scheduleNotice(seconds) {
   cancelNotice();
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-  noticeId = id;
+  wk.notice = id; saveWk();
   try {
     const sub = await pushSub(true); // (el permiso se pide dentro del toque en ▶)
     if (wk && wk.phase === 'rest' && document.querySelector('.cz-notice')) renderWorkout(); // quita el aviso de «Activar»
-    if (!sub || noticeId !== id || !wk) return;
+    if (!sub || noticeNow() !== id) return;
     avisoFn({ accion: 'programar', id, segundos: Math.max(0, Math.round(seconds)), sub: sub.toJSON(), titulo: '¡Descanso terminado!', texto: noticeText() })
       .catch((e) => console.warn('Aviso de descanso', e));
   } catch (e) { console.warn('No se pudo preparar el aviso', e); }
 }
 function cancelNotice() {
-  if (noticeId) { const id = noticeId; noticeId = null; avisoFn({ accion: 'cancelar', id }).catch(() => {}); }
+  const id = noticeNow();
+  if (id) { wk.notice = null; saveWk(); avisoFn({ accion: 'cancelar', id }).catch(() => {}); }
   if (swReg && swReg.getNotifications) swReg.getNotifications({ tag: 'cz-descanso' }).then((l) => l.forEach((n) => n.close())).catch(() => {});
 }
 /** Línea bajo el cronómetro si el móvil aún no puede avisar con la app en segundo plano. */
@@ -990,7 +993,11 @@ function noticeHint() {
 /* La pantalla no se apaga mientras entrenas (si el móvil lo permite). */
 async function keepAwake() { try { if (!wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { wakeLock = null; } }
 function releaseAwake() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); noticeSeen(); } });
+/** Has vuelto a la app con el descanso ya terminado: el móvil deja de avisar (aquí ya suena la alarma de la app). */
+function noticeSeen() {
+  if (document.visibilityState === 'visible' && wk && wk.phase === 'ask' && noticeNow()) cancelNotice();
+}
 
 /** Ventana propia (no la del navegador, que se acepta sin querer) con las opciones. Devuelve la elegida. */
 function choose(title, text, options) {
@@ -1016,7 +1023,7 @@ async function finishWorkout() {
       ...(doneSets ? [['guardar', `Terminar y guardar (${doneSets} ${doneSets === 1 ? 'serie' : 'series'})`]] : []),
       ['descartar', 'Descartar el entreno (no se guarda)', 'danger'],
     ]);
-    if (pick === 'descartar') { wk = null; saveWk(); stopTicker(); location.hash = '#diario'; return; }
+    if (pick === 'descartar') { cancelNotice(); wk = null; saveWk(); stopTicker(); location.hash = '#diario'; return; }
     if (pick !== 'guardar') return;
   }
   const endedAt = Date.now();
