@@ -1961,6 +1961,15 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
 .cz-wk-bar strong { font: 700 1.35rem/1.1 "Archivo", sans-serif; font-variant-numeric: tabular-nums; }
 .cz-wkscreen .cz-progress { margin: 0; flex-shrink: 0; height: 5px; }
 .cz-wkscreen p.cz-approach { margin: 0; padding: 6px 10px; font-size: .74rem; line-height: 1.3; flex-shrink: 0; }
+/* Recordatorio de las series de aproximación en el entreno: título y las tres opciones repartidas a lo ancho. */
+.cz-approach.cz-approach-grid { display: block; margin: 0; padding: 8px 10px; flex-shrink: 0; }
+.cz-ap-title { margin: 0 0 6px; font-size: .78rem; line-height: 1.3; color: var(--text); }
+.cz-ap-title b { color: #fb923c; }
+.cz-ap-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cz-ap-opts > div { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1px; padding: 6px 4px; border-radius: 9px; background: color-mix(in srgb, #fb923c 10%, transparent); }
+.cz-ap-opts span { font-size: .7rem; line-height: 1.2; color: var(--muted); }
+.cz-ap-opts strong { font-size: .9rem; color: #fb923c; }
+.cz-ap-opts em { font-style: normal; font-size: .72rem; color: var(--text); }
 .cz-wk { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 7px; padding: 10px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--cz-accent); }
 .cz-wk .cz-photos { flex: 1 1 auto; min-height: 60px; max-height: 30vh; margin: 0; }
 .cz-wk .cz-photos figure { aspect-ratio: auto; height: 100%; }
@@ -2001,6 +2010,9 @@ body.cz-in-workout .cz-wrap { padding-top: 0; padding-bottom: 0; }
   .cz-wkscreen { gap: 5px; padding-top: 6px; }
   .cz-wk-bar strong { font-size: 1.15rem; }
   .cz-wkscreen p.cz-approach { font-size: .68rem; padding: 4px 8px; }
+  .cz-ap-title { font-size: .72rem; margin-bottom: 4px; }
+  .cz-ap-opts > div { padding: 4px 3px; }
+  .cz-ap-opts strong { font-size: .82rem; }
   .cz-wk { padding: 8px 10px; gap: 5px; }
   .cz-wk .cz-photos { flex: 1 1 0; }
   .cz-wk .cz-wk-name { font-size: 1.1rem; }

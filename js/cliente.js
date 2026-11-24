@@ -758,7 +758,14 @@ function renderWorkout() {
       <button type="button" class="btn sm" id="cz-wk-finish">Terminar</button>
     </header>
     <div class="cz-progress"><i style="width:${Math.round((doneSets / allSets) * 100)}%"></i></div>
-    <p class="cz-approach"><b>Aproximación:</b> 1–3 series de 7–8 reps al 50, 70 y 90 % del peso · grande o frío: 3 · pequeño o caliente: 2 (70 y 90 %) o 1 (70 %)</p>
+    <div class="cz-approach cz-approach-grid">
+      <p class="cz-ap-title"><b>Series de aproximación</b> · antes de empezar, 7–8 repeticiones subiendo el peso</p>
+      <div class="cz-ap-opts">
+        <div><span>Músculo grande o frío</span><strong>3 series</strong><em>50 %, 70 % y 90 %</em></div>
+        <div><span>Músculo pequeño o caliente</span><strong>2 series</strong><em>70 % y 90 %</em></div>
+        <div><span>Músculo ya muy caliente</span><strong>1 serie</strong><em>70 %</em></div>
+      </div>
+    </div>
     <section class="cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
       ${e.img0 ? `<div class="cz-photos"><figure><img src="${esc(e.img0)}" alt=""><figcaption>Inicio</figcaption></figure><figure><img src="${esc(e.img1)}" alt=""><figcaption>Final</figcaption></figure></div>` : ''}
       <div class="cz-wk-info">
