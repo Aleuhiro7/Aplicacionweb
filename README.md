@@ -65,3 +65,9 @@ HTML, CSS y JavaScript puro, sin dependencias ni compilación.
 ## Derechos
 
 © 2026 David Orihuela. **Todos los derechos reservados.** El código y el contenido de esta app no se pueden copiar, modificar, distribuir ni usar sin permiso por escrito. Ver [LICENSE](LICENSE) (las fuentes, html-to-image y las fotos de ejercicios mantienen su propia licencia).
+
+## IA (resumen del cliente con Claude)
+
+En el Resumen de cada cliente, «✨ Resumen con IA» envía a la función de Firebase `resumenCliente` (`functions/index.js`) sus medidas, dieta, rutina, lesiones y entrenos de las últimas 8 semanas (sin teléfono, correo ni pagos), y Claude (`claude-opus-5-5`) devuelve cómo va, puntos fuertes, qué vigilar, qué ajustaría y un mensaje para enviarle. Solo la puede usar el entrenador (cuenta de Google; opcionalmente solo las cuentas de `OWNER_UIDS`). La clave de Claude vive en el servidor, nunca en la app.
+
+Se publica sola con `.github/workflows/deploy-functions.yml` cuando cambia `functions/` (o a mano desde Actions). Requiere el plan Blaze de Firebase y tres secretos en GitHub: `FIREBASE_SERVICE_ACCOUNT` (JSON de una cuenta de servicio con los roles Editor, Administrador de Cloud Functions, Administrador de Cloud Run y Usuario de cuenta de servicio), `ANTHROPIC_API_KEY` y, opcional, `OWNER_UIDS`.

@@ -2372,3 +2372,11 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 @media (max-height: 700px) { .cz-nextex { padding: 5px 8px; margin-bottom: 6px; } .cz-nextex img { width: 40px; height: 30px; } .cz-nextex strong { font-size: .8rem; } .cz-nextex span { display: none; } }
 .cz-timer .cz-nextex strong, .cz-wk-step .cz-timer .cz-nextex strong { display: block; font: 700 .9rem/1.2 "Archivo", sans-serif; margin: 0; color: var(--text); }
 .cz-timer .cz-nextex small { display: block; font-size: .66rem; letter-spacing: .08em; }
+/* Resumen con IA */
+.ai-card { margin: 18px 0; border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), var(--surface)); }
+.ai-text h3 { font-size: .95rem; margin: 14px 0 4px; color: var(--primary); }
+.ai-text h3:first-child { margin-top: 0; }
+.ai-text p { margin: 4px 0; line-height: 1.5; }
+.ai-text ul { margin: 4px 0; padding-left: 18px; }
+.ai-text li { margin: 2px 0; line-height: 1.45; }
+.ai-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: .8rem; }

@@ -2296,6 +2296,87 @@
     } catch (e) { /* sin audio */ }
   }
 
+  /* ---------- IA: resumen del cliente con Claude (función «resumenCliente» en Firebase, ver functions/) ---------- */
+  const aiBusy = {}; // id del cliente → true mientras se genera
+  /** Todo lo útil del cliente, resumido, para que la IA lo analice (sin teléfono, correo ni pagos). */
+  function aiClientData(c) {
+    const ms = Store.measurementsFor(c.id).slice(-15).map((m) => ({ fecha: m.date, peso: Number(m.weight) || null, cintura: Number(m.waist) || null }));
+    const d = !c.noDiet && Store.dietFor(c.id);
+    const t = d && d.targets && Number(d.targets.kcal) > 0 ? withMaint(c, d.targets) : null;
+    const g = d && dayTargets(d);
+    const r = !c.noTraining && Store.routineFor(c.id);
+    const st = c.portalToken && portalWk[c.portalToken];
+    const wks = (st && st.list ? st.list : []).filter((w) => U.daysBetween(w.date, today()) <= 56).map((w) => ({
+      fecha: w.date, dia: w.dayName, minutos: Math.round((w.durationSec || 0) / 60),
+      ejercicios: (w.exercises || []).map((e) => ({ nombre: e.name, series: e.sets.map((x) => (x.done ? `${x.kg || '?'}kg×${x.reps || '?'}` : 'sin hacer')) })),
+    }));
+    return {
+      nombre: c.name.split(' ')[0],
+      edad: U.age(c.birthDate), sexo: c.gender || null, alturaCm: Number(c.height) || null,
+      clienteDesde: c.startDate || null, estado: clientStatus(c),
+      salud: healthShown(c) || null,
+      lesiones: Store.injuriesFor(c.id).map((x) => ({ lesion: x.name, desde: x.date, recuperada: x.recoveredDate || null, notas: x.notes || null })),
+      notasEntrenador: c.notes || null,
+      medidas: ms,
+      dieta: t ? { kcal: Math.round(t.kcal), mantenimiento: Number(t.maintenance) || null, mantenimientoCalculado: !!t.maintAuto, proteinasG: g && Math.round(g.protein), hidratosG: g && Math.round(g.carbs), grasasG: g && Math.round(g.fat), tipo: presetName(t) } : (c.noDiet ? 'No lleva dieta' : 'Sin dieta todavía'),
+      rutina: r ? (r.days || []).map((day, i) => ({ dia: day.name || `Día ${i + 1}`, ejercicios: (day.exercises || []).map((e) => `${e.name} (${[e.sets && `${e.sets} series`, e.rest].filter(Boolean).join(', ')})`) })) : (c.noTraining ? 'No lleva rutina' : 'Sin rutina todavía'),
+      zonaCliente: c.portalToken ? 'activa' : 'sin zona (no apunta entrenos en la app)',
+      entrenosUltimas8Semanas: c.portalToken ? wks : null,
+    };
+  }
+  /** Markdown sencillo (## títulos, - viñetas, **negrita**) a HTML seguro. */
+  function aiHtml(txt) {
+    const inline = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    let out = ''; let inList = false;
+    for (const raw of String(txt).split('\n')) {
+      const line = raw.trim();
+      const li = line.match(/^[-•*]\s+(.*)/);
+      if (li) { if (!inList) { out += '<ul>'; inList = true; } out += `<li>${inline(li[1])}</li>`; continue; }
+      if (inList) { out += '</ul>'; inList = false; }
+      if (!line) continue;
+      const h = line.match(/^#{1,4}\s+(.*)/);
+      out += h ? `<h3>${inline(h[1])}</h3>` : `<p>${inline(line)}</p>`;
+    }
+    return out + (inList ? '</ul>' : '');
+  }
+  function aiCard(c) {
+    const s = c.aiSummary;
+    const busy = aiBusy[c.id];
+    return `<section class="card ai-card">
+      <div class="card-header"><h2>✨ Resumen con IA</h2>
+        <button class="btn sm ${s ? '' : 'primary'}" data-action="ai-summary" data-client="${c.id}" ${busy ? 'disabled' : ''}>${busy ? '<span class="pdf-spin sm"></span>Analizando…' : s ? `${U.icon('refresh')}Actualizar` : `Analizar a ${esc(c.name.split(' ')[0])}`}</button>
+      </div>
+      ${s ? `<div class="ai-text">${aiHtml(s.text)}</div>
+        <div class="ai-foot"><span class="muted">Generado el ${esc(fmtDate(s.at.slice(0, 10)))} a las ${esc(s.at.slice(11, 16))} · revísalo antes de aplicarlo</span>
+          ${U.waLink(c.phone) && /## Mensaje para el cliente/i.test(s.text) ? `<a class="btn sm wa-btn" target="_blank" rel="noopener" href="${U.waLink(c.phone)}?text=${encodeURIComponent(s.text.split(/## Mensaje para el cliente/i)[1].trim())}">${U.icon('message')}Enviar el mensaje</a>` : ''}</div>`
+        : `<p class="muted" style="margin:0">La IA revisa sus medidas, su dieta, su rutina, sus entrenos y sus lesiones, y te dice cómo va, qué vigilar, qué ajustarías y te prepara un mensaje para enviarle.</p>`}
+    </section>`;
+  }
+  async function aiSummary(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c || aiBusy[clientId]) return;
+    if (!window.Sync || !Sync.state.user) { UI.toast('Entra con tu cuenta de Google para usar la IA'); return; }
+    aiBusy[clientId] = true; App.render();
+    try {
+      if (c.portalToken) {
+        loadClientWorkouts(c, true);
+        for (let i = 0; i < 40 && portalWk[c.portalToken] && portalWk[c.portalToken].loading; i++) await new Promise((r) => setTimeout(r, 250));
+      }
+      const res = await Sync.aiSummary(aiClientData(c));
+      const n = new Date();
+      const at = `${today()}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+      Store.update('clients', clientId, { aiSummary: { text: res.texto, at } });
+      UI.toast('Resumen listo');
+    } catch (e) {
+      console.error(e);
+      const code = String(e && e.code || '');
+      const notReady = code.includes('not-found') || (code.includes('internal') && /^internal$/i.test(e.message || '')) || code.includes('unavailable') && !e.message;
+      UI.toast(notReady ? 'La IA todavía no está activada en tu Firebase (falta completar la configuración).' : `No se pudo generar el resumen: ${e.message || e}`);
+    } finally {
+      delete aiBusy[clientId]; App.render();
+    }
+  }
+
   /* ---------- Recuperar datos de este dispositivo (ver rescate.js) ---------- */
   let rescue = null; // null | { loading } | { items } | { error }
   function rescueList() {
@@ -3293,6 +3374,7 @@
         <div class="card stat stat-height"><div class="stat-label">Altura</div><div class="stat-value">${Number(c.height) > 0 ? `${fmtNum(c.height)} cm` : '—'}</div><div class="stat-sub">${imc ? `IMC ${fmtNum(imc)}` : Number(c.height) > 0 ? 'Añade su peso para ver el IMC' : 'Sin altura'}</div><button class="btn sm review-done" data-action="set-height" data-client="${c.id}">${U.icon(Number(c.height) > 0 ? 'edit' : 'plus')}${Number(c.height) > 0 ? 'Cambiar' : 'Añadir'}</button></div>
         <div class="card stat"><div class="stat-label">${ri ? esc(ri.label) : 'Próxima revisión'}</div><div class="stat-value" style="font-size:1.8rem">${ri ? esc(U.fmtDateShort(ri.date)) : '—'}</div><div class="stat-sub">${!ri ? (clientStatus(c) === 'activo' ? 'Añade su fecha de alta en Editar' : 'Solo para clientes activos') : ri.status === 'atrasada' ? `Pendiente desde hace ${plural(-ri.days, 'día', 'días')}` : ri.days === 0 ? 'Hoy' : ri.days === 1 ? 'Mañana' : `En ${ri.days} días`}</div>${ri && ri.status !== 'al-dia' ? `<button class="btn sm review-done" data-action="complete-review" data-client="${c.id}">${U.icon('check')}Hecho</button>` : ''}</div>
       </div>
+      ${aiCard(c)}
       <div class="grid-2">
         <section class="card">
           <div class="card-header"><h2>Datos</h2></div>
@@ -4664,6 +4746,7 @@
     'cmp-pose': (d) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { pose: Number(d.value) }); App.render(); },
     'cmp-date': (d, el) => { cmpState[d.client] = Object.assign(cmpState[d.client] || {}, { [d.which]: el.value }); App.render(); },
     'rescue-scan': () => rescueScan(),
+    'ai-summary': (d) => aiSummary(d.client),
     'alarm-record': () => alarmRecord(),
     'alarm-stop': () => { if (alarmRec && alarmRec.rec.state === 'recording') alarmRec.rec.stop(); },
     'alarm-file': (d, el) => alarmFile(el),

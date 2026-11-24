@@ -1,0 +1,71 @@
+# Publica las funciones de Firebase (la IA de la app) cada vez que cambian, o a mano desde la pestaña Actions.
+# Necesita tres secretos en GitHub (Settings → Secrets and variables → Actions):
+#   FIREBASE_SERVICE_ACCOUNT  → la clave JSON de una cuenta de servicio de Google Cloud con permiso para publicar
+#   ANTHROPIC_API_KEY         → la clave de Claude (console.anthropic.com)
+#   OWNER_UIDS                → (opcional) el identificador de tu cuenta de Google en Firebase, para que solo tú uses la IA
+name: Publicar funciones de Firebase (IA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "claude/**"
+      - main
+    paths:
+      - "functions/**"
+      - "firebase.json"
+      - ".github/workflows/deploy-functions.yml"
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar los secretos
+        id: check
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$SA" ] || [ -z "$KEY" ]; then
+            echo "Faltan los secretos FIREBASE_SERVICE_ACCOUNT y/o ANTHROPIC_API_KEY: no se publica nada todavía."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Descargar repositorio
+        if: steps.check.outputs.ok == 'true'
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        if: steps.check.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias de las funciones
+        if: steps.check.outputs.ok == 'true'
+        run: npm ci
+        working-directory: functions
+
+      - name: Configuración del servidor (no se guarda en el repositorio)
+        if: steps.check.outputs.ok == 'true'
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OWNERS: ${{ secrets.OWNER_UIDS }}
+        run: |
+          printf 'ANTHROPIC_API_KEY=%s\nOWNER_UIDS=%s\n' "$KEY" "$OWNERS" > functions/.env
+
+      - name: Acceso a Google Cloud
+        if: steps.check.outputs.ok == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Publicar en Firebase
+        if: steps.check.outputs.ok == 'true'
+        run: npx --yes firebase-tools@15 deploy --only functions --project aplicacionweb7 --non-interactive --force

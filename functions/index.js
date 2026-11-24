@@ -1,0 +1,92 @@
+/* Funciones de Firebase de la app de David Orihuela.
+ *
+ * resumenCliente: recibe los datos de un cliente (los prepara la app del entrenador) y devuelve un resumen
+ * hecho por Claude: cómo va, puntos fuertes, qué vigilar, qué ajustaría y un mensaje para enviarle.
+ *
+ * - Solo la puede usar el entrenador: hay que haber entrado con la cuenta de Google (las cuentas de clientes,
+ *   con correo y contraseña, quedan fuera) y, si se configura OWNER_UIDS, solo esas cuentas.
+ * - La clave de Claude (ANTHROPIC_API_KEY) está en el servidor, nunca en la app. */
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import Anthropic from '@anthropic-ai/sdk';
+
+const MODEL = 'claude-opus-5-5';
+
+const SYSTEM = `Eres el asistente de David Orihuela, entrenador personal online en España. Le ayudas a revisar a sus clientes.
+Recibirás en JSON los datos de un cliente: ficha, salud y lesiones, medidas (peso y cintura con fecha), dieta pautada (kcal, macros, mantenimiento),
+rutina (días y ejercicios) y entrenos que el cliente ha apuntado en su diario (series con kg y repeticiones).
+
+Método de David (tenlo en cuenta al valorar): 3 series por ejercicio — 1.ª efectiva de 12–15 repeticiones a 1 del fallo, 2.ª pesada de 6–8 al fallo total,
+3.ª con el peso de la 1.ª al fallo por agotamiento; antes, 1–3 series de aproximación; descansos de 3 min en pierna y 2 min en el resto.
+Progresar es subir peso o, con el mismo peso, hacer más repeticiones: aumentar la intensidad también es progreso.
+
+Escribe en español de España, directo y práctico, para David (no para el cliente). Sé concreto: usa los números de los datos
+(kg, cm, fechas, ejercicios). No inventes datos: si falta algo importante, dilo en una línea. No des consejos médicos; si hay lesiones o salud
+delicada, recomienda tenerlo en cuenta o consultarlo con un profesional.
+
+Formato (texto sencillo, sin tablas):
+## Cómo va
+2–4 frases con la valoración general.
+## Puntos fuertes
+- viñetas
+## A vigilar
+- viñetas (adherencia, días sin entrenar, estancamientos, series sin hacer, desvíos de peso o cintura…)
+## Qué ajustaría
+- viñetas con cambios concretos (dieta, rutina, cargas, descansos)
+## Mensaje para el cliente
+Un WhatsApp corto (3–5 líneas), cercano y motivador, en nombre de David, tuteando, con algún emoji.
+
+Máximo unas 300 palabras en total.`;
+
+export const resumenCliente = onCall(
+  { region: 'europe-west1', timeoutSeconds: 120, memory: '512MiB', maxInstances: 3 },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth) throw new HttpsError('unauthenticated', 'Entra con tu cuenta de Google.');
+    if (auth.token.firebase?.sign_in_provider !== 'google.com') {
+      throw new HttpsError('permission-denied', 'Solo el entrenador puede usar la IA.');
+    }
+    const owners = (process.env.OWNER_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (owners.length && !owners.includes(auth.uid)) {
+      throw new HttpsError('permission-denied', 'Esta cuenta no puede usar la IA.');
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new HttpsError('failed-precondition', 'Falta la clave de Claude (ANTHROPIC_API_KEY) en el servidor.');
+    }
+
+    const datos = request.data && request.data.cliente;
+    if (!datos || typeof datos !== 'object') throw new HttpsError('invalid-argument', 'Faltan los datos del cliente.');
+    const json = JSON.stringify(datos);
+    if (json.length > 200000) throw new HttpsError('invalid-argument', 'Demasiados datos para un resumen.');
+
+    const client = new Anthropic();
+    let response;
+    try {
+      response = await client.beta.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'medium' },
+        // Si Claude rechazara la petición por sus filtros de seguridad, el servidor la repite con otro modelo.
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: SYSTEM,
+        messages: [{ role: 'user', content: `Datos del cliente (hoy es ${new Date().toISOString().slice(0, 10)}):\n${json}` }],
+      });
+    } catch (error) {
+      console.error('Error de Claude', error);
+      if (error instanceof Anthropic.AuthenticationError) throw new HttpsError('failed-precondition', 'La clave de Claude no es válida.');
+      if (error instanceof Anthropic.PermissionDeniedError) throw new HttpsError('failed-precondition', 'La cuenta de Claude no tiene permiso (¿saldo o facturación?).');
+      if (error instanceof Anthropic.RateLimitError) throw new HttpsError('resource-exhausted', 'Demasiadas peticiones seguidas. Prueba en un minuto.');
+      if (error instanceof Anthropic.BadRequestError) throw new HttpsError('invalid-argument', `Petición no válida: ${error.message}`);
+      if (error instanceof Anthropic.APIError) throw new HttpsError('unavailable', 'Claude no está disponible ahora mismo. Prueba en un rato.');
+      throw new HttpsError('internal', 'No se ha podido generar el resumen.');
+    }
+
+    if (response.stop_reason === 'refusal') {
+      throw new HttpsError('failed-precondition', 'La IA no ha querido analizar estos datos. Revisa la ficha y prueba otra vez.');
+    }
+    const texto = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+    if (!texto) throw new HttpsError('internal', 'La IA no ha devuelto texto.');
+    return { texto, modelo: response.model };
+  },
+);

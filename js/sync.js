@@ -3,6 +3,7 @@
  * Los datos se siguen guardando también en este navegador, así que la app
  * funciona sin conexión y se pone al día cuando vuelve la cobertura. */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import {
   getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
@@ -223,6 +224,16 @@ async function fetchWorkouts(token) {
   return snap.docs.map((d) => d.data()).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0));
 }
 
+/* ---------- IA: resumen de un cliente con Claude (función «resumenCliente» de Firebase) ---------- */
+let fns = null;
+async function aiSummary(cliente) {
+  if (!state.user) throw new Error('Entra con tu cuenta de Google para usar la IA');
+  fns = fns || getFunctions(app, 'europe-west1');
+  const call = httpsCallable(fns, 'resumenCliente', { timeout: 150000 });
+  const res = await call({ cliente });
+  return res.data;
+}
+
 async function fetchQuestionnaire(token) {
   if (!state.user) return null;
   const ref = doc(db, 'cuestionarios', token);
@@ -284,6 +295,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal, fetchWorkouts };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal, fetchWorkouts, aiSummary };
 setStatus(state.status);
 App.render();

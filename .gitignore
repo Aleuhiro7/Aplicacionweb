@@ -2,3 +2,5 @@
 *.png
 !img/*.png
 *.pdf
+node_modules/
+functions/.env
