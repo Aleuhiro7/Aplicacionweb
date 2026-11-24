@@ -131,6 +131,16 @@ async function vapidKeys() {
   return vapid;
 }
 
+/** Borra los avisos de hace más de 25 min: si alguno siguiera mandándose (p. ej. de una versión anterior),
+ * al no encontrar su ficha deja de avisar. */
+async function limpiarAvisos() {
+  try {
+    const db = getFirestore();
+    const viejos = await db.collection('avisos').where('at', '<', new Date(Date.now() - 25 * 60 * 1000)).limit(200).get();
+    await Promise.all(viejos.docs.map((d) => d.ref.delete()));
+  } catch (e) { console.error('No se pudieron limpiar los avisos', e); }
+}
+
 const cleanId = (v) => (typeof v === 'string' && /^[a-z0-9]{6,40}$/i.test(v) ? v : '');
 
 export const avisoDescanso = onCall(
@@ -161,6 +171,7 @@ export const avisoDescanso = onCall(
       throw new HttpsError('invalid-argument', 'Suscripción no válida.');
     }
     await vapidKeys();
+    await limpiarAvisos();
     const prev = await ref.get();
     if (prev.exists && prev.data().cancelado) return { ok: false }; // se canceló antes de llegar aquí
     await ref.set({ uid: request.auth.uid, cancelado: false, at: FieldValue.serverTimestamp() });
