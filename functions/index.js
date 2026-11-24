@@ -8,6 +8,11 @@
  * - La clave de Claude (ANTHROPIC_API_KEY) está en el servidor, nunca en la app. */
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import Anthropic from '@anthropic-ai/sdk';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import webpush from 'web-push';
+
+initializeApp();
 
 const MODEL = 'claude-opus-5-5';
 
@@ -88,5 +93,96 @@ export const resumenCliente = onCall(
     const texto = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
     if (!texto) throw new HttpsError('internal', 'La IA no ha devuelto texto.');
     return { texto, modelo: response.model };
+  },
+);
+
+/* ---------- Aviso de fin de descanso (app de entrenamiento del cliente) ----------
+ *
+ * Con la app en segundo plano o el móvil bloqueado, el navegador congela la página y su cronómetro deja de
+ * sonar. Por eso, al empezar un descanso, la app pide aquí un aviso: la función espera lo que dura el descanso y
+ * manda una notificación al móvil (Web Push), que suena y vibra aunque la app esté cerrada. Si el cliente no
+ * responde, la repite dos veces más (cada 30 s). Si pausa, reinicia o pasa de serie, la app lo cancela.
+ *
+ * acción «clave»     → devuelve la clave pública para suscribir el móvil a las notificaciones.
+ * acción «programar» → { id, segundos, sub, titulo, texto }: espera y avisa (la llamada dura lo que el descanso).
+ * acción «cancelar»  → { id }: ya no avisa.
+ *
+ * Las claves del envío (VAPID) se crean solas la primera vez y se guardan en Firestore (sistema/vapid), a donde
+ * las apps no tienen acceso. Los avisos en curso están en avisos/{id} (se borran al terminar). */
+const SITE = 'https://aleuhiro7.github.io/Aplicacionweb/';
+const MAX_SEGUNDOS = 480; // descanso más largo que se avisa (la función puede durar 10 min)
+const REPETIR = [0, 30, 60]; // segundos tras el fin del descanso en que suena el aviso si no se responde
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+let vapid = null;
+async function vapidKeys() {
+  if (vapid) return vapid;
+  const db = getFirestore();
+  const ref = db.doc('sistema/vapid');
+  vapid = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) return snap.data();
+    const keys = webpush.generateVAPIDKeys();
+    tx.set(ref, keys);
+    return keys;
+  });
+  webpush.setVapidDetails(SITE, vapid.publicKey, vapid.privateKey);
+  return vapid;
+}
+
+const cleanId = (v) => (typeof v === 'string' && /^[a-z0-9]{6,40}$/i.test(v) ? v : '');
+
+export const avisoDescanso = onCall(
+  // CPU pequeña y una llamada por instancia: esperar casi no gasta (queda dentro de la capa gratuita).
+  { region: 'europe-west1', timeoutSeconds: 600, memory: '128MiB', cpu: 'gcf_gen1', concurrency: 1, maxInstances: 60 },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Entra con tu cuenta.');
+    const data = request.data || {};
+    const accion = data.accion;
+    const keys = await vapidKeys();
+    if (accion === 'clave') return { clave: keys.publicKey };
+
+    const id = cleanId(data.id);
+    if (!id) throw new HttpsError('invalid-argument', 'Falta el aviso.');
+    const ref = getFirestore().doc(`avisos/${id}`);
+
+    if (accion === 'cancelar') {
+      await ref.set({ uid: request.auth.uid, cancelado: true, at: FieldValue.serverTimestamp() }, { merge: true });
+      return { ok: true };
+    }
+    if (accion !== 'programar') throw new HttpsError('invalid-argument', 'Acción desconocida.');
+
+    const segundos = Math.round(Number(data.segundos));
+    const sub = data.sub;
+    if (!(segundos >= 0 && segundos <= MAX_SEGUNDOS)) throw new HttpsError('invalid-argument', 'Descanso no válido.');
+    if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint) || !sub.keys) {
+      throw new HttpsError('invalid-argument', 'Suscripción no válida.');
+    }
+    const prev = await ref.get();
+    if (prev.exists && prev.data().cancelado) return { ok: false }; // se canceló antes de llegar aquí
+    await ref.set({ uid: request.auth.uid, cancelado: false, at: FieldValue.serverTimestamp() });
+
+    const payload = (n) => JSON.stringify({
+      id, n,
+      titulo: String(data.titulo || '¡Descanso terminado!').slice(0, 80),
+      texto: String(data.texto || 'Vuelve a la app para la siguiente serie.').slice(0, 160),
+    });
+    const inicio = Date.now();
+    let enviados = 0;
+    for (const extra of REPETIR) {
+      const espera = inicio + (segundos + extra) * 1000 - Date.now();
+      if (espera > 0) await sleep(espera);
+      const snap = await ref.get();
+      if (!snap.exists || snap.data().cancelado) break;
+      try {
+        await webpush.sendNotification(sub, payload(enviados), { TTL: 90, urgency: 'high', topic: 'descanso' });
+        enviados++;
+      } catch (error) {
+        console.error('No se pudo enviar el aviso', error.statusCode, error.body);
+        break; // suscripción caducada o rechazada
+      }
+    }
+    await ref.delete().catch(() => {});
+    return { ok: true, enviados };
   },
 );
