@@ -959,6 +959,8 @@ async function pushSub(ask = true) {
 }
 // El aviso en curso se guarda con el entreno (wk.notice): así se cancela aunque el móvil haya cerrado la página.
 const noticeNow = () => (wk && wk.notice) || null;
+let noticeErr = ''; // si el aviso no se pudo activar, se dice bajo el cronómetro (para saber qué falla)
+const errText = (e) => String((e && (e.code || e.message)) || e || 'error').replace(/^functions\//, '').slice(0, 120);
 function noticeText() {
   const e = wk.exercises[wk.ex];
   if (wk.set < e.sets.length - 1) return `Toca la serie ${wk.set + 2} de ${e.name}.`;
@@ -972,10 +974,12 @@ async function scheduleNotice(seconds) {
   try {
     const sub = await pushSub(true); // (el permiso se pide dentro del toque en ▶)
     if (wk && wk.phase === 'rest' && document.querySelector('.cz-notice')) renderWorkout(); // quita el aviso de «Activar»
-    if (!sub || noticeNow() !== id) return;
+    if (!sub) { if (Notification.permission === 'granted') noticeErr = 'el móvil no admite avisos'; return; }
+    if (noticeNow() !== id) return;
     avisoFn({ accion: 'programar', id, segundos: Math.max(0, Math.round(seconds)), sub: sub.toJSON(), titulo: '¡Descanso terminado!', texto: noticeText() })
-      .catch((e) => console.warn('Aviso de descanso', e));
-  } catch (e) { console.warn('No se pudo preparar el aviso', e); }
+      .catch((e) => { console.warn('Aviso de descanso', e); if (e && e.code !== 'functions/deadline-exceeded') { noticeErr = errText(e); if (wk && wk.phase === 'rest') renderWorkout(); } });
+    if (noticeErr) { noticeErr = ''; if (wk && wk.phase === 'rest') renderWorkout(); }
+  } catch (e) { console.warn('No se pudo preparar el aviso', e); noticeErr = errText(e); if (wk && wk.phase === 'rest') renderWorkout(); }
 }
 function cancelNotice() {
   const id = noticeNow();
@@ -985,7 +989,7 @@ function cancelNotice() {
 /** Línea bajo el cronómetro si el móvil aún no puede avisar con la app en segundo plano. */
 function noticeHint() {
   if (!pushOk()) return isIOS() ? '<p class="cz-notice">🔔 En iPhone, instala la app en la pantalla de inicio para que te avise con el móvil bloqueado.</p>' : '';
-  if (Notification.permission === 'granted') return '';
+  if (Notification.permission === 'granted') return noticeErr ? `<p class="cz-notice">⚠️ No se pudo activar el aviso con el móvil bloqueado (${esc(noticeErr)}). Mándale una captura a tu entrenador.</p>` : '';
   if (Notification.permission === 'denied') return '<p class="cz-notice">🔕 Tienes las notificaciones bloqueadas: actívalas en los ajustes del navegador para que te avise con la app en segundo plano.</p>';
   return '<p class="cz-notice">🔔 <button type="button" class="link-btn" id="cz-notice-on">Activar avisos</button> para que suene aunque bloquees el móvil.</p>';
 }
