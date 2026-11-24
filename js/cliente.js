@@ -13,7 +13,6 @@ import {
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 const app = initializeApp({
   apiKey: 'AIzaSyAKJyR04QdmU_IEWhiH_lwxaUBOFLsM9Ek',
@@ -26,7 +25,6 @@ const app = initializeApp({
 const auth = getAuth(app);
 auth.languageCode = 'es';
 const db = getFirestore(app);
-const avisoFn = httpsCallable(getFunctions(app, 'europe-west1'), 'avisoDescanso', { timeout: 600000 });
 
 const root = document.getElementById('cz-root');
 const urlToken = (() => { const t = new URLSearchParams(location.search).get('c'); return t && /^[a-f0-9]{20,64}$/.test(t) ? t : ''; })();
@@ -672,7 +670,7 @@ function bindDiary() {
   root.querySelectorAll('[data-cal]').forEach((b) => { b.onclick = () => { cal.m += Number(b.dataset.cal); if (cal.m < 0) { cal.m = 11; cal.y--; } if (cal.m > 11) { cal.m = 0; cal.y++; } render(); }; });
   root.querySelectorAll('[data-start]').forEach((b) => { b.onclick = () => startWorkout(Number(b.dataset.start)); });
   const disc = document.getElementById('cz-wk-discard');
-  if (disc) disc.onclick = () => { if (confirm('¿Descartar el entreno a medias? Se perderán los pesos que hayas apuntado.')) { cancelNotice(); wk = null; saveWk(); render(); } };
+  if (disc) disc.onclick = () => { if (confirm('¿Descartar el entreno a medias? Se perderán los pesos que hayas apuntado.')) { wk = null; saveWk(); render(); } };
 }
 
 /* ---------- Entreno en marcha ---------- */
@@ -700,7 +698,6 @@ function startWorkout(i) {
  *  - «ask»:  descanso terminado → «¿Pasamos a la siguiente serie?» (o al siguiente ejercicio)
  * Tras la última serie del último ejercicio se termina el entreno. */
 function renderWorkout() {
-  setTimeout(noticeSeen, 0);
   if (!wk.phase) { wk.phase = 'set'; wk.set = nextOpenSet(wk.exercises[wk.ex]); }
   const e = wk.exercises[wk.ex];
   const total = wk.exercises.length;
@@ -744,7 +741,6 @@ function renderWorkout() {
           : '<button type="button" class="btn primary" id="cz-t-resume">▶ Seguir</button>'}
         ${t ? '<button type="button" class="btn" id="cz-t-reset">↺ Reiniciar</button>' : ''}
       </div>
-      ${noticeHint()}
       <button type="button" class="link-btn cz-edit-set" id="cz-edit">Corregir el peso de esta serie</button>
     </section>`;
   } else {
@@ -804,15 +800,14 @@ function bindWorkout() {
     if (wk.set >= e.sets.length - 1 && wk.ex >= wk.exercises.length - 1) { saveWk(); finishWorkout(); return; }
     wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout();
   });
-  on('cz-t-start', () => { unlockAudio(); wk.timer = { running: true, endAt: Date.now() + restSeconds(e.rest) * 1000 }; scheduleNotice(restSeconds(e.rest)); saveWk(); renderWorkout(); });
-  on('cz-t-pause', () => { cancelNotice(); wk.timer = { running: false, left: timerLeft() }; saveWk(); renderWorkout(); });
-  on('cz-t-resume', () => { unlockAudio(); const left = wk.timer.left; wk.timer = { running: true, endAt: Date.now() + left * 1000 }; scheduleNotice(left); saveWk(); renderWorkout(); });
-  on('cz-t-reset', () => { cancelNotice(); wk.timer = null; saveWk(); renderWorkout(); });
-  on('cz-t-again', () => { stopAlarm(); cancelNotice(); wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
-  on('cz-edit', () => { cancelNotice(); e.sets[wk.set].done = false; wk.phase = 'set'; wk.timer = null; saveWk(); renderWorkout(); });
-  on('cz-next', () => { stopAlarm(); cancelNotice(); advance(); });
-  on('cz-wk-finish', () => { stopAlarm(); cancelNotice(); finishWorkout(); });
-  on('cz-notice-on', async () => { await pushSub(true); renderWorkout(); });
+  on('cz-t-start', () => { unlockAudio(); wk.timer = { running: true, endAt: Date.now() + restSeconds(e.rest) * 1000 }; saveWk(); renderWorkout(); });
+  on('cz-t-pause', () => { wk.timer = { running: false, left: timerLeft() }; saveWk(); renderWorkout(); });
+  on('cz-t-resume', () => { wk.timer = { running: true, endAt: Date.now() + wk.timer.left * 1000 }; saveWk(); renderWorkout(); });
+  on('cz-t-reset', () => { wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-t-again', () => { stopAlarm(); wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-edit', () => { e.sets[wk.set].done = false; wk.phase = 'set'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-next', () => { stopAlarm(); advance(); });
+  on('cz-wk-finish', () => { stopAlarm(); finishWorkout(); });
 }
 
 /** Siguiente paso tras el descanso: siguiente serie, o primera serie del siguiente ejercicio, o terminar. */
@@ -933,75 +928,22 @@ function stopAlarm() {
   if (navigator.vibrate) navigator.vibrate(0);
 }
 
-/* ---------- Aviso con la app en segundo plano ----------
- * Con la app minimizada o el móvil bloqueado, el navegador congela la página y su alarma no suena. Por eso, al
- * empezar el descanso se pide al servidor (función avisoDescanso) una notificación para cuando termine: suena y
- * vibra aunque la app no esté delante, y se repite si no respondes. Al pausar, reiniciar o pasar de serie se cancela. */
-const pushOk = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-let swReg = null;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw-cliente.js').then((r) => { swReg = r; }).catch(() => {});
-const b64Key = (s) => { const b = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
-/** Suscripción del móvil a las notificaciones (la primera vez pide permiso). null si no se puede. */
-async function pushSub(ask = true) {
-  if (!pushOk() || !auth.currentUser) return null;
-  if (Notification.permission === 'default' && ask) await Notification.requestPermission();
-  if (Notification.permission !== 'granted') return null;
-  const reg = swReg || await navigator.serviceWorker.ready;
-  const old = await reg.pushManager.getSubscription();
-  if (old) return old;
-  let key = '';
-  try { key = localStorage.getItem('cz:pushkey') || ''; } catch (e) { /* sin almacenamiento */ }
-  if (!key) {
-    key = (await avisoFn({ accion: 'clave' })).data.clave;
-    try { localStorage.setItem('cz:pushkey', key); } catch (e) { /* sin almacenamiento */ }
-  }
-  return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64Key(key) });
+/* Se quitaron los avisos por notificación del fin de descanso: se borra lo que quedó instalado en el móvil. */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach(async (r) => {
+    const sw = r.active || r.waiting || r.installing;
+    if (!sw || !/sw-cliente\.js/.test(sw.scriptURL)) return;
+    try { const sub = await r.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) { /* nada */ }
+    try { (await r.getNotifications()).forEach((n) => n.close()); } catch (e) { /* nada */ }
+    r.unregister().catch(() => {});
+  })).catch(() => {});
 }
-// El aviso en curso se guarda con el entreno (wk.notice): así se cancela aunque el móvil haya cerrado la página.
-const noticeNow = () => (wk && wk.notice) || null;
-let noticeErr = ''; // si el aviso no se pudo activar, se dice bajo el cronómetro (para saber qué falla)
-const errText = (e) => String((e && (e.code || e.message)) || e || 'error').replace(/^functions\//, '').slice(0, 120);
-function noticeText() {
-  const e = wk.exercises[wk.ex];
-  if (wk.set < e.sets.length - 1) return `Toca la serie ${wk.set + 2} de ${e.name}.`;
-  if (wk.ex < wk.exercises.length - 1) return `Siguiente ejercicio: ${wk.exercises[wk.ex + 1].name}.`;
-  return 'Era la última serie: vuelve a la app para terminar el entreno.';
-}
-async function scheduleNotice(seconds) {
-  cancelNotice();
-  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-  wk.notice = id; saveWk();
-  try {
-    const sub = await pushSub(true); // (el permiso se pide dentro del toque en ▶)
-    if (wk && wk.phase === 'rest' && document.querySelector('.cz-notice')) renderWorkout(); // quita el aviso de «Activar»
-    if (!sub) { if (Notification.permission === 'granted') noticeErr = 'el móvil no admite avisos'; return; }
-    if (noticeNow() !== id) return;
-    avisoFn({ accion: 'programar', id, segundos: Math.max(0, Math.round(seconds)), sub: sub.toJSON(), titulo: '¡Descanso terminado!', texto: noticeText() })
-      .catch((e) => { console.warn('Aviso de descanso', e); if (e && e.code !== 'functions/deadline-exceeded') { noticeErr = errText(e); if (wk && wk.phase === 'rest') renderWorkout(); } });
-    if (noticeErr) { noticeErr = ''; if (wk && wk.phase === 'rest') renderWorkout(); }
-  } catch (e) { console.warn('No se pudo preparar el aviso', e); noticeErr = errText(e); if (wk && wk.phase === 'rest') renderWorkout(); }
-}
-function cancelNotice() {
-  const id = noticeNow();
-  if (id) { wk.notice = null; saveWk(); avisoFn({ accion: 'cancelar', id }).catch(() => {}); }
-  if (swReg && swReg.getNotifications) swReg.getNotifications({ tag: 'cz-descanso' }).then((l) => l.forEach((n) => n.close())).catch(() => {});
-}
-/** Línea bajo el cronómetro si el móvil aún no puede avisar con la app en segundo plano. */
-function noticeHint() {
-  if (!pushOk()) return isIOS() ? '<p class="cz-notice">🔔 En iPhone, instala la app en la pantalla de inicio para que te avise con el móvil bloqueado.</p>' : '';
-  if (Notification.permission === 'granted') return noticeErr ? `<p class="cz-notice">⚠️ No se pudo activar el aviso con el móvil bloqueado (${esc(noticeErr)}). Mándale una captura a tu entrenador.</p>` : '';
-  if (Notification.permission === 'denied') return '<p class="cz-notice">🔕 Tienes las notificaciones bloqueadas: actívalas en los ajustes del navegador para que te avise con la app en segundo plano.</p>';
-  return '<p class="cz-notice">🔔 <button type="button" class="link-btn" id="cz-notice-on">Activar avisos</button> para que suene aunque bloquees el móvil.</p>';
-}
+try { localStorage.removeItem('cz:pushkey'); } catch (e) { /* sin almacenamiento */ }
 
 /* La pantalla no se apaga mientras entrenas (si el móvil lo permite). */
 async function keepAwake() { try { if (!wakeLock && navigator.wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) { wakeLock = null; } }
 function releaseAwake() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); noticeSeen(); } });
-/** Has vuelto a la app con el descanso ya terminado: el móvil deja de avisar (aquí ya suena la alarma de la app). */
-function noticeSeen() {
-  if (document.visibilityState === 'visible' && wk && wk.phase === 'ask' && noticeNow()) cancelNotice();
-}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wk && location.hash === '#entreno') { keepAwake(); updateClock(); } });
 
 /** Ventana propia (no la del navegador, que se acepta sin querer) con las opciones. Devuelve la elegida. */
 function choose(title, text, options) {
@@ -1027,7 +969,7 @@ async function finishWorkout() {
       ...(doneSets ? [['guardar', `Terminar y guardar (${doneSets} ${doneSets === 1 ? 'serie' : 'series'})`]] : []),
       ['descartar', 'Descartar el entreno (no se guarda)', 'danger'],
     ]);
-    if (pick === 'descartar') { cancelNotice(); wk = null; saveWk(); stopTicker(); location.hash = '#diario'; return; }
+    if (pick === 'descartar') { wk = null; saveWk(); stopTicker(); location.hash = '#diario'; return; }
     if (pick !== 'guardar') return;
   }
   const endedAt = Date.now();

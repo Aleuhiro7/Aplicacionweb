@@ -1920,8 +1920,6 @@ button.cz-day { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .cz-timer { margin-bottom: 30px; }
 .cz-timer .cz-play { margin-top: 0; }
 .cz-edit-set { margin-top: 14px; font-size: .88rem; }
-.cz-notice { margin: 10px 0 0; font-size: .82rem; color: var(--muted, #9aa3b5); line-height: 1.35; }
-.cz-notice .link-btn { font-size: inherit; padding: 0; }
 .cz-ask { text-align: center; margin: 14px 0 30px; border: 1.5px solid #3ee6a0; }
 .cz-ask-title { display: block; font: 700 1.6rem/1.1 "Barlow Condensed", sans-serif; color: #3ee6a0; }
 .cz-ask p { font-size: 1.1rem; font-weight: 600; margin: 10px 0 0; }
