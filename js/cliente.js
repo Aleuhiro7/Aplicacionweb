@@ -750,6 +750,7 @@ function renderWorkout() {
         <label class="cz-in big"><input type="text" inputmode="numeric" id="cz-reps" value="${esc(cur.reps || '')}" placeholder="${prev && prev.reps ? esc(prev.reps) : '0'}"><span>reps</span></label>
       </div>
       <button type="button" class="btn primary cz-play" id="cz-go">▶ ${isLastSet && isLastEx ? 'Última serie · terminar entreno' : 'Hecho · ir al descanso'}</button>
+      ${canSkip() ? `<button type="button" class="link-btn cz-skip" id="cz-skip">⏭ ¿Máquina ocupada? Haz antes «${esc(wk.exercises[wk.ex + 1].name)}» y vuelve luego a este</button>` : ''}
     </section>`;
   } else if (wk.phase === 'rest') {
     step = `<section class="card cz-timer${t && t.running ? ' running' : ''}">
@@ -834,9 +835,29 @@ function bindWorkout() {
   on('cz-t-resume', () => { wk.timer = { running: true, endAt: Date.now() + wk.timer.left * 1000 }; saveWk(); renderWorkout(); });
   on('cz-t-reset', () => { wk.timer = null; saveWk(); renderWorkout(); });
   on('cz-t-again', () => { stopAlarm(); wk.phase = 'rest'; wk.timer = null; saveWk(); renderWorkout(); });
+  on('cz-skip', () => skipExercise());
   on('cz-edit', () => { e.sets[wk.set].done = false; wk.phase = 'set'; wk.timer = null; saveWk(); renderWorkout(); });
   on('cz-next', () => { stopAlarm(); advance(); });
   on('cz-wk-finish', () => { stopAlarm(); finishWorkout(); });
+}
+
+/* Saltar un ejercicio (máquina ocupada): antes de empezarlo, se cambia de sitio con el siguiente. Así haces el
+ * siguiente y al terminarlo te vuelve a salir el que saltaste; los que ya están hechos no vuelven a salir. */
+const canSkip = () => {
+  if (!wk || wk.phase !== 'set' || wk.ex >= wk.exercises.length - 1) return false;
+  const e = wk.exercises[wk.ex];
+  const n = wk.exercises[wk.ex + 1];
+  return !e.sets.some((st) => st.done) && !n.sets.some((st) => st.done);
+};
+function skipExercise() {
+  if (!canSkip()) return;
+  const i = wk.ex;
+  const skipped = wk.exercises[i];
+  wk.exercises[i] = wk.exercises[i + 1];
+  wk.exercises[i + 1] = skipped;
+  wk.set = 0; wk.phase = 'set'; wk.timer = null;
+  saveWk(); renderWorkout(); window.scrollTo(0, 0);
+  flash(`«${skipped.name}» lo haces después`);
 }
 
 /** Siguiente paso tras el descanso: siguiente serie, o primera serie del siguiente ejercicio, o terminar. */
