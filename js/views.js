@@ -1631,6 +1631,7 @@
     }
     return `<section class="card diet-panel">
     ${toggle}
+    ${foodQuizCard(c)}
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
     <div class="diet-sec">
@@ -2640,6 +2641,128 @@
     { k: 'melatonina', n: 'Melatonina', d: '1 mg antes de dormir' },
     { k: 'ashwagandha', n: 'Ashwagandha', d: '300 mg al día' },
   ];
+  /* ---------- Cuestionario de alimentación (alimentacion.html?t=CÓDIGO) ----------
+   * El cliente elige cuántas comidas quiere hacer, sus alimentos favoritos (hasta 5 de proteínas, de hidratos y de
+   * grasas, de la biblioteca de alimentos) y los suplementos que quiere tomar. Va en cuestionarios/{código} con
+   * kind «alimentacion» (las mismas reglas que el cuestionario inicial) y lo que elige queda en c.foodQuiz. */
+  const FQ_GROUPS = [['proteinas', 'Proteínas', '🥩'], ['hidratos', 'Hidratos', '🍚'], ['grasas', 'Grasas', '🥑']];
+  const FQ_CAT = {
+    'Carnes y aves': 'proteinas', 'Embutidos y fiambres': 'proteinas', 'Pescados y mariscos': 'proteinas', Huevos: 'proteinas', 'Proteína vegetal': 'proteinas', Lácteos: 'proteinas',
+    'Cereales, pan y pasta': 'hidratos', Tortitas: 'hidratos', Tubérculos: 'hidratos', Legumbres: 'hidratos', Frutas: 'hidratos',
+    'Frutos secos y semillas': 'grasas', 'Grasas y aceites': 'grasas',
+  };
+  const FQ_SKIP = ['Bebidas', 'Salsas y condimentos', 'Otros', 'Suplementos'];
+  /** Alimentos de la biblioteca repartidos en proteínas, hidratos y grasas (por categoría o, si no, por su macro principal). */
+  function foodQuizOptions() {
+    const out = { proteinas: [], hidratos: [], grasas: [] };
+    for (const f of Store.foods()) {
+      if (FQ_SKIP.includes(f.category)) continue;
+      let g = FQ_CAT[f.category];
+      if (!g) {
+        const p = (Number(f.protein) || 0) * 4; const h = (Number(f.carbs) || 0) * 4; const gr = (Number(f.fat) || 0) * 9;
+        if (p + h + gr < 20) continue;
+        g = p >= h && p >= gr ? 'proteinas' : h >= gr ? 'hidratos' : 'grasas';
+      }
+      out[g].push({ n: f.name, c: f.category || 'Otros' });
+    }
+    // Por categorías en el orden de la biblioteca (carnes, pescados, huevos…), y dentro, por nombre.
+    const order = Object.keys(FQ_CAT);
+    const rank = (c) => (order.indexOf(c) < 0 ? 99 : order.indexOf(c));
+    for (const g of Object.keys(out)) out[g].sort((x, y) => rank(x.c) - rank(y.c) || x.n.localeCompare(y.n, 'es'));
+    return out;
+  }
+  const pendingFoodQuiz = (c) => (c.foodQuiz && c.foodQuiz.token && !c.foodQuiz.answeredAt ? c.foodQuiz : null);
+  function foodQuizCard(c) {
+    const q = c.foodQuiz || {};
+    const first = c.name.split(' ')[0];
+    if (q.answeredAt) {
+      const chips = (arr) => (arr && arr.length ? arr.map((x) => `<span class="fq-chip">${esc(x)}</span>`).join('') : '<span class="muted">Ninguno</span>');
+      const supps = (q.supps || []).map((k) => (SUPPLEMENTS.find((s) => s.k === k) || {}).n).filter(Boolean);
+      return `<div class="diet-sec fq-card">
+        <div class="card-header"><h2>🍽️ Lo que eligió ${esc(first)}</h2><span class="muted" style="font-size:.82rem">Cuestionario de alimentación · ${esc(fmtDate(q.answeredAt))}</span></div>
+        <dl class="fq-list">
+          <div><dt>Comidas al día</dt><dd><strong>${esc(q.meals || '—')}</strong></dd></div>
+          ${FQ_GROUPS.map(([k, label, ic]) => `<div><dt>${ic} ${label}</dt><dd>${chips(q[k])}</dd></div>`).join('')}
+          <div><dt>💊 Suplementos</dt><dd>${supps.length ? supps.map((x) => `<span class="fq-chip">${esc(x)}</span>`).join('') : `<span class="muted">${(q.supps || []).includes('ninguno') ? 'No quiere tomar ninguno' : 'Ninguno'}</span>`}</dd></div>
+        </dl>
+        <div class="actions" style="margin-top:10px">
+          ${supps.length ? `<button class="btn sm" data-action="fq-supps" data-client="${c.id}">${U.icon('check')}Marcar sus suplementos abajo</button>` : ''}
+          <button class="btn sm" data-action="fq-send" data-client="${c.id}" data-value="new">${U.icon('message')}Enviar otro cuestionario</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="diet-sec fq-card">
+      <div class="card-header"><h2>🍽️ Cuestionario de alimentación</h2>${q.token ? '<span class="badge">Enviado</span>' : ''}</div>
+      <p class="muted" style="margin:0 0 10px">${q.token
+        ? `Enviado el ${esc(fmtDate(q.sentAt))}. Cuando lo rellene verás aquí cuántas comidas quiere hacer, sus alimentos favoritos y los suplementos que quiere tomar.`
+        : `Antes de hacerle la dieta, pregúntale cuántas comidas quiere hacer al día, sus 5 alimentos favoritos de proteínas, de hidratos y de grasas (de tu biblioteca) y qué suplementos quiere tomar.`}</p>
+      <div class="actions">
+        <button class="btn sm ${q.token ? '' : 'primary'} wa-btn" data-action="fq-send" data-client="${c.id}">${U.icon('message')}${q.token ? 'Reenviar enlace' : 'Enviar por WhatsApp'}</button>
+        ${q.token ? `<button class="btn sm" data-action="check-questionnaire" data-client="${c.id}">${U.icon('refresh')}Comprobar</button>` : ''}
+      </div>
+    </div>`;
+  }
+  async function sendFoodQuiz(clientId, fresh) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    if (location.protocol === 'file:') { UI.toast('Abre la app desde tu web publicada para poder enviar enlaces'); return; }
+    if (!window.Sync || !Sync.state.user) { UI.toast('Inicia sesión con Google (Ajustes) para enviar enlaces'); return; }
+    const pend = !fresh && pendingFoodQuiz(c);
+    const token = pend ? pend.token : newToken();
+    const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
+    const win = window.open('about:blank', '_blank');
+    try {
+      if (!pend) {
+        await Sync.createQuestionnaire(token, {
+          kind: 'alimentacion', clientName: c.name.split(' ')[0], coach,
+          foods: foodQuizOptions(), supps: SUPPLEMENTS.map((s) => ({ k: s.k, n: s.n })),
+        });
+      }
+    } catch (e) {
+      console.error(e); if (win) win.close();
+      UI.toast(`No se ha podido crear el enlace: ${e.code || e.message || e}`);
+      return;
+    }
+    const url = new URL(`alimentacion.html?t=${token}`, location.href.split('#')[0]).href;
+    const text = `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para prepararte la dieta a tu gusto, dime cuántas comidas quieres hacer, tus alimentos favoritos y qué suplementos quieres tomar. Son 3 minutos:\n${url}`;
+    const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
+    if (win) win.location.href = wa; else window.open(wa, '_blank');
+    if (!pend) Store.update('clients', c.id, { foodQuiz: { token, sentAt: today(), answeredAt: '' } });
+    App.render();
+    UI.toast('Enlace preparado en WhatsApp: lo que elija aparecerá en su Dieta');
+  }
+  /** Pasa a la ficha los cuestionarios de alimentación ya rellenados. */
+  async function importFoodQuizzes(onlyClientId) {
+    let found = 0;
+    for (const c of Store.data.clients.filter((x) => pendingFoodQuiz(x) && (!onlyClientId || x.id === onlyClientId))) {
+      const q = pendingFoodQuiz(c);
+      const doc = await Sync.fetchQuestionnaire(q.token).catch(() => null);
+      if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
+      const a = doc.answers.map((x) => String(x || ''));
+      const list = (s) => s.split('|').map((x) => x.trim()).filter(Boolean).slice(0, 8);
+      const answeredAt = doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
+      Store.update('clients', c.id, { foodQuiz: Object.assign({}, q, { answeredAt, meals: a[0] || '', proteinas: list(a[1] || ''), hidratos: list(a[2] || ''), grasas: list(a[3] || ''), supps: list(a[4] || '') }) });
+      found++;
+      UI.toast(`${c.name.split(' ')[0]} ha rellenado el cuestionario de alimentación`);
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') new Notification('🍽️ Cuestionario de alimentación', { body: `${c.name} ya ha elegido sus comidas, alimentos y suplementos.`, tag: 'fq-' + c.id });
+      } catch (e) { /* sin notificaciones */ }
+    }
+    return found;
+  }
+  /** Marca en la suplementación de la dieta los suplementos que eligió el cliente (sin quitar los que ya hubiera). */
+  function applyFoodQuizSupps(clientId) {
+    const c = Store.get('clients', clientId);
+    const keys = ((c && c.foodQuiz && c.foodQuiz.supps) || []).filter((k) => SUPPLEMENTS.some((s) => s.k === k));
+    if (!keys.length) return;
+    const d = Store.dietFor(clientId);
+    const have = (d && d.suppList) || [];
+    const suppList = [...have, ...keys.filter((k) => !have.some((x) => x.k === k)).map((k) => ({ k, dose: SUPPLEMENTS.find((s) => s.k === k).d }))];
+    if (d) Store.update('diets', d.id, { suppList }); else Store.add('diets', { clientId, text: '', suppList });
+    App.render();
+    UI.toast('Suplementos marcados en su dieta (revisa las dosis)');
+  }
+
   /** Líneas de suplementación de la dieta: las marcadas y las escritas a mano. */
   function suppLines(d) {
     if (!d) return [];
@@ -4339,6 +4462,7 @@
       checkingLinks = false;
     }
     try { found += await importRevisions(onlyClientId); } catch (e) { console.error('Revisiones por enlace', e); }
+    try { found += await importFoodQuizzes(onlyClientId); } catch (e) { console.error('Cuestionarios de alimentación', e); }
     if (found) App.render();
     else if (manual) UI.toast('Todavía no ha respondido');
   }
@@ -4963,6 +5087,8 @@
     },
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
     'send-revision': (d) => sendRevisionLink(d.client),
+    'fq-send': (d) => sendFoodQuiz(d.client, d.value === 'new'),
+    'fq-supps': (d) => applyFoodQuizSupps(d.client),
     'check-revision': (d) => checkQuestionnaireLinks(d.client, true),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
