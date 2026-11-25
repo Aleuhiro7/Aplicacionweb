@@ -581,7 +581,7 @@ function diaryView(days) {
     if (weeks.has(ymd(d))) streak++;
     else if (!(streak === 0 && ymd(d) === weekKey(today))) break; // la semana actual aún puede no tener entreno
   }
-  const next = days.length ? (workouts[0] && Number.isInteger(workouts[0].dayIndex) ? (workouts[0].dayIndex + 1) % days.length : 0) : -1;
+  const next = days.length ? roundInfo(days).next : -1;
   const nd = next >= 0 ? days[next] : null;
   return `
     ${wk ? `<section class="cz-today resume">
@@ -624,19 +624,35 @@ function dateView(date) {
     ${list.length ? `<section class="card cz-card"><ul class="cz-wlist">${list.map(workoutRow).join('')}</ul></section>` : '<p class="muted">Ese día no entrenaste.</p>'}`;
 }
 
-/** Elegir el día de la rutina. Se propone el siguiente al último que hiciste (calendario continuo). */
+/** Vuelta de la rutina: qué días ya has hecho en la vuelta actual y cuál te toca. Te toca el primero que te falta
+ * (si te saltaste uno, vuelves a él y luego se salta el que adelantaste); al completar todos, empieza otra vuelta. */
+function roundInfo(days) {
+  const n = days.length;
+  let done = new Set();
+  for (const w of workouts.slice().reverse()) { // del más antiguo al más reciente
+    if (!Number.isInteger(w.dayIndex) || w.dayIndex < 0 || w.dayIndex >= n) continue;
+    done.add(w.dayIndex);
+    if (done.size === n) done = new Set();
+  }
+  let next = 0;
+  while (next < n && done.has(next)) next++;
+  return { done, next: next < n ? next : 0 };
+}
+
+/** Elegir el día de la rutina. Se propone el primero que te falta de la vuelta actual. */
 function chooseDayView(days) {
   if (!days.length) return '<section class="card cz-card"><p class="muted">Todavía no tienes rutina. Cuando tu entrenador la prepare, podrás entrenar desde aquí.</p></section>';
   const last = workouts[0];
-  const next = last && Number.isInteger(last.dayIndex) ? (last.dayIndex + 1) % days.length : 0;
+  const { done, next } = roundInfo(days);
+  const skipped = last && done.size > 0 && Number.isInteger(last.dayIndex) && next !== (last.dayIndex + 1) % days.length;
   return `<div class="cz-daynav"><a class="btn sm" href="#diario">← Diario</a></div>
     <h2 class="cz-day-title"><small>Entrenar hoy</small>¿Qué día toca?</h2>
-    <p class="muted">${last ? `La última vez hiciste <strong>${esc(last.dayName)}</strong>. Te toca el siguiente:` : 'Elige el día de tu rutina que vas a entrenar:'}</p>
+    <p class="muted">${!last ? 'Elige el día de tu rutina que vas a entrenar:' : !done.size ? `Has completado todos los días de tu rutina. Empiezas otra vuelta con <strong>${esc(days[next].name)}</strong>:` : skipped ? `La última vez hiciste <strong>${esc(last.dayName)}</strong>. Te queda pendiente <strong>${esc(days[next].name)}</strong>:` : `La última vez hiciste <strong>${esc(last.dayName)}</strong>. Te toca el siguiente:`}</p>
     <section class="cz-days">
       ${days.map((d, i) => `<button type="button" class="card cz-day${i === next ? ' next' : ''}" data-start="${i}">
         <span class="cz-day-n">${i + 1}</span>
         <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
-        ${i === next ? '<span class="cz-next">Te toca</span>' : `<span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>`}
+        ${i === next ? '<span class="cz-next">Te toca</span>' : done.has(i) ? '<span class="cz-day-count">✓ Hecho esta vuelta</span>' : `<span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>`}
       </button>`).join('')}
     </section>`;
 }
