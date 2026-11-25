@@ -4235,7 +4235,7 @@
       UI.toast(`No se ha podido crear el enlace: ${e.code || e.message || e}`);
       return;
     }
-    const url = new URL(`revision.html?t=${token}`, location.href.split('#')[0]).href;
+    const url = new URL(`${(pend ? pend.first : first) ? 'medidas' : 'revision'}.html?t=${token}`, location.href.split('#')[0]).href; // (cada una con su vista previa en WhatsApp)
     const text = first
       ? `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para empezar necesito tu punto de partida: tu peso, tu cintura y 3 fotos (frente, perfil y espalda). En el enlace te explico cómo hacerlo, son 5 minutos:\n${url}`
       : `Hola ${c.name.split(' ')[0]}, ¡toca revisión! 📸 Envíame tu peso, tu cintura y tus 3 fotos desde este enlace (te explico cómo hacerlo):\n${url}`;
