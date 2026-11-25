@@ -306,8 +306,6 @@ function render() {
   const rf = document.getElementById('cz-refresh');
   if (rf) rf.onclick = () => { rf.classList.add('spin'); refreshNow(true); };
   if (tab === 'dieta' && portal.dietHtml) setupDiet();
-  const rb = document.getElementById('cz-routine-pdf');
-  if (rb) pdfButton(rb, portal.routineHtml, `Rutina ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
   if (tab === 'diario') bindDiary();
   if (main && tab === 'rutina') requestAnimationFrame(fitDayCards);
   root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
@@ -339,7 +337,7 @@ function daysView(r) {
     </a>`).join('')}
   </section>
   ${r.notes ? `<section class="card cz-card"><h2>Indicaciones</h2><p class="cz-notes">${esc(r.notes)}</p></section>` : ''}
-  ${portal.routineHtml ? '<div class="cz-pdf-bottom"><button type="button" class="btn cz-pdf-btn" id="cz-routine-pdf">⬇ Descargar mi rutina en PDF</button></div>' : ''}`;
+`;
 }
 
 function dayView(days, i) {
@@ -420,7 +418,7 @@ function sanitize(html) {
 function dietView() {
   if (!portal.dietHtml) return '<section class="card cz-card"><p class="muted">Tu entrenador está preparando tu dieta. Cuando esté lista, la verás aquí.</p></section>';
   return `<div id="cz-diet" class="pv-pages">${sanitize(portal.dietHtml)}</div>
-    <div class="cz-pdf-bottom"><button type="button" class="btn cz-pdf-btn" id="cz-diet-pdf">⬇ Descargar mi dieta en PDF</button></div>`;
+`;
 }
 
 function setupDiet() {
@@ -436,7 +434,6 @@ function setupDiet() {
   window.PdfMaker.loadFonts().then(fit);
   fit();
   window.onresize = fit;
-  pdfButton(document.getElementById('cz-diet-pdf'), portal.dietHtml, `Dieta ${portal.clientName || ''}`, '✓ Descargada · búscala en Descargas');
 }
 
 /** Botón que crea el PDF (en el propio móvil del cliente) a partir de la hoja y lo descarga. */
