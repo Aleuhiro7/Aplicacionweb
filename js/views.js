@@ -3413,6 +3413,7 @@
             ${waistDelta !== null ? row('Cambio cintura', `<span class="${waistDelta > 0 ? 'delta-up' : 'delta-down'}">${waistDelta > 0 ? '+' : ''}${fmtNum(waistDelta)} cm</span> desde ${fmtDate(waists[0].date)}`) : ''}
           </dl>` : empty('ruler', 'Sin peso registrado todavía.', `<div style="margin-top:10px"><button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('plus')}Medidas</button></div>`)}
           ${ms.length >= 2 ? `<div class="mt">${UI.lineChart(ms.map((m) => ({ x: m.date, y: m.weight })), { unit: 'kg', height: 180 })}</div>` : ''}
+          ${revisionBox(c)}
         </section>
       </div>`;
   }
@@ -4200,6 +4201,76 @@
     UI.toast('Enlace preparado en WhatsApp: las respuestas llegarán solas a su ficha');
   }
 
+  /* ---------- Revisión por enlace (revision.html): el cliente envía peso, cintura y 3 fotos ----------
+   * Se crea cuestionarios/{código} con kind «revision»; lo envía la función «enviarRevision» y, al llegar, se pasa
+   * a su ficha: una medida nueva (peso, cintura y su nota) y las 3 fotos (frente, perfil y espalda). */
+  const pendingRevision = (c) => (c.revisions || []).find((r) => !r.answeredAt) || null;
+  function revisionBox(c) {
+    const pend = pendingRevision(c);
+    const last = (c.revisions || []).filter((r) => r.answeredAt).slice(-1)[0];
+    const first = !Store.measurementsFor(c.id).length;
+    return `<div class="rv-box">
+      ${pend ? `<p class="muted" style="margin:0 0 8px">📨 Enlace de ${first ? 'primeras medidas' : 'revisión'} enviado el ${esc(fmtDate(pend.sentAt))} · esperando sus datos y fotos.</p>`
+        : last ? `<p class="muted" style="margin:0 0 8px">✅ Última revisión por enlace recibida el ${esc(fmtDate(last.answeredAt))}.</p>` : ''}
+      <div class="rv-actions">
+        <button class="btn sm ${pend ? '' : 'primary'}" data-action="send-revision" data-client="${c.id}">${U.icon('upload')}${pend ? 'Reenviar enlace' : first ? 'Pedir primeras medidas y fotos' : 'Pedir revisión (peso, cintura y fotos)'}</button>
+        ${pend ? `<button class="btn sm" data-action="check-revision" data-client="${c.id}">${U.icon('refresh')}Comprobar</button>` : ''}
+      </div>
+    </div>`;
+  }
+  async function sendRevisionLink(clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    if (location.protocol === 'file:') { UI.toast('Abre la app desde tu web publicada para poder enviar enlaces'); return; }
+    if (!window.Sync || !Sync.state.user) { UI.toast('Inicia sesión con Google (Ajustes) para enviar enlaces'); return; }
+    const pend = pendingRevision(c);
+    const first = !Store.measurementsFor(c.id).length;
+    const token = pend ? pend.token : newToken();
+    const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
+    const win = window.open('about:blank', '_blank');
+    try {
+      if (!pend) await Sync.createQuestionnaire(token, { kind: 'revision', clientId: c.id, clientName: c.name.split(' ')[0], coach, first });
+    } catch (e) {
+      console.error(e); if (win) win.close();
+      UI.toast(`No se ha podido crear el enlace: ${e.code || e.message || e}`);
+      return;
+    }
+    const url = new URL(`revision.html?t=${token}`, location.href.split('#')[0]).href;
+    const text = first
+      ? `Hola ${c.name.split(' ')[0]}, soy ${coach}. Para empezar necesito tu punto de partida: tu peso, tu cintura y 3 fotos (frente, perfil y espalda). En el enlace te explico cómo hacerlo, son 5 minutos:\n${url}`
+      : `Hola ${c.name.split(' ')[0]}, ¡toca revisión! 📸 Envíame tu peso, tu cintura y tus 3 fotos desde este enlace (te explico cómo hacerlo):\n${url}`;
+    const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
+    if (win) win.location.href = wa; else window.open(wa, '_blank');
+    if (!pend) Store.update('clients', c.id, { revisions: [...(c.revisions || []), { token, sentAt: today(), answeredAt: '', first }] });
+    App.render();
+    UI.toast('Enlace preparado en WhatsApp: el peso, la cintura y las fotos llegarán solos a su ficha');
+  }
+  /** Pasa a la ficha las revisiones que ya han enviado los clientes. Devuelve cuántas había. */
+  async function importRevisions(onlyClientId) {
+    let found = 0;
+    for (const c of Store.data.clients.filter((x) => pendingRevision(x) && (!onlyClientId || x.id === onlyClientId))) {
+      const pend = pendingRevision(c);
+      const doc = await Sync.fetchQuestionnaire(pend.token).catch(() => null);
+      if (!doc || !doc.answeredAt || !doc.revision) continue;
+      const rv = doc.revision;
+      const date = doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
+      Store.add('measurements', { clientId: c.id, date, weight: Number(rv.peso) || null, waist: Number(rv.cintura) || null, notes: [`Revisión enviada por ${c.name.split(' ')[0]} desde el enlace.`, rv.nota ? `Su comentario: ${rv.nota}` : ''].filter(Boolean).join('\n') });
+      const base = Date.now();
+      ['frente', 'perfil', 'espalda'].forEach((pose, i) => {
+        const id = rv.fotos && rv.fotos[pose];
+        if (id && !Store.get('photos', id)) Store.add('photos', { id, clientId: c.id, date, note: { frente: 'Frente', perfil: 'Perfil', espalda: 'Espalda' }[pose], cloud: true, createdAt: new Date(base + i).toISOString() });
+      });
+      const fresh = Store.get('clients', c.id);
+      Store.update('clients', c.id, { revisions: (fresh.revisions || []).map((r) => (r.token === pend.token ? Object.assign({}, r, { answeredAt: date }) : r)) });
+      found++;
+      UI.toast(`${c.name.split(' ')[0]} ha enviado su revisión: peso, cintura y fotos`);
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') new Notification('📸 Revisión recibida', { body: `${c.name} ha enviado su peso, su cintura y sus fotos.`, tag: 'rv-' + c.id });
+      } catch (e) { /* sin notificaciones */ }
+    }
+    return found;
+  }
+
   /** Mira en la nube si algún cliente ha respondido su cuestionario por enlace. */
   let checkingLinks = false;
   async function checkQuestionnaireLinks(onlyClientId, manual) {
@@ -4240,6 +4311,7 @@
     } finally {
       checkingLinks = false;
     }
+    try { found += await importRevisions(onlyClientId); } catch (e) { console.error('Revisiones por enlace', e); }
     if (found) App.render();
     else if (manual) UI.toast('Todavía no ha respondido');
   }
@@ -4863,6 +4935,8 @@
       if (bi) setTimeout(() => { Store.update('clients', d.client, { bdayGreeted: bi.date }); App.render(); }, 300);
     },
     'send-questionnaire': (d) => sendQuestionnaire(d.client),
+    'send-revision': (d) => sendRevisionLink(d.client),
+    'check-revision': (d) => checkQuestionnaireLinks(d.client, true),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
     'diet-delete': (d) => deleteDiet(d.client),

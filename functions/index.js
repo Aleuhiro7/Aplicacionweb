@@ -109,3 +109,49 @@ export const resumenCliente = onCall(
     return { texto, modelo: response.model, subirPeso: subirPeso(lista) };
   },
 );
+
+/* ---------- Revisión por enlace (revision.html?t=CÓDIGO) ----------
+ * El entrenador crea cuestionarios/{código} con kind «revision» (con su uid como dueño). El cliente, sin cuenta,
+ * envía aquí su peso, su cintura y 3 fotos (frente, perfil y espalda). Se guardan con permisos de servidor:
+ * las fotos, en las fotos del entrenador (users/{dueño}/photos/{id}), y el resto en el propio enlace, que queda
+ * respondido (solo se puede enviar una vez). La app del entrenador lo recoge y lo pasa a la ficha del cliente. */
+const POSES = ['frente', 'perfil', 'espalda'];
+const MAX_FOTO = 950 * 1024; // caracteres por foto (un documento de Firestore admite 1 MB)
+
+export const enviarRevision = onCall(
+  { region: 'europe-west1', timeoutSeconds: 60, memory: '256MiB', maxInstances: 5 },
+  async (request) => {
+    const d = request.data || {};
+    const token = typeof d.token === 'string' && /^[a-f0-9]{20,64}$/.test(d.token) ? d.token : '';
+    if (!token) throw new HttpsError('invalid-argument', 'Enlace no válido.');
+    const peso = Number(String(d.peso || '').replace(',', '.'));
+    const cintura = Number(String(d.cintura || '').replace(',', '.'));
+    if (!(peso >= 25 && peso <= 350)) throw new HttpsError('invalid-argument', 'Revisa el peso.');
+    if (!(cintura >= 30 && cintura <= 250)) throw new HttpsError('invalid-argument', 'Revisa la cintura.');
+    const fotos = d.fotos || {};
+    for (const p of POSES) {
+      const f = fotos[p];
+      if (typeof f !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(f)) throw new HttpsError('invalid-argument', `Falta la foto: ${p}.`);
+      if (f.length > MAX_FOTO) throw new HttpsError('invalid-argument', `La foto «${p}» es demasiado grande.`);
+    }
+    const nota = String(d.nota || '').slice(0, 1500);
+
+    const db = getFirestore();
+    const ref = db.doc(`cuestionarios/${token}`);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw new HttpsError('not-found', 'Este enlace ya no existe. Pide uno nuevo a tu entrenador.');
+      const q = snap.data();
+      if (q.kind !== 'revision' || !q.owner) throw new HttpsError('failed-precondition', 'Este enlace no es de revisión.');
+      if (q.answeredAt) throw new HttpsError('already-exists', 'Esta revisión ya se envió.');
+      const ids = {};
+      for (const p of POSES) {
+        const id = `rv${token.slice(0, 10)}${p}`;
+        ids[p] = id;
+        tx.set(db.doc(`users/${q.owner}/photos/${id}`), { data: fotos[p], clientId: q.clientId || '', updatedAt: FieldValue.serverTimestamp() });
+      }
+      tx.update(ref, { revision: { peso, cintura, nota, fotos: ids }, answeredAt: FieldValue.serverTimestamp() });
+    });
+    return { ok: true };
+  },
+);
