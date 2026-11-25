@@ -23,6 +23,8 @@ const GROUPS = [
 ];
 const esc = (v) => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+/** Nombre para mostrar: sin el «(crudo)», que aquí ya se sobreentiende (todos son en crudo). */
+const label = (n) => String(n || '').replace(/\s*\(crud[oa]s?\)/i, '').trim();
 const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function message(title, text) { root.innerHTML = `<h1 class="q-title">${esc(title)}</h1><p class="q-intro">${esc(text)}</p>`; }
@@ -57,14 +59,14 @@ async function start() {
     if (!items.length) return '<p class="muted" style="margin:6px 0">No hay ningún alimento con ese nombre.</p>';
     return cats.map((c) => `<div class="fq-cat"><small>${esc(c)}</small><div class="fq-opts">${items.filter((x) => x.c === c).map((x) => {
       const on = st[g].includes(x.n);
-      return `<button type="button" class="fq-opt${on ? ' on' : ''}" data-g="${g}" data-n="${esc(x.n)}" aria-pressed="${on}">${on ? '✓ ' : ''}${esc(x.n)}</button>`;
+      return `<button type="button" class="fq-opt${on ? ' on' : ''}" data-g="${g}" data-n="${esc(x.n)}" aria-pressed="${on}">${on ? '✓ ' : ''}${esc(label(x.n))}</button>`;
     }).join('')}</div></div>`).join('');
   };
   const groupBox = ([g, label, ic, hint]) => `
     <section class="fq-group" id="fq-${g}">
       <div class="fq-head"><h2>${ic} ${label}</h2><span class="fq-count${st[g].length ? ' some' : ''}">${st[g].length}/${MAX}</span></div>
       <p class="muted fq-hint">${hint} Elige hasta ${MAX} favoritos.</p>
-      <div class="fq-picked">${st[g].map((n) => `<button type="button" class="fq-opt on" data-g="${g}" data-n="${esc(n)}">✓ ${esc(n)} ✕</button>`).join('') || '<span class="muted">Todavía no has elegido ninguno.</span>'}</div>
+      <div class="fq-picked">${st[g].map((n) => `<button type="button" class="fq-opt on" data-g="${g}" data-n="${esc(n)}">✓ ${esc(label(n))} ✕</button>`).join('') || '<span class="muted">Todavía no has elegido ninguno.</span>'}</div>
       <input type="search" class="fq-search" data-g="${g}" placeholder="Buscar (p. ej. pollo, arroz…)" value="${esc(filters[g])}" autocomplete="off">
       <div class="fq-all" data-list="${g}">${groupList(g)}</div>
     </section>`;

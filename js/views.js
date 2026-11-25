@@ -2657,6 +2657,8 @@
     const out = { proteinas: [], hidratos: [], grasas: [] };
     for (const f of Store.foods()) {
       if (FQ_SKIP.includes(f.category)) continue;
+      // Solo alimentos en crudo: fuera los cocinados (a la plancha, asados, al horno, cocidos…). El jamón cocido es un fiambre.
+      if (/a la plancha|asad[oa]|cocinad[oa]|al horno|\bcocid[oa]s?\b/i.test(f.name) && f.category !== 'Embutidos y fiambres') continue;
       let g = FQ_CAT[f.category];
       if (!g) {
         const p = (Number(f.protein) || 0) * 4; const h = (Number(f.carbs) || 0) * 4; const gr = (Number(f.fat) || 0) * 9;
