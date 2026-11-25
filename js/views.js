@@ -3048,7 +3048,25 @@
           </section>`,
     });
     const wkAlerts = unseenWorkouts();
+    // Clientes activos que todavía no tienen ninguna medida (peso y cintura de partida).
+    const noMeasures = active.filter((c) => !Store.measurementsFor(c.id).length);
     const alertSections = [
+      section('medidas-iniciales', '📏 Faltan medidas iniciales', noMeasures.length, '',
+        `<ul class="list">${noMeasures.map((c) => {
+          const pend = pendingRevision(c);
+          return `<li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">${pend ? `Enlace enviado el ${esc(fmtDate(pend.sentAt))} · esperando su peso, cintura y fotos` : `Sin peso, cintura ni fotos de partida${c.startDate ? ` · alta el ${esc(fmtDate(c.startDate))}` : ''}`}</div>
+            <div class="rv-actions" style="margin-top:8px">
+              <button class="btn sm ${pend ? '' : 'primary'}" data-action="send-revision" data-client="${c.id}">${U.icon('upload')}${pend ? 'Reenviar enlace' : 'Pedir medidas'}</button>
+              ${pend ? `<button class="btn sm" data-action="check-revision" data-client="${c.id}">${U.icon('refresh')}Comprobar</button>` : `<button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('edit')}Apuntar a mano</button>`}
+            </div>
+            </div>
+          </li>`;
+        }).join('')}</ul>`,
+        'Todos tienen sus medidas iniciales'),
       section('entrenos-nuevos', '💪 Entrenos completados', wkAlerts.length, wkAlerts.length ? '<button class="btn sm" data-action="wk-seen-all">Marcar todos como vistos</button>' : '',
         `<ul class="list task-list">${wkAlerts.map(({ c, w, list }) => {
           const done = (w.exercises || []).reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0);
@@ -4106,7 +4124,6 @@
     'Sexo | Hombre | Mujer',
     'Fecha de nacimiento',
     'Altura (cm)',
-    'Peso actual (kg)',
     '¿Cuál es tu objetivo principal? | Perder grasa | Ganar músculo | Ganar fuerza o rendimiento | Mejorar mi salud y sentirme mejor',
     '¿Tienes alguna lesión o dolor ahora mismo? | No | Sí, leve, no me limita | Sí, me limita al entrenar | Estoy recuperándome de una lesión',
     '¿Tienes algún problema de salud o tomas medicación? | No | Sí, algún problema de salud | Sí, tomo medicación | Las dos cosas',
@@ -4126,7 +4143,8 @@
   const qText = (q) => String(q || '').split('|')[0].trim();
   const qOpts = (q) => String(q || '').split('|').slice(1).map((x) => x.trim()).filter(Boolean).slice(0, 4);
 
-  const questions = () => (Array.isArray(Store.settings.questionnaire) && Store.settings.questionnaire.length ? Store.settings.questionnaire : DEFAULT_QUESTIONS);
+  // El peso no se pregunta en el cuestionario inicial: las medidas se piden aparte, con el enlace de primeras medidas.
+  const questions = () => (Array.isArray(Store.settings.questionnaire) && Store.settings.questionnaire.length ? Store.settings.questionnaire : DEFAULT_QUESTIONS).filter((q) => !/^peso/i.test(qText(q)));
 
   function questionnaireText(c) {
     const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
