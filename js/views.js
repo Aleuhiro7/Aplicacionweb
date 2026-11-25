@@ -2642,7 +2642,7 @@
     { k: 'ashwagandha', n: 'Ashwagandha', d: '300 mg al día' },
   ];
   /* ---------- Cuestionario de alimentación (alimentacion.html?t=CÓDIGO) ----------
-   * El cliente elige cuántas comidas quiere hacer, sus alimentos favoritos (hasta 5 de proteínas, de hidratos y de
+   * El cliente elige cuántas comidas quiere hacer, sus alimentos favoritos (hasta 10 de proteínas, de hidratos y de
    * grasas, de la biblioteca de alimentos) y los suplementos que quiere tomar. Va en cuestionarios/{código} con
    * kind «alimentacion» (las mismas reglas que el cuestionario inicial) y lo que elige queda en c.foodQuiz. */
   const FQ_GROUPS = [['proteinas', 'Proteínas', '🥩'], ['hidratos', 'Hidratos', '🍚'], ['grasas', 'Grasas', '🥑']];
@@ -2697,7 +2697,7 @@
       <div class="card-header"><h2>🍽️ Cuestionario de alimentación</h2>${q.token ? '<span class="badge">Enviado</span>' : ''}</div>
       <p class="muted" style="margin:0 0 10px">${q.token
         ? `Enviado el ${esc(fmtDate(q.sentAt))}. Cuando lo rellene verás aquí cuántas comidas quiere hacer, sus alimentos favoritos y los suplementos que quiere tomar.`
-        : `Antes de hacerle la dieta, pregúntale cuántas comidas quiere hacer al día, sus 5 alimentos favoritos de proteínas, de hidratos y de grasas (de tu biblioteca) y qué suplementos quiere tomar.`}</p>
+        : `Antes de hacerle la dieta, pregúntale cuántas comidas quiere hacer al día, sus 10 alimentos favoritos de proteínas, de hidratos y de grasas (de tu biblioteca) y qué suplementos quiere tomar.`}</p>
       <div class="actions">
         <button class="btn sm ${q.token ? '' : 'primary'} wa-btn" data-action="fq-send" data-client="${c.id}">${U.icon('message')}${q.token ? 'Reenviar enlace' : 'Enviar por WhatsApp'}</button>
         ${q.token ? `<button class="btn sm" data-action="check-questionnaire" data-client="${c.id}">${U.icon('refresh')}Comprobar</button>` : ''}
@@ -2741,7 +2741,7 @@
       const doc = await Sync.fetchQuestionnaire(q.token).catch(() => null);
       if (!doc || !doc.answeredAt || !Array.isArray(doc.answers)) continue;
       const a = doc.answers.map((x) => String(x || ''));
-      const list = (s) => s.split('|').map((x) => x.trim()).filter(Boolean).slice(0, 8);
+      const list = (s) => s.split('|').map((x) => x.trim()).filter(Boolean).slice(0, 20);
       const answeredAt = doc.answeredAt.toDate ? U.toISODate(doc.answeredAt.toDate()) : today();
       Store.update('clients', c.id, { foodQuiz: Object.assign({}, q, { answeredAt, meals: a[0] || '', proteinas: list(a[1] || ''), hidratos: list(a[2] || ''), grasas: list(a[3] || ''), supps: list(a[4] || '') }) });
       found++;
