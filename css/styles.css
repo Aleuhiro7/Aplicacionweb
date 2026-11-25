@@ -2464,3 +2464,4 @@ body.cz-lock[data-tab="rutina"] .cz-day .grow { gap: 0; }
 .fq-opt { padding: 7px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: .86rem; cursor: pointer; text-align: left; }
 .fq-opt.on { border-color: #3ee6a0; background: color-mix(in srgb, #3ee6a0 16%, transparent); color: #fff; font-weight: 600; }
 .cz-skip { display: block; margin: 10px auto 0; font-size: .82rem; line-height: 1.3; text-align: center; max-width: 100%; }
+.cz-guide-card.app { background: linear-gradient(135deg, rgba(62, 230, 160, .14), rgba(255, 255, 255, .03)); border-color: rgba(62, 230, 160, .35); }

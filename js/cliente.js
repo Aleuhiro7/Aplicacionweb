@@ -376,8 +376,55 @@ function guideView() {
       <span class="cz-guide-ico">🏋️</span>
       <span class="grow"><strong>Cómo entrenar</strong><small>Calentamiento, las 3 series, técnica y progreso</small></span><b>›</b>
     </button>
-    <ul class="cz-guide-mini">${G.protocol.map(([t]) => `<li>${t.replace(/\.$/, '')}</li>`).join('')}</ul>`;
+    <button type="button" class="cz-guide-card app" data-guide="app">
+      <span class="cz-guide-ico">📱</span>
+      <span class="grow"><strong>Cómo usar la app</strong><small>Diario, entreno paso a paso, descansos, tus datos y más</small></span><b>›</b>
+    </button>`;
 }
+
+/** «Cómo usar la app»: qué hace cada parte de la app de entrenamiento. */
+const APP_HELP = [
+  ['📅 Diario', [
+    'Es la pantalla principal. Arriba te dice qué día de tu rutina <b>te toca hoy</b>: pulsa <b>Entrenar hoy</b> para empezar.',
+    'Si te saltas un día (por ejemplo, haces el día 3 antes que el 2), la app te vuelve a proponer el que te falta y luego se salta el que ya adelantaste.',
+    'Debajo ves tus entrenos de este mes, las semanas seguidas que llevas entrenando y el total. En el calendario, los días que entrenaste salen marcados: toca uno para ver qué hiciste.',
+  ]],
+  ['🏋️ El entreno, paso a paso', [
+    'Te guía ejercicio a ejercicio y serie a serie. Arriba tienes el recordatorio de las <b>series de aproximación</b>; en cada ejercicio, las fotos de inicio y final y <b>cómo se hace</b>.',
+    'En cada serie apunta los <b>kg</b> y las <b>repeticiones</b>. Te recuerda lo que hiciste en el <b>entreno anterior</b>; si no escribes nada, se guarda ese mismo peso.',
+    'Pulsa <b>Hecho · ir al descanso</b> al terminar la serie. Si te equivocas, en el descanso tienes <b>Corregir el peso de esta serie</b>.',
+  ]],
+  ['⏱️ Descansos y alarma', [
+    'Pulsa <b>Empezar descanso</b> y la app cuenta el tiempo de ese ejercicio (3 min en pierna, 2 min en el resto). Puedes pausarlo o reiniciarlo.',
+    'Al terminar suena una <b>alarma</b> y vibra hasta que respondas si pasas a la siguiente serie o repites el descanso.',
+    'Deja la app abierta mientras descansas: si la cierras o bloqueas el móvil, puede que no suene. Durante el entreno la pantalla no se apaga sola.',
+    'En la última serie de un ejercicio te avisa de cuál es el siguiente, para que lo vayas preparando.',
+  ]],
+  ['⏭ ¿Máquina ocupada?', [
+    'Antes de empezar un ejercicio puedes pulsar <b>¿Máquina ocupada?</b>: haces antes el siguiente y luego te vuelve a salir el que te saltaste.',
+  ]],
+  ['⬆ Toca subir el peso', [
+    'Cuando tu entrenador ve que ya puedes con más, en esa serie te sale el aviso verde <b>Toca subir el peso en esta serie</b>. Sube un poco y apúntalo.',
+  ]],
+  ['✅ Terminar el entreno', [
+    'Al acabar la última serie, o con el botón <b>Terminar</b>, se guarda tu entreno y ves el resumen: tiempo, series y en qué has mejorado.',
+    'Si sales a mitad, el entreno se queda guardado: en el Diario te sale <b>Continuar</b> para seguir donde lo dejaste.',
+    'Tu entrenador ve tus entrenos y tus pesos para ajustar tu plan.',
+  ]],
+  ['💪 Rutina y 🍎 Dieta', [
+    '<b>Rutina:</b> todos los días de tu plan con sus ejercicios, fotos, series y descansos.',
+    '<b>Dieta:</b> tu plan de alimentación completo, tal cual te lo ha preparado tu entrenador.',
+  ]],
+  ['📈 Tus datos', [
+    'Tu peso y tu cintura con su evolución, tus calorías y macros pautados, tu mantenimiento y una estimación de cuánto peso perderás o ganarás por semana.',
+    'También ves cuánto entrenas: entrenos de las últimas semanas, duración media y mejoras.',
+  ]],
+  ['🔄 Actualizar, instalar y salir', [
+    'Si tu entrenador te cambia algo, pulsa <b>↻</b> arriba (o desliza la pantalla hacia abajo) para verlo al momento.',
+    'Con <b>Instalar app</b> la tienes en la pantalla de inicio del móvil, como cualquier otra app.',
+    'Para cerrar la sesión, toca tus iniciales arriba a la derecha.',
+  ]],
+];
 
 /** Contenido completo de la guía (en una ventana). */
 function guideFull(which) {
@@ -387,6 +434,11 @@ function guideFull(which) {
       <h2>Protocolo innegociable</h2>
       <p class="muted cz-guide-intro">${G.protocolIntro}</p>
       <ol class="cz-proto">${G.protocol.map(([t, d], i) => `<li><i>${i + 1}</i><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ol>
+    </section>`;
+  if (which === 'app') return `<section class="card cz-card cz-guide">
+      <h2>Cómo usar la app</h2>
+      <p class="muted cz-guide-intro">Todo lo que puedes hacer con tu app de entrenamiento, paso a paso.</p>
+      <ul class="cz-tips">${APP_HELP.map(([t, d]) => `<li><b>${t}</b>${d.map((x) => `<span>${x}</span>`).join('')}</li>`).join('')}</ul>
     </section>`;
   return `<section class="card cz-card cz-guide">
       <h2>Cómo entrenar</h2>
