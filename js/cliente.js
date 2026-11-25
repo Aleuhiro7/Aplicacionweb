@@ -782,11 +782,11 @@ function renderWorkout() {
     </header>
     <div class="cz-progress"><i style="width:${Math.round((doneSets / allSets) * 100)}%"></i></div>
     <div class="cz-approach cz-approach-grid">
-      <p class="cz-ap-title"><b>Series de aproximación</b> · 7–8 repeticiones, subiendo el peso · <b>1 min</b> de descanso entre series</p>
+      <p class="cz-ap-title"><b>Series de aproximación</b> · 7–8 repeticiones · <b>1 min</b> de descanso entre series</p>
       <div class="cz-ap-opts">
-        <div><span>Músculo grande o en frío</span><em><b>3 series</b><i> ·</i> al 50, 70 y 90 %</em></div>
-        <div><span>Músculo mediano o templado</span><em><b>2 series</b><i> ·</i> al 50 y 70 %</em></div>
-        <div><span>Músculo pequeño o ya caliente</span><em><b>1 serie</b><i> ·</i> al 50 %</em></div>
+        <div><span>Músculo grande o en frío</span><em><b>3 series</b><i> ·</i> al 50, 70 y 90 % del peso efectivo</em></div>
+        <div><span>Músculo mediano o templado</span><em><b>2 series</b><i> ·</i> al 50 y 70 % del peso efectivo</em></div>
+        <div><span>Músculo pequeño o ya caliente</span><em><b>1 serie</b><i> ·</i> al 50 % del peso efectivo</em></div>
       </div>
     </div>
     <section class="cz-wk" style="--cz-accent:${esc(e.color || '#6e8bff')}">
