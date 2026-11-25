@@ -108,8 +108,6 @@ async function start() {
           <strong>${p.label}</strong><small>${p.hint}</small>
           <em class="rv-change">Toca para elegir</em>
         </label>`).join('')}</div>
-      <label class="field"><span>¿Algo que quieras contarme? <small class="muted">(opcional)</small></span>
-        <textarea id="rv-nota" rows="3" maxlength="1500" placeholder="Cómo te has sentido, hambre, energía, descanso, dudas…"></textarea></label>
       <p class="rv-error" id="rv-error" hidden></p>
       <button type="submit" class="btn primary q-submit" id="rv-send">Enviar mi revisión</button>
       <p class="muted rv-privacy">Tus fotos solo las ve tu entrenador.</p>
@@ -145,7 +143,7 @@ async function start() {
     const btn = document.getElementById('rv-send');
     btn.disabled = true; btn.textContent = 'Enviando… (puede tardar un poco)';
     try {
-      await enviar({ token, peso, cintura, fotos, nota: document.getElementById('rv-nota').value.trim() });
+      await enviar({ token, peso, cintura, fotos, });
       thanks(data.clientName, data.coach);
       window.scrollTo(0, 0);
     } catch (e) {
