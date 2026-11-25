@@ -3184,7 +3184,19 @@
     };
     const listJoin = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}` : a[0]);
     const noMeasures = active.filter((c) => startMissing(c).length);
+    // Clientes activos con dieta a los que todavía no se les ha enviado el cuestionario de alimentación.
+    const noFoodQuiz = active.filter((c) => !c.noDiet && !(c.foodQuiz && c.foodQuiz.token));
     const alertSections = [
+      section('sin-cuestionario-alimentacion', '🍽️ Sin cuestionario de alimentación', noFoodQuiz.length, '',
+        `<ul class="list">${noFoodQuiz.map((c) => `<li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">No se le ha enviado el cuestionario de alimentación${c.startDate ? ` · alta el ${esc(fmtDate(c.startDate))}` : ''}</div>
+              <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary wa-btn" data-action="fq-send" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button></div>
+            </div>
+          </li>`).join('')}</ul>`,
+        'Todos lo tienen enviado'),
       section('medidas-iniciales', '📏 Faltan medidas iniciales', noMeasures.length, '',
         `<ul class="list">${noMeasures.map((c) => {
           const pend = pendingRevision(c);
