@@ -90,7 +90,7 @@ async function start() {
         <li><b>Cuándo:</b> por la mañana, en ayunas y después de ir al baño. Siempre en las mismas condiciones.</li>
         <li><b>Peso:</b> en la misma báscula, en el suelo duro (no en alfombra), con la menor ropa posible.</li>
         <li><b>Cintura:</b> con una cinta métrica a la altura del ombligo, de pie, relajado y sin meter tripa. La cinta recta y sin apretar. Mídela al final de soltar el aire.</li>
-        <li><b>Fotos:</b> ropa ajustada (ropa interior, bañador o top y pantalón corto), con buena luz y fondo liso. Que salga el cuerpo entero, de la cabeza a los pies.</li>
+        <li><b>Fotos:</b> en ropa interior o con ropa ajustada, con buena luz y fondo liso. Que salga el cuerpo entero, de la cabeza a los pies.</li>
         <li><b>Postura:</b> de pie, relajado, brazos un poco separados del cuerpo, sin posar ni apretar. El móvil a la altura del pecho y a unos 2–3 metros (mejor si te la hace otra persona o con temporizador).</li>
       </ol>
     </section>
