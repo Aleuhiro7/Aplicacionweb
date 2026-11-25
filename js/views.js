@@ -3048,8 +3048,17 @@
           </section>`,
     });
     const wkAlerts = unseenWorkouts();
-    // Clientes activos que todavía no tienen ninguna medida (peso y cintura de partida).
-    const noMeasures = active.filter((c) => !Store.measurementsFor(c.id).length);
+    // Clientes activos a los que les falta algo de la medición de partida: peso, cintura o fotos.
+    const startMissing = (c) => {
+      const ms = Store.measurementsFor(c.id);
+      return [
+        !ms.some((m) => Number(m.weight) > 0) ? 'peso' : '',
+        !ms.some((m) => Number(m.waist) > 0) ? 'cintura' : '',
+        !Store.photosFor(c.id).length ? 'fotos' : '',
+      ].filter(Boolean);
+    };
+    const listJoin = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}` : a[0]);
+    const noMeasures = active.filter((c) => startMissing(c).length);
     const alertSections = [
       section('medidas-iniciales', '📏 Faltan medidas iniciales', noMeasures.length, '',
         `<ul class="list">${noMeasures.map((c) => {
@@ -3058,7 +3067,7 @@
             ${avatar(c)}
             <div class="grow">
               <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
-              <div class="meta">${pend ? `Enlace enviado el ${esc(fmtDate(pend.sentAt))} · esperando su peso, cintura y fotos` : `Sin peso, cintura ni fotos de partida${c.startDate ? ` · alta el ${esc(fmtDate(c.startDate))}` : ''}`}</div>
+              <div class="meta">Le falta: <strong>${esc(listJoin(startMissing(c)))}</strong>${pend ? ` · enlace enviado el ${esc(fmtDate(pend.sentAt))}, esperando respuesta` : c.startDate ? ` · alta el ${esc(fmtDate(c.startDate))}` : ''}</div>
             <div class="rv-actions" style="margin-top:8px">
               <button class="btn sm ${pend ? '' : 'primary'}" data-action="send-revision" data-client="${c.id}">${U.icon('upload')}${pend ? 'Reenviar enlace' : 'Pedir medidas'}</button>
               ${pend ? `<button class="btn sm" data-action="check-revision" data-client="${c.id}">${U.icon('refresh')}Comprobar</button>` : `<button class="btn sm" data-action="new-measurement" data-client="${c.id}">${U.icon('edit')}Apuntar a mano</button>`}
@@ -3066,7 +3075,7 @@
             </div>
           </li>`;
         }).join('')}</ul>`,
-        'Todos tienen sus medidas iniciales'),
+        'Todos tienen peso, cintura y fotos'),
       section('entrenos-nuevos', '💪 Entrenos completados', wkAlerts.length, wkAlerts.length ? '<button class="btn sm" data-action="wk-seen-all">Marcar todos como vistos</button>' : '',
         `<ul class="list task-list">${wkAlerts.map(({ c, w, list }) => {
           const done = (w.exercises || []).reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0);
@@ -4226,7 +4235,7 @@
   function revisionBox(c) {
     const pend = pendingRevision(c);
     const last = (c.revisions || []).filter((r) => r.answeredAt).slice(-1)[0];
-    const first = !Store.measurementsFor(c.id).length;
+    const first = !Store.measurementsFor(c.id).length || !Store.photosFor(c.id).length; // sin medidas o sin fotos: aún es la de partida
     return `<div class="rv-box">
       ${pend ? `<p class="muted" style="margin:0 0 8px">📨 Enlace de ${first ? 'primeras medidas' : 'revisión'} enviado el ${esc(fmtDate(pend.sentAt))} · esperando sus datos y fotos.</p>`
         : last ? `<p class="muted" style="margin:0 0 8px">✅ Última revisión por enlace recibida el ${esc(fmtDate(last.answeredAt))}.</p>` : ''}
@@ -4242,7 +4251,7 @@
     if (location.protocol === 'file:') { UI.toast('Abre la app desde tu web publicada para poder enviar enlaces'); return; }
     if (!window.Sync || !Sync.state.user) { UI.toast('Inicia sesión con Google (Ajustes) para enviar enlaces'); return; }
     const pend = pendingRevision(c);
-    const first = !Store.measurementsFor(c.id).length;
+    const first = !Store.measurementsFor(c.id).length || !Store.photosFor(c.id).length; // sin medidas o sin fotos: aún es la de partida
     const token = pend ? pend.token : newToken();
     const coach = (Store.settings.trainerName || 'David Orihuela').split(' ')[0];
     const win = window.open('about:blank', '_blank');
