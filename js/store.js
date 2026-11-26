@@ -127,6 +127,22 @@
       base.settings.repsV2 = true;
       migrated = true;
     }
+    // Una sola vez: bíceps, tríceps y hombros pasan a 1:30 min de descanso también en los ejercicios escritos a mano
+    // (los de la biblioteca ya cambian solos), salvo si les pusiste otro descanso a propósito (ex.custom).
+    if (!base.settings.restV3) {
+      const SHORT = ['Bíceps', 'Tríceps', 'Hombros'];
+      const libGroup = new Map(base.library.map((x) => [x.id, x.group]));
+      for (const r of base.routines) {
+        for (const d of r.days || []) {
+          for (const ex of d.exercises || []) {
+            const g = ex.group || libGroup.get(ex.libraryId);
+            if (SHORT.includes(g) && !(ex.custom || []).includes('rest') && /^\s*2\s*min/i.test(ex.rest || '')) ex.rest = '1:30 min';
+          }
+        }
+      }
+      base.settings.restV3 = true;
+      migrated = true;
+    }
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {
       base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));

@@ -16,7 +16,7 @@ Recibirás en JSON los datos de un cliente: ficha, salud y lesiones, medidas (pe
 rutina (días y ejercicios) y entrenos que el cliente ha apuntado en su diario (series con kg y repeticiones).
 
 Método de David (tenlo en cuenta al valorar): 3 series por ejercicio — 1.ª efectiva de 12–15 repeticiones a 1 del fallo, 2.ª pesada de 6–8 al fallo total,
-3.ª con el peso de la 1.ª al fallo por agotamiento; antes, 1–3 series de aproximación; descansos de 3 min en pierna y 2 min en el resto.
+3.ª con el peso de la 1.ª al fallo por agotamiento; antes, 1–3 series de aproximación; descansos de 3 min en pierna, 1:30 min en bíceps, tríceps y hombros, y 2 min en el resto.
 Progresar es subir peso o, con el mismo peso, hacer más repeticiones: aumentar la intensidad también es progreso.
 
 Escribe en español de España, directo y práctico, para David (no para el cliente). Sé concreto: usa los números de los datos

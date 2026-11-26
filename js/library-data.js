@@ -11,9 +11,10 @@
   /* Método de David: el mismo en todos los ejercicios de la biblioteca (las series y repeticiones de cada
    * lista de abajo ya no se usan; se dejan como referencia). «3 series × …» se muestra junto. */
   const METHOD_SETS = '3';
-  /* Descanso: 3 minutos en todo lo de pierna y 2 minutos en el resto de músculos. */
+  /* Descanso: 3 minutos en todo lo de pierna, 1:30 en bíceps, tríceps y hombros, y 2 minutos en el resto. */
   const LEGS = ['Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Aductores', 'Gemelos'];
-  const restOf = (group) => (LEGS.includes(group) ? '3 min' : '2 min');
+  const SHORT = ['Bíceps', 'Tríceps', 'Hombros']; // músculos pequeños: 1:30 min
+  const restOf = (group) => (LEGS.includes(group) ? '3 min' : SHORT.includes(group) ? '1:30 min' : '2 min');
   const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
@@ -776,7 +777,7 @@
     'Serie 3 · Agotamiento: vuelve al peso de la serie 1 y haz todas las repeticiones que puedas, hasta el fallo total.',
   ] };
   for (const [group, sections] of Object.entries(window.LIBRARY_GUIDES)) {
-    const rest = LEGS.includes(group) ? 'Descanso: 3 minutos entre series.' : 'Descanso: 2 minutos entre series.';
+    const rest = LEGS.includes(group) ? 'Descanso: 3 minutos entre series.' : SHORT.includes(group) ? 'Descanso: 1 minuto y 30 segundos entre series.' : 'Descanso: 2 minutos entre series.';
     for (const sec of sections) sec.items = sec.items.map((t) => (/^Descanso:/.test(t) ? rest : t));
     const i = sections.findIndex((x) => x.title === 'Pautas básicas');
     sections.splice(i + 1, 0, METHOD_GUIDE);

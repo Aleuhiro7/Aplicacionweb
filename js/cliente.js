@@ -396,7 +396,7 @@ const APP_HELP = [
     'Pulsa <b>Hecho · ir al descanso</b> al terminar la serie. Si te equivocas, en el descanso tienes <b>Corregir el peso de esta serie</b>.',
   ]],
   ['⏱️ Descansos y alarma', [
-    'Pulsa <b>Empezar descanso</b> y la app cuenta el tiempo de ese ejercicio (3 min en pierna, 2 min en el resto). Puedes pausarlo o reiniciarlo.',
+    'Pulsa <b>Empezar descanso</b> y la app cuenta el tiempo de ese ejercicio (3 min en pierna; 1:30 en bíceps, tríceps y hombros; 2 min en el resto). Puedes pausarlo o reiniciarlo.',
     'Al terminar suena una <b>alarma</b> y vibra hasta que respondas si pasas a la siguiente serie o repites el descanso.',
     'Deja la app abierta mientras descansas: si la cierras o bloqueas el móvil, puede que no suene. Durante el entreno la pantalla no se apaga sola.',
     'En la última serie de un ejercicio te avisa de cuál es el siguiente, para que lo vayas preparando.',
@@ -537,6 +537,8 @@ const fmtKg = (n) => (Math.round(n * 100) / 100).toLocaleString('es-ES');
 /** «2 min» → 120 s · «90 s» → 90 · «2 a 3 min» → 120 (el primero). Sin dato: 2 min. */
 function restSeconds(text) {
   const t = String(text || '').toLowerCase();
+  const ms = t.match(/(\d+)\s*:\s*(\d{1,2})/); // «1:30 min»
+  if (ms) return Number(ms[1]) * 60 + Number(ms[2]);
   const n = num((t.match(/\d+(?:[.,]\d+)?/) || [])[0]);
   if (n === null) return 120;
   return Math.round(/min|'/.test(t) ? n * 60 : n);
