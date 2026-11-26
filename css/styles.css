@@ -2588,3 +2588,7 @@ html:has(body.cz-in-workout), body.cz-in-workout { height: 100%; overflow: hidde
 body.cz-in-workout .cz-wkscreen { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
 body.cz-in-workout .cz-wk { min-height: 0; }
 body.cz-in-workout .cz-wk-step { flex-shrink: 0; }
+.food-card-wrap { position: relative; display: flex; }
+.food-card-wrap .lib-card { flex: 1; padding-right: 48px; }
+.food-del { position: absolute; top: 8px; right: 8px; color: #f87171; opacity: .75; }
+.food-del:hover { opacity: 1; }

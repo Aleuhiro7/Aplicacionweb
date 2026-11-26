@@ -3998,11 +3998,14 @@
     return groups.map((g) => `
       <h3 class="lib-group">${esc(g.name)} <span class="muted">${g.items.length}</span></h3>
       <div class="lib-grid">${g.items.map((f) => `
-        <button class="lib-card" data-action="food-open" data-id="${f.id}">
-          <span class="lib-name">${esc(f.name)}</span>
-          ${foodMacros(f) ? `<span class="lib-series">${esc(foodMacros(f))}</span>` : ''}
-          ${f.notes ? `<span class="lib-desc">${esc(f.notes)}</span>` : ''}
-        </button>`).join('')}</div>`).join('');
+        <div class="food-card-wrap">
+          <button class="lib-card" data-action="food-open" data-id="${f.id}">
+            <span class="lib-name">${esc(f.name)}</span>
+            ${foodMacros(f) ? `<span class="lib-series">${esc(foodMacros(f))}</span>` : ''}
+            ${f.notes ? `<span class="lib-desc">${esc(f.notes)}</span>` : ''}
+          </button>
+          <button type="button" class="icon-btn food-del" data-action="food-delete" data-id="${f.id}" aria-label="Eliminar ${esc(f.name)}" title="Eliminar">${U.icon('trash')}</button>
+        </div>`).join('')}</div>`).join('');
   }
 
   function renderFoods() {
@@ -5088,6 +5091,7 @@
     'lib-new': () => libraryForm(),
     'food-new': () => foodForm(),
     'food-open': (d) => openFood(d.id),
+    'food-delete': (d) => deleteFood(d.id),
     'food-cat': (d) => { state.foodCat = d.value; App.render(); },
     'food-view': (d) => { state.foodView = d.value; App.render(); },
     'block-new': () => blockForm(),
