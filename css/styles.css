@@ -2582,3 +2582,9 @@ body.cz-fit-7 .cz-wk .cz-photos { min-height: 36px; }
 
 /* El nombre del siguiente ejercicio nunca sale con la letra grande del cronómetro. */
 html body .cz-timer .cz-nextex strong { font: 700 .9rem/1.2 "Archivo", sans-serif; margin: 0; color: var(--text); }
+
+/* Entreno: pantalla fija, no se desliza ni rebota al arrastrar el dedo. */
+html:has(body.cz-in-workout), body.cz-in-workout { height: 100%; overflow: hidden; overscroll-behavior: none; }
+body.cz-in-workout .cz-wkscreen { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; overscroll-behavior: none; }
+body.cz-in-workout .cz-wk { min-height: 0; }
+body.cz-in-workout .cz-wk-step { flex-shrink: 0; }

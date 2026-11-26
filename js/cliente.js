@@ -888,7 +888,11 @@ const FIT_MAX = 7;
 function fitWorkout() {
   const b = document.body;
   for (let i = 1; i <= FIT_MAX; i++) b.classList.remove(`cz-fit-${i}`);
-  const over = () => document.documentElement.scrollHeight > window.innerHeight + 1;
+  const scr = document.querySelector('.cz-wkscreen');
+  // La pantalla del entreno está fija (no se desliza): se mira si su contenido cabe dentro.
+  // Cabe si ni la pantalla ni la tarjeta del ejercicio tienen contenido que se salga (si no, se montan cosas).
+  const boxes = scr ? [scr, ...scr.querySelectorAll('.cz-wk, .cz-wk-step > .card')] : [];
+  const over = () => (scr ? boxes.some((el) => el.scrollHeight > el.clientHeight + 1) : document.documentElement.scrollHeight > window.innerHeight + 1);
   for (let lvl = 1; lvl <= FIT_MAX && over(); lvl++) b.classList.add(`cz-fit-${lvl}`);
 }
 window.addEventListener('resize', () => { if (wk && location.hash === '#entreno' && document.querySelector('.cz-wkscreen')) fitWorkout(); });
