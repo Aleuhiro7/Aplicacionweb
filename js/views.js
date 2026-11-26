@@ -2177,6 +2177,10 @@
     }, delay);
   }
   Store.onSave(() => syncPortals());
+  // Al abrir la app también: los cambios que hace la propia app al cargar (por ejemplo, descansos nuevos de la
+  // biblioteca) se guardan antes de que exista este aviso, y así llegan igualmente a la app de los clientes.
+  setTimeout(() => syncPortals(0), 4000);
+  setTimeout(() => syncPortals(0), 15000);
 
   async function invitePortal(clientId) {
     const c = Store.get('clients', clientId);
