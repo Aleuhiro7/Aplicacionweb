@@ -770,8 +770,8 @@
 
   /* El método de las 3 series, explicado en las pautas de cada músculo (justo después de las pautas básicas). */
   const METHOD_GUIDE = { title: 'Método de las 3 series', items: [
-    'Aproximación: antes de las series efectivas de cada ejercicio, haz series de aproximación de 7 u 8 repeticiones para calentar y preparar el músculo, subiendo el peso en cada una: 50 %, 70 % y 90 % del peso que vas a usar.',
-    'Cuántas: de 1 a 3, según el tamaño del músculo y lo caliente que esté. Un músculo grande o todavía en frío necesita 3 series (al 50, 70 y 90 %); uno mediano o ya templado, 2 series (al 50 y 70 %); y uno pequeño o que ya viene caliente de ejercicios anteriores, 1 sola serie (al 50 %).',
+    'Aproximación: antes de las series efectivas de cada ejercicio, haz de 1 a 3 series de aproximación de 7–8 repeticiones para calentar y preparar el músculo, con 1 min de descanso entre series.',
+    'Cuántas: músculo grande o en frío, 3 series al 50, 70 y 90 % del peso efectivo; músculo mediano o templado, 2 series al 50 y 70 % del peso efectivo; músculo pequeño o ya caliente, 1 serie al 50 % del peso efectivo.',
     'Serie 1 · Efectiva: entre 12 y 15 repeticiones, quedándote a 1 repetición del fallo.',
     'Serie 2 · Pesada: sube el peso y llega al fallo total entre 6 y 8 repeticiones.',
     'Serie 3 · Agotamiento: vuelve al peso de la serie 1 y haz todas las repeticiones que puedas, hasta el fallo total.',
