@@ -2546,12 +2546,14 @@ body.cz-fit-1 .cz-wk .cz-photos { min-height: 72px; }
 /* 2 · Números y botones algo más pequeños */
 body.cz-fit-2 .cz-wk-step .cz-in.big input { font-size: 1.25rem; padding: 6px 6px 17px; }
 body.cz-fit-2 .cz-wk-step .cz-play { padding: 10px; margin-top: 7px; font-size: .95rem; }
-body.cz-fit-2 .cz-wk-step .cz-timer strong { font-size: 2.4rem; margin: 0 0 2px; }
+body.cz-fit-2 .cz-wk-step .cz-timer #cz-timer-clock { font-size: 2.4rem; margin: 0 0 2px; }
 body.cz-fit-2 .cz-wk-step .cz-timer .btn { padding: 8px 14px; }
 body.cz-fit-2 .cz-last, body.cz-fit-2 .cz-up { margin-bottom: 5px; padding: 3px 8px; font-size: .74rem; }
 body.cz-fit-2 .cz-wk-bar strong { font-size: 1.1rem; }
 /* 3 · El siguiente ejercicio, sin foto y en una línea; el «cómo se hace», en 3 líneas */
 body.cz-fit-3 .cz-nextex img { display: none; }
+/* En el descanso, el aviso «Siguiente: …» ya dice el ejercicio: la tarjeta del siguiente sobra. */
+body.cz-fit-3 .cz-timer .cz-nextex { display: none; }
 body.cz-fit-3 .cz-nextex { padding: 4px 8px; margin-bottom: 5px; }
 body.cz-fit-3 .cz-nextex small, body.cz-fit-3 .cz-nextex span { display: none; }
 body.cz-fit-3 .cz-wk-how p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2577,3 +2579,6 @@ body.cz-fit-6 .cz-ask-title { font-size: 1.05rem; }
 body.cz-fit-7 .cz-wk-how p { -webkit-line-clamp: 1; }
 body.cz-fit-7 .cz-wk-how b { display: none; }
 body.cz-fit-7 .cz-wk .cz-photos { min-height: 36px; }
+
+/* El nombre del siguiente ejercicio nunca sale con la letra grande del cronómetro. */
+html body .cz-timer .cz-nextex strong { font: 700 .9rem/1.2 "Archivo", sans-serif; margin: 0; color: var(--text); }
