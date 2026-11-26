@@ -2680,6 +2680,7 @@
   const pendingFoodQuiz = (c) => (c.foodQuiz && c.foodQuiz.token && !c.foodQuiz.answeredAt ? c.foodQuiz : null);
   function foodQuizCard(c) {
     const q = c.foodQuiz || {};
+    if (q.answeredAt && !q.seenAt) setTimeout(() => { const cur = Store.get('clients', c.id); if (cur && cur.foodQuiz && !cur.foodQuiz.seenAt) Store.update('clients', c.id, { foodQuiz: Object.assign({}, cur.foodQuiz, { seenAt: today() }) }); }, 0);
     const first = c.name.split(' ')[0];
     if (q.answeredAt) {
       const chips = (arr) => (arr && arr.length ? arr.map((x) => `<span class="fq-chip">${esc(x)}</span>`).join('') : '<span class="muted">Ninguno</span>');
@@ -3188,9 +3189,21 @@
     };
     const listJoin = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}` : a[0]);
     const noMeasures = active.filter((c) => startMissing(c).length);
+    // Cuestionarios de alimentación ya rellenados que todavía no has mirado.
+    const fqDone = d.clients.filter((c) => c.foodQuiz && c.foodQuiz.answeredAt && !c.foodQuiz.seenAt);
     // Clientes activos con dieta a los que todavía no se les ha enviado el cuestionario de alimentación.
     const noFoodQuiz = active.filter((c) => !c.noDiet && !(c.foodQuiz && c.foodQuiz.token));
     const alertSections = [
+      section('alimentacion-completada', '🍽️ Cuestionario de alimentación completado', fqDone.length, '',
+        `<ul class="list">${fqDone.map((c) => `<li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">Lo rellenó el ${esc(fmtDate(c.foodQuiz.answeredAt))} · ${esc(c.foodQuiz.meals || '—')} comidas al día, sus alimentos favoritos y sus suplementos</div>
+              <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary" data-action="fq-open" data-client="${c.id}">${U.icon('file')}Verlo en su dieta</button><button class="btn sm" data-action="fq-seen" data-client="${c.id}">${U.icon('check')}Visto</button></div>
+            </div>
+          </li>`).join('')}</ul>`,
+        'Nada nuevo'),
       section('sin-cuestionario-alimentacion', '🍽️ Sin cuestionario de alimentación', noFoodQuiz.length, '',
         `<ul class="list">${noFoodQuiz.map((c) => `<li class="plan-item">
             ${avatar(c)}
@@ -5107,6 +5120,12 @@
     'send-revision': (d) => sendRevisionLink(d.client),
     'fq-send': (d) => sendFoodQuiz(d.client, d.value === 'new'),
     'fq-supps': (d) => applyFoodQuizSupps(d.client),
+    'fq-seen': (d) => { const c = Store.get('clients', d.client); if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) }); App.render(); },
+    'fq-open': (d) => {
+      const c = Store.get('clients', d.client);
+      if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) });
+      state.clientTab = 'dieta'; state.keepTab = true; location.hash = `#/clientes/${d.client}`;
+    },
     'check-revision': (d) => checkQuestionnaireLinks(d.client, true),
     'send-questionnaire-link': (d) => sendQuestionnaireLink(d.client),
     'diet-targets': (d) => dietTargetsForm(d.client),
