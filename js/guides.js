@@ -28,7 +28,7 @@
       ['La técnica, primero', 'Recorrido completo y controlado. Si la técnica se rompe, la serie ha terminado.'],
       ['Respeta los descansos', 'Usa el descanso que pone en cada ejercicio para rendir en la siguiente serie.'],
       ['Apunta tus pesos', 'Anota el peso y las repeticiones de cada serie. Así puedo estudiar bien tu progreso y saber cuándo te toca subir el peso la próxima vez.'],
-      ['Progresa poco a poco', 'Con los registros de la app de entrenamiento estudio tu rendimiento y vigilo tu progreso, y te indico a través de la propia app cuándo y en qué serie debes subir el peso. Recuerda que aumentar la intensidad también es progreso.'],
+      ['Progresa poco a poco', 'Con los registros de la app de entrenamiento estudio tu rendimiento y vigilo tu progreso, te indico a través de la propia app cuándo y en qué serie debes subir el peso. Recuerda que aumentar la intensidad también es progreso.'],
       ['Escucha a tu cuerpo', 'Si algo duele (dolor, no esfuerzo), para y coméntamelo.'],
     ],
   };
