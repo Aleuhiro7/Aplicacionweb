@@ -825,6 +825,7 @@ function renderWorkout() {
       <small>Descanso · serie ${wk.set + 1} hecha${cur.kg ? ` (${esc(cur.kg)} kg × ${esc(cur.reps || '—')})` : ''}</small>
       <strong id="cz-timer-clock">${fmtClock(t ? timerLeft() : restSeconds(e.rest))}</strong>
       <p class="muted cz-step-hint">${!t ? 'Cuando termines la serie, pulsa ▶ para empezar el descanso.' : t.running ? 'Descansando…' : 'En pausa.'}</p>
+      ${nextSetHint()}
       ${nextCard}
       <div class="cz-row">
         ${!t ? '<button type="button" class="btn primary cz-play" id="cz-t-start">▶ Empezar descanso</button>'
@@ -926,6 +927,23 @@ function skipExercise() {
   wk.set = 0; wk.phase = 'set'; wk.timer = null;
   saveWk(); renderWorkout(); window.scrollTo(0, 0);
   flash(`«${skipped.name}» lo haces después`);
+}
+
+/** En el descanso: qué toca después (la siguiente serie, o la primera del siguiente ejercicio) y qué peso y
+ * repeticiones hiciste en esa serie el entreno anterior, para tener el peso preparado antes de que acabe. */
+function nextSetHint() {
+  if (!wk) return '';
+  const e = wk.exercises[wk.ex];
+  let ex = e; let i = wk.set + 1;
+  if (i >= e.sets.length) { if (wk.ex >= wk.exercises.length - 1) return ''; ex = wk.exercises[wk.ex + 1]; i = 0; }
+  const last = lastSets(ex, wk.id);
+  const prev = last && last.sets[i];
+  const label = setInfo(ex, i)[0];
+  const what = ex === e ? label : `${label} de ${ex.name}`;
+  const up = upNow(ex, i) ? ' · <b class="cz-up-mini">⬆ toca subir el peso</b>' : '';
+  return prev && prev.done && prev.kg
+    ? `<p class="cz-last cz-last-next">Siguiente: ${esc(what)} · entreno anterior${last.w.date ? ` (${esc(shortDate(last.w.date))})` : ''}: <b>${esc(prev.kg)} kg × ${esc(prev.reps || '—')}</b>${up}</p>`
+    : `<p class="cz-last cz-last-next none">Siguiente: ${esc(what)} · sin datos del entreno anterior${up}</p>`;
 }
 
 /** Siguiente paso tras el descanso: siguiente serie, o primera serie del siguiente ejercicio, o terminar. */

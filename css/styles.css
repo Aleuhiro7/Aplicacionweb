@@ -2531,3 +2531,6 @@ button.cz-day .cz-day-count { font: 600 .82rem/1.2 "Archivo", sans-serif; color:
 .asis-mic.on { background: #ef4444; animation: asis-pulse 1.2s infinite; }
 @keyframes asis-pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .55); } 100% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); } }
 @media (max-width: 520px) { #asis-panel { right: 0; left: 0; bottom: 0; width: 100%; height: 82dvh; border-radius: 22px 22px 0 0; } }
+.cz-last-next { margin: 0 0 8px; }
+.cz-last-next.none { padding: 4px 10px; }
+.cz-up-mini { color: #4ade80 !important; font-size: .82rem !important; }
