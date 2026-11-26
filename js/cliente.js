@@ -298,7 +298,8 @@ function render() {
     <div class="cz-body">${body}</div>
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
   // Pestañas principales (no la dieta ni las subpáginas): ocupan justo la pantalla y no se desliza.
-  const main = (h === '' || h === tab) && tab !== 'dieta';
+  // En móviles muy pequeños (menos de 340 de ancho o 540 de alto) no cabe todo: ahí sí se puede deslizar.
+  const main = (h === '' || h === tab) && tab !== 'dieta' && window.innerWidth >= 340 && window.innerHeight >= 540;
   document.body.classList.toggle('cz-lock', main);
   document.body.dataset.tab = main ? tab : '';
   bindLogout();
@@ -701,7 +702,7 @@ function chooseDayView(days) {
       ${days.map((d, i) => `<button type="button" class="card cz-day${i === next ? ' next' : ''}" data-start="${i}">
         <span class="cz-day-n">${i + 1}</span>
         <span class="grow"><strong>${esc(d.name)}</strong><small>${esc(d.groups.map((g) => g.g).join(' · '))}</small></span>
-        ${i === next ? '<span class="cz-next">Te toca</span>' : done.has(i) ? '<span class="cz-day-count">✓ Hecho esta vuelta</span>' : `<span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>`}
+        ${i === next ? '<span class="cz-next">Te toca</span>' : done.has(i) ? '<span class="cz-day-done">✓ Hecho<br>esta vuelta</span>' : `<span class="cz-day-count">${d.groups.reduce((n, g) => n + g.exs.length, 0)} ejercicios</span>`}
       </button>`).join('')}
     </section>`;
 }
