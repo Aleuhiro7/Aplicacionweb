@@ -1407,8 +1407,6 @@
         <span class="block-chev">${U.icon('down')}</span>
       </summary>
       <div class="meal-body">
-        <div class="field meal-name"><label for="mn-${meal.id}">Nombre de la comida</label>
-          <input id="mn-${meal.id}" value="${esc(meal.name)}" data-action-change="meal-rename" data-client="${c.id}" data-meal="${meal.id}" list="meal-names" placeholder="Ej.: Desayuno, Preentreno…"></div>
         ${macroBars(tot, target)}
         ${multi ? `<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: ${equivBy() === 'kcal' ? 'todas aportan las mismas <strong>calorías</strong>' : 'todas aportan lo mismo de su macro'}. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>` : ''}
         ${items.length ? groups.map((g) => `<div class="meal-group m-${g.key}">
@@ -1515,28 +1513,20 @@
     App.render();
   }
 
-  /** Cambiar el nombre de una comida: uno de los habituales, «Comida 1, 2…» o escrito a mano. */
+  /** Cambiar el nombre de una comida: se elige uno de la lista con un toque. */
+  const MEAL_CHOICES = ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'];
   function mealNameForm(clientId, mealId) {
     const d = Store.dietFor(clientId);
     const meal = d && (d.meals || []).find((m) => m.id === mealId);
     if (!meal) return;
-    const idx = d.meals.indexOf(meal) + 1;
-    const opts = ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena', `Comida ${idx}`];
     UI.openModal({
-      title: 'Nombre de la comida',
-      body: `<div class="meal-name-chips">${opts.map((n) => `<button type="button" class="chip${n === meal.name ? ' active' : ''}" data-mname="${esc(n)}">${esc(n)}</button>`).join('')}</div>
-        <div class="field" style="margin-top:14px"><label for="mname-free">O escríbelo tú</label><input id="mname-free" value="${esc(meal.name)}" maxlength="40" placeholder="Ej.: Desayuno postentreno"></div>`,
-      footer: '<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary">Guardar</button>',
+      title: 'Elige la comida',
+      body: `<div class="meal-name-chips">${MEAL_CHOICES.map((n) => `<button type="button" class="chip${n === meal.name ? ' active' : ''}" data-mname="${esc(n)}">${esc(n)}</button>`).join('')}</div>`,
+      footer: '<button type="button" class="btn" data-close>Cancelar</button>',
       onOpen: (dlg) => {
-        const inp = dlg.querySelector('#mname-free');
-        dlg.querySelectorAll('[data-mname]').forEach((b) => { b.onclick = () => { inp.value = b.dataset.mname; dlg.querySelectorAll('[data-mname]').forEach((x) => x.classList.toggle('active', x === b)); }; });
-      },
-      onSubmit: () => {
-        const name = (document.getElementById('mname-free').value || '').trim();
-        if (!name) { UI.toast('Escribe un nombre'); return false; }
-        updateMeal(clientId, mealId, (m) => { m.name = name; }, { solve: false });
-        UI.closeModal();
-        UI.toast('Nombre cambiado');
+        dlg.querySelectorAll('[data-mname]').forEach((b) => {
+          b.onclick = () => { updateMeal(clientId, mealId, (m) => { m.name = b.dataset.mname; }, { solve: false }); UI.closeModal(); UI.toast(`Ahora es «${b.dataset.mname}»`); };
+        });
       },
     });
   }

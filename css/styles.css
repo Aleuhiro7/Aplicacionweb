@@ -2602,3 +2602,5 @@ p.mp-fq > span { flex: 1; }
 .meal-name-btn { width: 30px; height: 30px; vertical-align: middle; margin-left: 4px; opacity: .7; }
 .meal-name-btn svg { width: 15px; height: 15px; }
 .meal-name-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.meal-name-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meal-name-chips .chip { justify-content: center; padding: 12px; font-size: .95rem; }
