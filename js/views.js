@@ -1401,7 +1401,7 @@
       <summary data-action="meal-toggle" data-id="${meal.id}">
         <span class="meal-num">${idx + 1}</span>
         <div class="grow">
-          <h3>${esc(meal.name)}</h3>
+          <h3>${esc(meal.name)} <button type="button" class="icon-btn meal-name-btn" data-action="meal-name-edit" data-client="${c.id}" data-meal="${meal.id}" aria-label="Cambiar el nombre de ${esc(meal.name)}" title="Cambiar el nombre">${U.icon('edit')}</button></h3>
           <div class="muted">${meal.vegFree ? '<span class="veg-tag">+ verdura</span> ' : ''}${items.length ? `${plural(items.length, 'alimento', 'alimentos')} · ${multi ? '≈ ' : ''}${fmtNum(tot.kcal, 0)}${target ? ` / ${fmtNum(target.kcal, 0)}` : ''} kcal` : 'Sin alimentos'}</div>
         </div>
         <span class="block-chev">${U.icon('down')}</span>
@@ -1513,6 +1513,32 @@
     meals.forEach((m) => solveMeal(m, mealTargets(nd, m.id)));
     saveDiet(clientId, { meals });
     App.render();
+  }
+
+  /** Cambiar el nombre de una comida: uno de los habituales, «Comida 1, 2…» o escrito a mano. */
+  function mealNameForm(clientId, mealId) {
+    const d = Store.dietFor(clientId);
+    const meal = d && (d.meals || []).find((m) => m.id === mealId);
+    if (!meal) return;
+    const idx = d.meals.indexOf(meal) + 1;
+    const opts = ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena', `Comida ${idx}`];
+    UI.openModal({
+      title: 'Nombre de la comida',
+      body: `<div class="meal-name-chips">${opts.map((n) => `<button type="button" class="chip${n === meal.name ? ' active' : ''}" data-mname="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+        <div class="field" style="margin-top:14px"><label for="mname-free">O escríbelo tú</label><input id="mname-free" value="${esc(meal.name)}" maxlength="40" placeholder="Ej.: Desayuno postentreno"></div>`,
+      footer: '<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary">Guardar</button>',
+      onOpen: (dlg) => {
+        const inp = dlg.querySelector('#mname-free');
+        dlg.querySelectorAll('[data-mname]').forEach((b) => { b.onclick = () => { inp.value = b.dataset.mname; dlg.querySelectorAll('[data-mname]').forEach((x) => x.classList.toggle('active', x === b)); }; });
+      },
+      onSubmit: () => {
+        const name = (document.getElementById('mname-free').value || '').trim();
+        if (!name) { UI.toast('Escribe un nombre'); return false; }
+        updateMeal(clientId, mealId, (m) => { m.name = name; }, { solve: false });
+        UI.closeModal();
+        UI.toast('Nombre cambiado');
+      },
+    });
   }
 
   /** Abre la biblioteca de bloques para elegir varios alimentos y añadirlos a una comida. */
@@ -5198,6 +5224,7 @@
     'meal-count-cancel': () => { state.editMealCount = false; App.render(); },
     'meal-toggle': (d, el) => { const det = el.closest('details'); det.open = !det.open; state.openMeal = det.open ? d.id : null; },
     'meal-veg': (d, el) => updateMeal(d.client, d.meal, (m) => { m.vegFree = el.checked; }, { solve: false }),
+    'meal-name-edit': (d, el, ev) => { if (ev) { ev.preventDefault(); ev.stopPropagation(); } mealNameForm(d.client, d.meal); },
     'meal-rename': (d, el) => { const name = el.value.trim(); if (name) updateMeal(d.client, d.meal, (m) => { m.name = name; }, { solve: false }); },
     'meal-add': (d) => mealPicker(d.client, d.meal),
     'meal-solve': (d) => { updateMeal(d.client, d.meal, () => {}); UI.toast('Cantidades reajustadas'); },
