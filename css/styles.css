@@ -2534,3 +2534,46 @@ button.cz-day .cz-day-count { font: 600 .82rem/1.2 "Archivo", sans-serif; color:
 .cz-last-next { margin: 0 0 8px; }
 .cz-last-next.none { padding: 4px 10px; }
 .cz-up-mini { color: #4ade80 !important; font-size: .82rem !important; }
+
+/* ---------- Entreno en una sola pantalla: niveles de compactado (los pone fitWorkout en cliente.js) ---------- */
+/* 1 · Fuera los textos de ayuda y menos aire */
+body.cz-fit-1 .cz-wkscreen { gap: 5px; padding-top: 5px; padding-bottom: calc(5px + env(safe-area-inset-bottom)); }
+body.cz-fit-1 .cz-wk { gap: 5px; padding: 8px 10px; }
+body.cz-fit-1 .cz-wk-step .cz-step-hint { display: none; }
+body.cz-fit-1 .cz-skip { margin-top: 6px; font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.cz-fit-1 .cz-wk-step > .card { padding: 9px 12px; }
+body.cz-fit-1 .cz-wk .cz-photos { min-height: 72px; }
+/* 2 · Números y botones algo más pequeños */
+body.cz-fit-2 .cz-wk-step .cz-in.big input { font-size: 1.25rem; padding: 6px 6px 17px; }
+body.cz-fit-2 .cz-wk-step .cz-play { padding: 10px; margin-top: 7px; font-size: .95rem; }
+body.cz-fit-2 .cz-wk-step .cz-timer strong { font-size: 2.4rem; margin: 0 0 2px; }
+body.cz-fit-2 .cz-wk-step .cz-timer .btn { padding: 8px 14px; }
+body.cz-fit-2 .cz-last, body.cz-fit-2 .cz-up { margin-bottom: 5px; padding: 3px 8px; font-size: .74rem; }
+body.cz-fit-2 .cz-wk-bar strong { font-size: 1.1rem; }
+/* 3 · El siguiente ejercicio, sin foto y en una línea; el «cómo se hace», en 3 líneas */
+body.cz-fit-3 .cz-nextex img { display: none; }
+body.cz-fit-3 .cz-nextex { padding: 4px 8px; margin-bottom: 5px; }
+body.cz-fit-3 .cz-nextex small, body.cz-fit-3 .cz-nextex span { display: none; }
+body.cz-fit-3 .cz-wk-how p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.cz-fit-3 .cz-wk-how { font-size: .74rem; padding: 4px 8px; min-height: 0; }
+/* 4 · Fotos más bajas y series más finas */
+body.cz-fit-4 .cz-wk .cz-photos { min-height: 56px; }
+body.cz-fit-4 .cz-wk .cz-setlist li { padding: 2px 3px; font-size: .7rem; }
+body.cz-fit-4 .cz-wk .cz-setlist li b { font-size: .78rem; }
+body.cz-fit-4 .cz-wk .cz-wk-name { font-size: 1.05rem; }
+body.cz-fit-4 .cz-wk .cz-series { font-size: .7rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* 5 · Recuadro de aproximación más compacto (sin el nombre de cada tipo de músculo) */
+body.cz-fit-5 .cz-ap-opts span { display: none; }
+body.cz-fit-5 .cz-ap-title { font-size: .64rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.cz-fit-5 .cz-wk-how p { -webkit-line-clamp: 2; }
+body.cz-fit-5 .cz-wk .cz-glabel { display: none; }
+/* 6 · Lo justo */
+body.cz-fit-6 .cz-wk .cz-photos { min-height: 44px; }
+body.cz-fit-6 .cz-wk-step .cz-kicker { font-size: .62rem; }
+body.cz-fit-6 .cz-wk-step .cz-timer small { font-size: .6rem; }
+body.cz-fit-6 .cz-wk-step .cz-edit-set { margin-top: 2px; font-size: .72rem; }
+body.cz-fit-6 .cz-ask-title { font-size: 1.05rem; }
+/* 7 · Último recurso: el «cómo se hace» en una línea */
+body.cz-fit-7 .cz-wk-how p { -webkit-line-clamp: 1; }
+body.cz-fit-7 .cz-wk-how b { display: none; }
+body.cz-fit-7 .cz-wk .cz-photos { min-height: 36px; }

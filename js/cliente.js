@@ -879,7 +879,19 @@ function renderWorkout() {
   document.body.classList.add('cz-in-workout');
   document.body.classList.remove('cz-lock');
   window.scrollTo(0, 0);
+  fitWorkout();
 }
+
+/* El entreno cabe siempre en una pantalla: si en este móvil no cabe todo, se va compactando por orden
+ * (primero lo menos importante) hasta que entra. Niveles en styles.css (body.cz-fit-1 … cz-fit-7). */
+const FIT_MAX = 7;
+function fitWorkout() {
+  const b = document.body;
+  for (let i = 1; i <= FIT_MAX; i++) b.classList.remove(`cz-fit-${i}`);
+  const over = () => document.documentElement.scrollHeight > window.innerHeight + 1;
+  for (let lvl = 1; lvl <= FIT_MAX && over(); lvl++) b.classList.add(`cz-fit-${lvl}`);
+}
+window.addEventListener('resize', () => { if (wk && location.hash === '#entreno' && document.querySelector('.cz-wkscreen')) fitWorkout(); });
 
 function bindWorkout() {
   const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
