@@ -4024,7 +4024,7 @@
     }
     return `
       <div class="page-header">
-        <div><h1 class="display">Biblioteca de alimentos</h1><p>${plural(Store.data.foods.length, 'alimento', 'alimentos')}</p></div>
+        <div><h1 class="display">Biblioteca de alimentos</h1><p>${plural(Store.data.foods.length, 'alimento', 'alimentos')}${(Store.settings.foodsRemoved || []).length ? ` · <button type="button" class="link-btn" data-action="foods-restore">recuperar ${(Store.settings.foodsRemoved || []).length} eliminados</button>` : ''}</p></div>
       </div>
       ${tabs}
       <div class="card">
@@ -4200,19 +4200,46 @@
       ],
       values: existing || (state.foodCat !== 'todos' ? { category: state.foodCat } : {}),
       submitLabel: existing ? 'Guardar' : 'Añadir',
-      onDelete: existing ? async () => {
-        const ok = await UI.confirm({ title: 'Eliminar alimento', message: `¿Eliminar «${esc(existing.name)}» de la biblioteca?` });
-        if (!ok) return;
-        Store.removeFood(id);
-        UI.toast('Alimento eliminado');
-        App.render();
-      } : null,
+      onDelete: existing ? () => deleteFood(id) : null,
       onSubmit: (v) => {
         if (existing) Store.update('foods', id, v); else Store.add('foods', v);
         UI.toast(existing ? 'Alimento actualizado' : 'Alimento añadido');
         App.render();
       },
     });
+  }
+
+  /** Elimina un alimento de la biblioteca (también los que vienen de serie: se pueden recuperar luego). */
+  async function deleteFood(id) {
+    const f = Store.get('foods', id);
+    if (!f) return;
+    const usedIn = Store.data.diets.filter((d) => (d.meals || []).some((m) => (m.items || []).some((it) => it.foodId === id)))
+      .map((d) => (Store.get('clients', d.clientId) || {}).name).filter(Boolean);
+    const ok = await UI.confirm({
+      title: 'Eliminar alimento',
+      message: `¿Eliminar «${esc(f.name)}» de la biblioteca?${usedIn.length ? `<br><br><strong>Está en la dieta de ${esc(usedIn.join(', '))}</strong>: se quitará también de esas comidas.` : ''}${f.builtIn ? '<br><br>Es de los alimentos de serie: si lo necesitas otra vez, puedes recuperarlo desde la biblioteca.' : ''}`,
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
+    for (const d of Store.data.diets) for (const m of d.meals || []) if ((m.items || []).some((it) => it.foodId === id)) m.items = m.items.filter((it) => it.foodId !== id);
+    for (const b of Store.data.foodBlocks) if ((b.foodIds || []).includes(id)) b.foodIds = b.foodIds.filter((x) => x !== id);
+    Store.removeFood(id);
+    UI.closeModal && UI.closeModal();
+    UI.toast(`«${f.name}» eliminado`);
+    App.render();
+  }
+  /** Vuelve a poner en la biblioteca los alimentos de serie que se eliminaron. */
+  async function restoreFoods() {
+    const n = (Store.settings.foodsRemoved || []).length;
+    if (!n) return;
+    const ok = await UI.confirm({ title: 'Recuperar alimentos', message: `Vuelven a la biblioteca los ${n} alimentos de serie que eliminaste.`, confirmLabel: 'Recuperar', danger: false });
+    if (!ok) return;
+    const ids = new Set(Store.settings.foodsRemoved);
+    Store.settings.foodsRemoved = [];
+    for (const f of window.FOODS_DEFAULT || []) if (ids.has(f.id) && !Store.get('foods', f.id)) Store.data.foods.push(Object.assign({ builtIn: true }, f));
+    Store.save();
+    UI.toast('Alimentos recuperados');
+    App.render();
   }
 
   function openFood(id) {
@@ -4227,8 +4254,8 @@
         ${f.notes ? `<p class="lib-detail-desc" style="margin-top:14px">${esc(f.notes)}</p>` : ''}
         ${Store.blocksForFood(f.id).length ? `<p class="muted" style="margin:14px 0 0">Bloques: ${Store.blocksForFood(f.id).map((b) => { const e = equivalence(b, f); return `<strong>${esc(b.name)}</strong>${e ? ` (${e.grams} ${unitOf(f)} = ${esc(blockRef(b))})` : ''}`; }).join(' · ')}</p>` : ''}
       </div>`,
-      footer: `${f.builtIn ? '<span style="margin-right:auto"></span>' : `<button type="button" class="btn" id="food-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>`}<button type="button" class="btn primary" data-close>Cerrar</button>`,
-      onOpen: () => { const b = document.getElementById('food-edit'); if (b) b.onclick = () => foodForm(id); },
+      footer: `<button type="button" class="btn danger" id="food-del">${U.icon('trash')}Eliminar</button>${f.builtIn ? '<span style="margin-right:auto"></span>' : `<button type="button" class="btn" id="food-edit" style="margin-right:auto">${U.icon('edit')}Editar</button>`}<button type="button" class="btn primary" data-close>Cerrar</button>`,
+      onOpen: () => { const b = document.getElementById('food-edit'); if (b) b.onclick = () => foodForm(id); document.getElementById('food-del').onclick = () => deleteFood(id); },
     });
   }
 
@@ -5120,6 +5147,7 @@
     'send-revision': (d) => sendRevisionLink(d.client),
     'fq-send': (d) => sendFoodQuiz(d.client, d.value === 'new'),
     'fq-supps': (d) => applyFoodQuizSupps(d.client),
+    'foods-restore': () => restoreFoods(),
     'fq-seen': (d) => { const c = Store.get('clients', d.client); if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) }); App.render(); },
     'fq-open': (d) => {
       const c = Store.get('clients', d.client);
