@@ -155,3 +155,91 @@ export const enviarRevision = onCall(
     return { ok: true };
   },
 );
+
+/* ---------- Asistente por voz de la app del entrenador ----------
+ * La app manda la conversación (lo que David ha dicho, lo que ha respondido Claude y los resultados de las
+ * herramientas) y aquí se le pasa a Claude con las herramientas de la app. Las herramientas las ejecuta la propia
+ * app (los datos están allí): esta función solo hace de puente, para que la clave de Claude no salga del servidor.
+ * Las que cambian algo (apuntar, crear, registrar, enviar) la app las enseña y no las hace hasta que David confirma. */
+const ASIS_SYSTEM = `Eres el asistente por voz de la app de gestión de David Orihuela, entrenador personal online en España.
+David te habla (a veces desde el gimnasio, con prisa) y tú le ayudas a consultar y a hacer cosas en su app usando las herramientas.
+
+Cómo trabajar:
+- Para saber de quién habla, busca primero al cliente con buscar_clientes (los nombres pueden venir mal escritos por el dictado:
+  busca por el nombre de pila y elige el que mejor encaje). Si hay varios posibles, pregúntale cuál.
+- Para consultar, usa las herramientas y responde con los datos. Si falta un dato para hacer algo (por ejemplo el importe),
+  pregúntalo en una frase corta.
+- Las herramientas que cambian algo las confirma David en pantalla antes de hacerse: llámalas directamente, sin preguntar
+  «¿lo hago?». Si el resultado dice que lo canceló, no insistas.
+- No inventes datos ni hagas cosas que no te ha pedido. Las fechas, en formato AAAA-MM-DD (hoy es la fecha que te indica la app).
+
+Cómo responder (te van a escuchar en voz alta):
+- En español de España, tuteando, muy breve: 1 a 3 frases. Sin listas largas, sin tablas, sin markdown ni emojis.
+- Di los números como se dicen: «78,4 kilos», «60 euros», «el viernes 28».`;
+
+const ASIS_TOOLS = [
+  { name: 'buscar_clientes', description: 'Busca clientes por nombre (o parte del nombre). Sin texto, lista todos. Devuelve id, nombre, estado y datos básicos.',
+    input_schema: { type: 'object', properties: { texto: { type: 'string', description: 'Nombre o parte del nombre' }, estado: { type: 'string', enum: ['activo', 'pausa', 'inactivo', 'todos'] } } } },
+  { name: 'ficha_cliente', description: 'Datos de un cliente: edad, altura, medidas recientes (peso, cintura), pagos y próximo pago, revisiones, tareas, lesiones, rutina, dieta y entrenos recientes.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' } }, required: ['cliente_id'] } },
+  { name: 'resumen_panel', description: 'Lo pendiente en el panel: pagos pendientes o vencidos, seguimientos y revisiones, tareas, clientes sin medidas iniciales, sin cuestionario de alimentación, sin rutina o sin dieta, y entrenos nuevos.',
+    input_schema: { type: 'object', properties: {} } },
+  { name: 'apuntar_medida', description: 'Apunta una medida (peso y/o cintura) a un cliente. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, peso: { type: 'number', description: 'kg' }, cintura: { type: 'number', description: 'cm' }, fecha: { type: 'string', description: 'AAAA-MM-DD; por defecto hoy' }, notas: { type: 'string' } }, required: ['cliente_id'] } },
+  { name: 'crear_tarea', description: 'Crea una tarea pendiente relacionada con un cliente. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, texto: { type: 'string' }, fecha: { type: 'string', description: 'AAAA-MM-DD; opcional' } }, required: ['cliente_id', 'texto'] } },
+  { name: 'completar_tarea', description: 'Marca una tarea como hecha (el id sale en ficha_cliente o resumen_panel). Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { tarea_id: { type: 'string' } }, required: ['tarea_id'] } },
+  { name: 'registrar_pago', description: 'Registra que un cliente ha pagado. Si no se dice el importe se usa su cuota. Por defecto el próximo pago queda a 1 mes. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, importe: { type: 'number' }, meses: { type: 'integer', description: 'Meses que cubre el pago (1, 2, 3, 6…)' }, metodo: { type: 'string', enum: ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'] } }, required: ['cliente_id'] } },
+  { name: 'enviar_enlace', description: 'Prepara en WhatsApp un enlace para el cliente: medidas (peso, cintura y fotos; primeras medidas o revisión), alimentacion (cuestionario de alimentación), cuestionario (cuestionario inicial) o zona (invitación a su app de entrenamiento). Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, tipo: { type: 'string', enum: ['medidas', 'alimentacion', 'cuestionario', 'zona'] } }, required: ['cliente_id', 'tipo'] } },
+  { name: 'abrir', description: 'Abre una pantalla de la app: el panel, los pagos, o la ficha de un cliente en una pestaña (resumen, progreso, rutina, dieta, fotos, pagos, entrenos).',
+    input_schema: { type: 'object', properties: { pantalla: { type: 'string', enum: ['panel', 'pagos', 'cliente'] }, cliente_id: { type: 'string' }, pestana: { type: 'string' } }, required: ['pantalla'] } },
+];
+
+/** Solo el entrenador: cuenta de Google y, si se ha configurado OWNER_UIDS, solo esas cuentas. */
+function soloEntrenador(request) {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError('unauthenticated', 'Entra con tu cuenta de Google.');
+  if (auth.token.firebase?.sign_in_provider !== 'google.com') throw new HttpsError('permission-denied', 'Solo el entrenador puede usar la IA.');
+  const owners = (process.env.OWNER_UIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (owners.length && !owners.includes(auth.uid)) throw new HttpsError('permission-denied', 'Esta cuenta no puede usar la IA.');
+  if (!process.env.ANTHROPIC_API_KEY) throw new HttpsError('failed-precondition', 'Falta la clave de Claude (ANTHROPIC_API_KEY) en el servidor.');
+}
+
+export const asistente = onCall(
+  { region: 'europe-west1', timeoutSeconds: 60, memory: '256MiB', maxInstances: 3 },
+  async (request) => {
+    soloEntrenador(request);
+    const messages = request.data && request.data.messages;
+    if (!Array.isArray(messages) || !messages.length || messages.length > 60) throw new HttpsError('invalid-argument', 'Conversación no válida.');
+    if (JSON.stringify(messages).length > 300000) throw new HttpsError('invalid-argument', 'La conversación es demasiado larga. Empieza una nueva.');
+    const hoy = String((request.data && request.data.hoy) || new Date().toISOString().slice(0, 10)).slice(0, 40);
+    const client = new Anthropic();
+    let response;
+    try {
+      response = await client.beta.messages.create({
+        model: MODEL,
+        max_tokens: 4000,
+        thinking: { type: 'adaptive' },
+        output_config: { effort: 'low' }, // respuestas rápidas: es una conversación por voz
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: `${ASIS_SYSTEM}\n\nHoy es ${hoy}.`,
+        tools: ASIS_TOOLS,
+        messages,
+      });
+    } catch (error) {
+      console.error('Error de Claude (asistente)', error);
+      if (error instanceof Anthropic.AuthenticationError) throw new HttpsError('failed-precondition', 'La clave de Claude no es válida.');
+      if (error instanceof Anthropic.PermissionDeniedError) throw new HttpsError('failed-precondition', 'La cuenta de Claude no tiene permiso (¿saldo o facturación?).');
+      if (error instanceof Anthropic.RateLimitError) throw new HttpsError('resource-exhausted', 'Demasiadas peticiones seguidas. Prueba en un minuto.');
+      if (error instanceof Anthropic.BadRequestError) throw new HttpsError('invalid-argument', `Petición no válida: ${error.message}`);
+      if (error instanceof Anthropic.APIError) throw new HttpsError('unavailable', 'Claude no está disponible ahora mismo. Prueba en un rato.');
+      throw new HttpsError('internal', 'No se ha podido responder.');
+    }
+    // Se devuelve el contenido tal cual (los bloques de pensamiento incluidos): la app lo reenvía sin tocar en el siguiente turno.
+    return { content: response.content, stop_reason: response.stop_reason };
+  },
+);

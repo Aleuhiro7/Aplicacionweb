@@ -234,6 +234,15 @@ async function aiSummary(cliente) {
   return res.data;
 }
 
+/* ---------- Asistente por voz (función «asistente» de Firebase) ---------- */
+async function assistantCall(messages, hoy) {
+  if (!state.user) throw new Error('Entra con tu cuenta de Google para usar el asistente');
+  fns = fns || getFunctions(app, 'europe-west1');
+  const call = httpsCallable(fns, 'asistente', { timeout: 70000 });
+  const res = await call({ messages, hoy });
+  return res.data;
+}
+
 async function fetchQuestionnaire(token) {
   if (!state.user) return null;
   const ref = doc(db, 'cuestionarios', token);
@@ -295,6 +304,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal, fetchWorkouts, aiSummary };
+window.Sync = { signIn, logout, settingsHTML, state, uploadPhoto, downloadPhoto, deletePhoto, createQuestionnaire, fetchQuestionnaire, publishPlan, publishPortal, fetchPortal, fetchWorkouts, aiSummary, assistantCall };
 setStatus(state.status);
 App.render();

@@ -5206,5 +5206,10 @@
     state, actions, renderPanel, renderClients, renderClient, renderPayments, renderSettings,
     renderLibrary, onLibrarySearch, renderFoods, renderForms, parseHeightWeight, onFoodSearch, submitDietForm, saveQuestionnaire, checkQuestionnaireLinks, syncPortals, alignCompare,
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
+    // Para el asistente por voz (assistant.js)
+    assistant: {
+      clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod,
+      sendLink: (clientId, tipo) => (tipo === 'medidas' ? sendRevisionLink(clientId) : tipo === 'alimentacion' ? sendFoodQuiz(clientId) : tipo === 'cuestionario' ? sendQuestionnaireLink(clientId) : invitePortal(clientId)),
+    },
   };
 })();
