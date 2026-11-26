@@ -5,7 +5,7 @@
     protocolIntro: 'Su incumplimiento impide la supervisión y la evolución del plan.',
     protocol: [
       ['Feedback visual (vídeos).', 'Grábate la serie más pesada de cada ejercicio. Sin esto no se puede corregir la técnica ni la intensidad.'],
-      ['Registro de pesos.', 'Apunta el peso máximo logrado en cada serie pesada para asegurar la sobrecarga progresiva.'],
+      ['Registro de pesos.', 'Apunta los pesos en la app de entrenamiento para asegurar un progreso constante.'],
       ['Check-in y reporte.', 'Es obligatorio cumplir con el reporte semanal o mensual.'],
       ['Sinceridad e integridad.', 'No modifiques el plan ni la dieta por tu cuenta. Informa de inmediato ante cualquier dolor, lesión o exceso de estrés.'],
       ['Comunicación directa.', 'Ante cualquier duda, contáctame por WhatsApp de inmediato. No asumas nada.'],
