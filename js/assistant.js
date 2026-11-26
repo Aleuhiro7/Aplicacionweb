@@ -159,7 +159,10 @@
         const res = await Sync.assistantCall(history, hoy);
         history.push({ role: 'assistant', content: res.content });
         const said = (res.content || []).filter((b) => b.type === 'text').map((b) => b.text).join(' ').trim();
-        if (said) { addBubble('ai', said); speak(said); }
+        const uses0 = (res.content || []).filter((b) => b.type === 'tool_use');
+        const needsConfirm = uses0.some((b) => !READ.includes(b.name) && tools[b.name]);
+        // Si pregunta algo, vuelve a escuchar sola al terminar de hablar (así no hace falta tocar la pantalla).
+        if (said) { addBubble('ai', said); speak(said, !needsConfirm && /\?\s*$/.test(said) ? autoListen : null); }
         if (res.stop_reason === 'refusal') { addBubble('ai', 'No puedo ayudarte con eso.'); break; }
         const uses = (res.content || []).filter((b) => b.type === 'tool_use');
         if (!uses.length) break;
@@ -173,8 +176,9 @@
         if (toConfirm.length) {
           pending = { blocks: toConfirm, results };
           const phrase = toConfirm.map(describe).join('. ');
-          if (!said) speak(`${phrase}. ¿Lo confirmo?`);
           busy = false; render();
+          // Lo dice y se queda escuchando: basta con decir «sí» o «no».
+          speak(`${phrase}. ¿Lo confirmo?`, autoListen);
           return; // se sigue al confirmar o cancelar
         }
         history.push({ role: 'user', content: results });
@@ -199,18 +203,21 @@
     }
   }
 
-  function confirmPending() {
+  function confirmPending(byVoice) {
     if (!pending) return;
     const { blocks, results } = pending;
     pending = null;
-    // Se hace todo aquí mismo, dentro del toque en «Confirmar» (WhatsApp solo se abre si viene de un toque).
-    for (const b of blocks) results.push(run(b));
+    // Confirmado con la voz no hay toque, y el móvil no deja abrir otra pestaña: WhatsApp se abre en esta misma.
+    const orig = window.open;
+    if (byVoice === true) window.open = (url) => { if (url && url !== 'about:blank') setTimeout(() => { location.href = url; }, 600); return null; };
+    try { for (const b of blocks) results.push(run(b)); } finally { if (byVoice === true) setTimeout(() => { window.open = orig; }, 3000); }
     App.render();
     addBubble('ok', `✓ ${blocks.map(describe).join(' · ')}`);
     history.push({ role: 'user', content: results });
     turn();
   }
   function cancelPending(why) {
+    if (typeof why !== 'string') why = '';
     if (!pending) return;
     const { blocks, results } = pending;
     pending = null;
@@ -222,6 +229,8 @@
   /* ---------- Voz ---------- */
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null; let listening = false;
+  /** Volver a escuchar sola (sin tocar): solo si el asistente está abierto y no está ya escuchando ni pensando. */
+  const autoListen = () => { if (open && !listening && !busy) listen(); };
   function listen() {
     if (!Rec) { UI.toast('Este navegador no entiende la voz: escribe abajo (en Android, usa Chrome).'); return; }
     if (listening) { rec.stop(); return; }
@@ -244,15 +253,17 @@
       if (!t) return;
       if (input) input.value = '';
       // «Sí» / «confirma» con una acción esperando: se confirma; «no» / «cancela»: se cancela.
-      if (pending && /^(s[ií]|vale|ok|confirm[ao]?|hazlo|adelante|dale)\b/i.test(t)) { confirmPending(); return; }
-      if (pending && /^(no|cancela|d[eé]jalo|para)\b/i.test(t)) { cancelPending(); return; }
+      if (pending && /^(s[ií]|vale|ok|okay|confirm[ao]?|hazlo|adelante|dale|correcto|perfecto|venga)(?=$|[\s,.!¡?¿])/i.test(t)) { confirmPending(true); return; }
+      if (pending && /^(no|cancela|cancelar|d[eé]jalo|para|espera)(?=$|[\s,.!¡?¿])/i.test(t)) { cancelPending(); return; }
       send(t);
     };
     listening = true; render();
     rec.start();
   }
-  function speak(text) {
-    if (muted || !window.speechSynthesis) return;
+  /** Dice el texto en voz alta; al terminar, «then» (por ejemplo, volver a escuchar). */
+  function speak(text, then) {
+    const done = () => { if (then && open) setTimeout(then, 250); };
+    if (muted || !window.speechSynthesis) { done(); return; }
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(String(text).replace(/[*_#`]/g, ''));
@@ -260,8 +271,13 @@
       const v = speechSynthesis.getVoices().find((x) => /^es(-|_)ES/i.test(x.lang)) || speechSynthesis.getVoices().find((x) => /^es/i.test(x.lang));
       if (v) u.voice = v;
       u.rate = 1.05;
+      let fired = false;
+      const once = () => { if (!fired) { fired = true; done(); } };
+      u.onend = once; u.onerror = once;
+      // Por si el móvil no avisa al acabar de hablar: se calcula lo que tarda (unos 14 caracteres por segundo).
+      if (then) setTimeout(once, 1500 + String(text).length * 75);
       speechSynthesis.speak(u);
-    } catch (e) { /* sin voz */ }
+    } catch (e) { done(); }
   }
 
   /* ---------- Pantalla ---------- */
@@ -320,7 +336,7 @@
     document.getElementById('asis-mute').onclick = () => { muted = !muted; try { localStorage.setItem('entrenapro:asis-mute', muted ? '1' : '0'); } catch (e) { /* nada */ } if (muted && window.speechSynthesis) speechSynthesis.cancel(); render(); };
     document.getElementById('asis-mic').onclick = listen;
     document.getElementById('asis-form').onsubmit = (ev) => { ev.preventDefault(); const t = document.getElementById('asis-text'); const v = t.value; t.value = ''; send(v); };
-    const yes = document.getElementById('asis-yes'); if (yes) yes.onclick = confirmPending;
+    const yes = document.getElementById('asis-yes'); if (yes) yes.onclick = () => confirmPending(false);
     const no = document.getElementById('asis-no'); if (no) no.onclick = () => cancelPending();
   }
 
