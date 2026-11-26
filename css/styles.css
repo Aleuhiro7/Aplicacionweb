@@ -2594,3 +2594,8 @@ body.cz-in-workout .cz-wk-step { flex-shrink: 0; }
 .food-del:hover { opacity: 1; }
 .mp-fq { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #3ee6a0 10%, transparent); border: 1px solid color-mix(in srgb, #3ee6a0 35%, transparent); font-size: .88rem; line-height: 1.35; cursor: pointer; }
 .mp-fq input { margin-top: 2px; width: 18px; height: 18px; flex-shrink: 0; }
+.pick-item.fav { background: color-mix(in srgb, #fbbf24 10%, transparent); }
+.fav-star { color: #fbbf24; }
+.fav-count { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, #fbbf24 18%, transparent); color: #fbbf24; font-size: .74rem; font-weight: 700; }
+p.mp-fq { background: color-mix(in srgb, #fbbf24 10%, transparent); border-color: color-mix(in srgb, #fbbf24 35%, transparent); cursor: default; }
+p.mp-fq > span { flex: 1; }

@@ -1524,24 +1524,27 @@
     const inBlocks = new Set(blocks.flatMap((b) => b.foodIds || []));
     const others = Store.foods().filter((f) => !inBlocks.has(f.id));
     const fams = BLOCK_FAMILIES.filter((fm) => blocks.some((b) => (b.family || 'Otros') === fm));
-    // Si el cliente rellenó el cuestionario de alimentación, de proteínas, hidratos y grasas solo salen los que eligió
-    // (lo demás, como bebidas, salsas o suplementos, sale siempre). Se puede quitar el filtro con el interruptor.
+    // Si el cliente rellenó el cuestionario de alimentación, los alimentos que eligió salen marcados con ★ y los
+    // primeros de cada bloque (y todos juntos arriba), para ver de un vistazo cuáles prefiere. Se pueden elegir todos.
     const c = Store.get('clients', clientId);
     const fq = c && c.foodQuiz && c.foodQuiz.answeredAt ? c.foodQuiz : null;
-    const chosen = fq ? new Set([...(fq.proteinas || []), ...(fq.hidratos || []), ...(fq.grasas || [])]) : null;
-    const offFood = (f) => !!chosen && !!FQ_CAT[f.category] && !chosen.has(f.name);
-    const item = (f, blockId) => `<label class="pick-item" data-name="${esc(normalizeText(f.name))}"${offFood(f) ? ' data-off' : ''}><input type="checkbox" value="${f.id}" data-block="${blockId || ''}">
-        <span class="grow">${esc(f.name)}</span><span class="muted">${fmtNum(f.kcal, 0)} kcal · P ${fmtNum(f.protein)} · H ${fmtNum(f.carbs)} · G ${fmtNum(f.fat)}</span></label>`;
+    const chosen = new Set(fq ? [...(fq.proteinas || []), ...(fq.hidratos || []), ...(fq.grasas || [])] : []);
+    const fav = (f) => chosen.has(f.name);
+    const favFirst = (list) => list.slice().sort((a, b) => fav(b) - fav(a));
+    const favFoods = Store.foods().filter(fav);
+    const item = (f, blockId) => `<label class="pick-item${fav(f) ? ' fav' : ''}" data-name="${esc(normalizeText(f.name))}"><input type="checkbox" value="${f.id}" data-block="${blockId || ''}">
+        <span class="grow">${fav(f) ? '<b class="fav-star" title="Lo eligió en su cuestionario">★</b> ' : ''}${esc(f.name)}</span><span class="muted">${fmtNum(f.kcal, 0)} kcal · P ${fmtNum(f.protein)} · H ${fmtNum(f.carbs)} · G ${fmtNum(f.fat)}</span></label>`;
     const body = `<p class="muted" style="margin:0 0 10px">Marca uno o varios alimentos. Los del mismo tipo (por ejemplo, pollo, pavo y lomo) serán <strong>opciones</strong> a elegir, no se suman. La app calcula los gramos de cada uno para cuadrar el objetivo de «${esc(meal.name)}». Valores por 100 g.</p>
-      ${chosen ? `<label class="mp-fq"><input type="checkbox" id="mp-fq" checked><span><strong>Solo lo que eligió ${esc(c.name.split(' ')[0])}</strong> en su cuestionario de alimentación (${chosen.size} alimentos)</span></label>` : ''}
+      ${favFoods.length ? `<p class="mp-fq">★ <span>Marcados con estrella: <strong>los que eligió ${esc(c.name.split(' ')[0])}</strong> en su cuestionario de alimentación. Salen los primeros de cada grupo.</span></p>` : ''}
       <input type="search" id="mp-search" placeholder="Buscar alimento…" aria-label="Buscar alimento">
       <div class="mp-list">
+        ${favFoods.length ? `<div class="mp-fam" data-group><div class="bf-cat-name">★ Lo que eligió ${esc(c.name.split(' ')[0])}</div><details class="mp-block" data-group open><summary>Sus favoritos <span class="muted">${favFoods.length}</span></summary>${favFoods.map((f) => item(f, (Store.blocksForFood(f.id)[0] || {}).id || '')).join('')}</details></div>` : ''}
         ${fams.map((fm) => `<div class="mp-fam" data-group><div class="bf-cat-name">${esc(fm)}</div>
-          ${blocks.filter((b) => (b.family || 'Otros') === fm).map((b) => `<details class="mp-block" data-group>
-            <summary>${esc(b.name)} <span class="muted">${(b.foodIds || []).length}</span></summary>
-            ${(b.foodIds || []).map((id) => Store.get('foods', id)).filter(Boolean).map((f) => item(f, b.id)).join('')}
-          </details>`).join('')}</div>`).join('')}
-        ${others.length ? `<div class="mp-fam" data-group><div class="bf-cat-name">Otros alimentos de la biblioteca</div><details class="mp-block" data-group><summary>Sin bloque <span class="muted">${others.length}</span></summary>${others.map((f) => item(f, '')).join('')}</details></div>` : ''}
+          ${blocks.filter((b) => (b.family || 'Otros') === fm).map((b) => { const fs = favFirst((b.foodIds || []).map((id) => Store.get('foods', id)).filter(Boolean)); const nf = fs.filter(fav).length; return `<details class="mp-block" data-group>
+            <summary>${esc(b.name)} <span class="muted">${(b.foodIds || []).length}</span>${nf ? ` <span class="fav-count">★ ${nf}</span>` : ''}</summary>
+            ${fs.map((f) => item(f, b.id)).join('')}
+          </details>`; }).join('')}</div>`).join('')}
+        ${others.length ? `<div class="mp-fam" data-group><div class="bf-cat-name">Otros alimentos de la biblioteca</div><details class="mp-block" data-group><summary>Sin bloque <span class="muted">${others.length}</span></summary>${favFirst(others).map((f) => item(f, '')).join('')}</details></div>` : ''}
       </div>`;
     UI.openModal({
       title: `Añadir a ${meal.name}`,
@@ -1560,20 +1563,16 @@
           if (e.target.matches('.pick-item input')) dlg.querySelectorAll(`.pick-item input[value="${e.target.value}"]`).forEach((x) => { x.checked = e.target.checked; });
           sync();
         });
-        const fqBox = dlg.querySelector('#mp-fq');
-        const filter = () => {
+        search.addEventListener('input', () => {
           const q = normalizeText(search.value);
-          const only = !!(fqBox && fqBox.checked);
-          dlg.querySelectorAll('.pick-item').forEach((el) => { el.hidden = (q && !el.dataset.name.includes(q)) || (only && el.hasAttribute('data-off') && !el.querySelector('input').checked); });
+          dlg.querySelectorAll('.pick-item').forEach((el) => { el.hidden = q && !el.dataset.name.includes(q); });
           dlg.querySelectorAll('.mp-block').forEach((det) => {
             const any = [...det.querySelectorAll('.pick-item')].some((el) => !el.hidden);
             det.hidden = !any;
-            det.open = (!!q || only) && any;
+            det.open = !!q && any;
           });
           dlg.querySelectorAll('.mp-fam').forEach((fm) => { fm.hidden = ![...fm.querySelectorAll('.mp-block')].some((x) => !x.hidden); });
-        };
-        search.addEventListener('input', filter);
-        if (fqBox) { fqBox.addEventListener('change', filter); filter(); }
+        });
       },
       onSubmit: () => {
         const dlg = document.getElementById('modal');
