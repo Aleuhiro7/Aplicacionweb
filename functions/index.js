@@ -169,6 +169,7 @@ Cómo trabajar:
   busca por el nombre de pila y elige el que mejor encaje). Si hay varios posibles, pregúntale cuál.
 - Para consultar, usa las herramientas y responde con los datos. Si falta un dato para hacer algo (por ejemplo el importe),
   pregúntalo en una frase corta.
+- Para tocar la rutina de un cliente, mira primero ver_rutina (y buscar_ejercicio si hay que añadir uno).
 - Las herramientas que cambian algo las confirma David en pantalla antes de hacerse: llámalas directamente, sin preguntar
   «¿lo hago?». Si el resultado dice que lo canceló, no insistas.
 - No inventes datos ni hagas cosas que no te ha pedido. Las fechas, en formato AAAA-MM-DD (hoy es la fecha que te indica la app).
@@ -194,6 +195,16 @@ const ASIS_TOOLS = [
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, importe: { type: 'number' }, meses: { type: 'integer', description: 'Meses que cubre el pago (1, 2, 3, 6…)' }, metodo: { type: 'string', enum: ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'] } }, required: ['cliente_id'] } },
   { name: 'enviar_enlace', description: 'Prepara en WhatsApp un enlace para el cliente: medidas (peso, cintura y fotos; primeras medidas o revisión), alimentacion (cuestionario de alimentación), cuestionario (cuestionario inicial) o zona (invitación a su app de entrenamiento). Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, tipo: { type: 'string', enum: ['medidas', 'alimentacion', 'cuestionario', 'zona'] } }, required: ['cliente_id', 'tipo'] } },
+  { name: 'ver_rutina', description: 'La rutina de un cliente: sus días con los ejercicios (id, nombre, músculo, series, repeticiones y descanso). Úsala antes de quitar o cambiar un ejercicio.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' } }, required: ['cliente_id'] } },
+  { name: 'buscar_ejercicio', description: 'Busca ejercicios en la biblioteca por nombre o por músculo (para añadir o sustituir uno).',
+    input_schema: { type: 'object', properties: { texto: { type: 'string' } }, required: ['texto'] } },
+  { name: 'quitar_ejercicio', description: 'Quita un ejercicio de la rutina de un cliente (el id sale en ver_rutina). Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, ejercicio_id: { type: 'string' } }, required: ['cliente_id', 'ejercicio_id'] } },
+  { name: 'anadir_ejercicio', description: 'Añade a un día de la rutina de un cliente un ejercicio de la biblioteca (el id sale en buscar_ejercicio), al final del día o en lugar de otro ejercicio (sustituir_id). Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, dia: { type: 'integer', description: 'Número del día (1, 2, 3…)' }, biblioteca_id: { type: 'string' }, sustituir_id: { type: 'string', description: 'Opcional: id del ejercicio de la rutina al que sustituye' } }, required: ['cliente_id', 'dia', 'biblioteca_id'] } },
+  { name: 'cambiar_ejercicio', description: 'Cambia las series, las repeticiones o el descanso de un ejercicio de la rutina de un cliente. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, ejercicio_id: { type: 'string' }, series: { type: 'string' }, repeticiones: { type: 'string' }, descanso: { type: 'string', description: 'Ej.: 2 min, 1:30 min' } }, required: ['cliente_id', 'ejercicio_id'] } },
   { name: 'abrir', description: 'Abre una pantalla de la app: el panel, los pagos, o la ficha de un cliente en una pestaña (resumen, progreso, rutina, dieta, fotos, pagos, entrenos).',
     input_schema: { type: 'object', properties: { pantalla: { type: 'string', enum: ['panel', 'pagos', 'cliente'] }, cliente_id: { type: 'string' }, pestana: { type: 'string' } }, required: ['pantalla'] } },
 ];

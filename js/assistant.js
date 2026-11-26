@@ -21,7 +21,7 @@
   try { muted = localStorage.getItem('entrenapro:asis-mute') === '1'; } catch (e) { /* sin almacenamiento */ }
 
   /* ---------- Herramientas (se ejecutan aquí, con los datos de la app) ---------- */
-  const READ = ['buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir'];
+  const READ = ['buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio'];
   const client = (id) => Store.get('clients', id);
 
   function clientBrief(c) {
@@ -88,6 +88,50 @@
       }
       return { ok: true };
     },
+    ver_rutina({ cliente_id }) {
+      const c = client(cliente_id);
+      if (!c) return { error: 'No existe ese cliente' };
+      const r = Store.routineFor(c.id);
+      if (!r || !(r.days || []).length) return { resultado: c.noTraining ? 'No lleva rutina' : 'Todavía no tiene rutina' };
+      return { dias: r.days.map((d, i) => ({ dia: i + 1, nombre: d.name || `Día ${i + 1}`, ejercicios: (d.exercises || []).map((e) => ({ id: e.id, nombre: e.name, musculo: e.group || null, series: e.sets || null, repeticiones: e.reps || null, descanso: e.rest || null })) })) };
+    },
+    buscar_ejercicio({ texto }) {
+      const q = norm(texto).split(/\s+/).filter(Boolean);
+      const found = Store.library().filter((x) => q.every((w) => norm(`${x.name} ${x.group} ${x.equipment || ''}`).includes(w)));
+      return { ejercicios: found.slice(0, 25).map((x) => ({ id: x.id, nombre: x.name, musculo: x.group })) };
+    },
+    quitar_ejercicio({ cliente_id, ejercicio_id }) {
+      const f = findEx(cliente_id, ejercicio_id);
+      if (f.error) return f;
+      f.day.exercises = f.day.exercises.filter((e) => e.id !== ejercicio_id);
+      Store.update('routines', f.r.id, { days: f.r.days });
+      return { ok: true };
+    },
+    anadir_ejercicio({ cliente_id, dia, biblioteca_id, sustituir_id }) {
+      const c = client(cliente_id);
+      const r = c && Store.routineFor(c.id);
+      const day = r && (r.days || [])[Number(dia) - 1];
+      const lib = Store.get('library', biblioteca_id);
+      if (!day) return { error: 'No existe ese día en su rutina' };
+      if (!lib) return { error: 'No existe ese ejercicio en la biblioteca' };
+      const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
+      const ex = { id: U.uid(), libraryId: lib.id, group: lib.group, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes };
+      day.exercises = day.exercises || [];
+      const i = sustituir_id ? day.exercises.findIndex((e) => e.id === sustituir_id) : -1;
+      if (i >= 0) day.exercises.splice(i, 1, ex); else day.exercises.push(ex);
+      if (!(day.muscles || []).includes(lib.group)) day.muscles = (day.muscles || []).concat(lib.group);
+      Store.update('routines', r.id, { days: r.days });
+      return { ok: true };
+    },
+    cambiar_ejercicio({ cliente_id, ejercicio_id, series, repeticiones, descanso }) {
+      const f = findEx(cliente_id, ejercicio_id);
+      if (f.error) return f;
+      const own = new Set(f.ex.custom || []);
+      for (const [k, v] of [['sets', series], ['reps', repeticiones], ['rest', descanso]]) if (v != null && v !== '') { f.ex[k] = String(v); own.add(k); }
+      f.ex.custom = [...own]; // así no lo pisa la biblioteca
+      Store.update('routines', f.r.id, { days: f.r.days });
+      return { ok: true };
+    },
     apuntar_medida({ cliente_id, peso, cintura, fecha, notas }) {
       const c = client(cliente_id);
       if (!c) return { error: 'No existe ese cliente' };
@@ -123,6 +167,14 @@
       return { ok: true, nota: 'Se ha abierto WhatsApp con el mensaje: David solo tiene que enviarlo.' };
     },
   };
+  /** Busca un ejercicio en la rutina de un cliente. */
+  function findEx(cliente_id, ejercicio_id) {
+    const c = client(cliente_id);
+    const r = c && Store.routineFor(c.id);
+    if (!r) return { error: 'Ese cliente no tiene rutina' };
+    for (const day of r.days || []) { const ex = (day.exercises || []).find((e) => e.id === ejercicio_id); if (ex) return { r, day, ex }; }
+    return { error: 'No encuentro ese ejercicio en su rutina' };
+  }
   const payAmount = (c, importe) => (Number(importe) >= 0 && importe !== null && importe !== undefined && importe !== '' ? Number(importe) : Number(c.rate) || Store.lastPaidAmount(c.id) || Number(Store.settings.defaultRate) || NaN);
 
   /** Lo que se va a hacer, en una frase (para la tarjeta de confirmación y para decirlo en voz alta). */
@@ -137,6 +189,9 @@
       case 'completar_tarea': { const t = Store.get('tasks', i.tarea_id); return `Marcar como hecha la tarea «${t ? t.text : i.tarea_id}»`; }
       case 'registrar_pago': { const a = c ? payAmount(c, i.importe) : i.importe; return `Registrar el pago de ${who}: ${num(a)} ${Store.settings.currency === 'EUR' ? 'euros' : Store.settings.currency}${(Number(i.meses) || 1) > 1 ? ` (${i.meses} meses)` : ''}${i.metodo ? ` por ${i.metodo}` : ''}`; }
       case 'enviar_enlace': return `Enviar a ${who} el enlace de ${{ medidas: 'medidas y fotos', alimentacion: 'alimentación', cuestionario: 'cuestionario inicial', zona: 'su app de entrenamiento' }[i.tipo] || i.tipo} por WhatsApp`;
+      case 'quitar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Quitar «${f.ex ? f.ex.name : '?'}» de la rutina de ${who}${f.day ? ` (${f.day.name})` : ''}`; }
+      case 'anadir_ejercicio': { const l = Store.get('library', i.biblioteca_id); const f = i.sustituir_id ? findEx(i.cliente_id, i.sustituir_id) : {}; return `${f.ex ? `Cambiar «${f.ex.name}» por` : 'Añadir'} «${l ? l.name : '?'}» en el día ${i.dia} de la rutina de ${who}`; }
+      case 'cambiar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Cambiar «${f.ex ? f.ex.name : '?'}» de ${who}: ${[i.series ? `${i.series} series` : '', i.repeticiones ? `repeticiones ${i.repeticiones}` : '', i.descanso ? `descanso ${i.descanso}` : ''].filter(Boolean).join(', ')}`; }
       default: return b.name;
     }
   }
@@ -317,7 +372,7 @@
       </header>
       <div class="asis-log" id="asis-log">
         ${log.length ? '' : `<div class="asis-hint"><p>Pulsa el micrófono y dime qué quieres hacer. Por ejemplo:</p>
-          <ul><li>«Apunta a Eduardo 78,4 kilos y 86 de cintura»</li><li>«Ponme una tarea para el viernes: llamar a Laura»</li><li>«Registra el pago de Carlos»</li><li>«Mándale a Marta el enlace de medidas»</li><li>«¿Quién tiene pagos pendientes?» · «¿Cómo va Eduardo?»</li></ul>
+          <ul><li>«Apunta a Eduardo 78,4 kilos y 86 de cintura»</li><li>«Ponme una tarea para el viernes: llamar a Laura»</li><li>«Registra el pago de Carlos»</li><li>«Mándale a Marta el enlace de medidas»</li><li>«Quita las sentadillas de la rutina de Eduardo»</li><li>«¿Quién tiene pagos pendientes?» · «¿Cómo va Eduardo?»</li></ul>
           <p class="muted">Antes de cambiar nada te lo enseño para que lo confirmes.</p></div>`}
         ${log.map((m) => `<div class="asis-msg ${m.who}">${esc(m.text)}</div>`).join('')}
         ${pending ? `<div class="asis-confirm"><strong>¿Lo hago?</strong><ul>${pending.blocks.map((b) => `<li>${esc(describe(b))}</li>`).join('')}</ul>
