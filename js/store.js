@@ -164,6 +164,14 @@
       base.settings.exOrderV1 = true;
       migrated = true;
     }
+    // Una sola vez: la 3.ª serie del método pasa a «máximas repeticiones con el peso de la 1.ª serie» (también a mano).
+    if (!base.settings.repsV4) {
+      for (const r of base.routines) for (const d of r.days || []) for (const ex of d.exercises || []) {
+        if (ex.reps === '12–15 repeticiones a 1 del fallo / 6–8 repeticiones pesada al fallo / peso de la 1.ª al fallo' || ex.reps === '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo') ex.reps = '12–15 repeticiones a 1 del fallo / 6–8 repeticiones pesada al fallo / máximas repeticiones con el peso de la 1.ª serie';
+      }
+      base.settings.repsV4 = true;
+      migrated = true;
+    }
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {
       base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));

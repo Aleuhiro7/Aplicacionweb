@@ -551,7 +551,7 @@ function setInfo(ex, i) {
     return [
       ['Serie 1 · Efectiva', '12–15 reps, a 1 del fallo'],
       ['Serie 2 · Pesada', 'sube el peso · 6–8 reps al fallo total'],
-      ['Serie 3 · Agotamiento', 'peso de la serie 1 · al fallo total'],
+      ['Serie 3 · Agotamiento', 'máximas repeticiones con el peso de la serie 1'],
     ][i];
   }
   return [`Serie ${i + 1}`, ex.reps || ''];
