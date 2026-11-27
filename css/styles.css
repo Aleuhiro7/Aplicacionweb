@@ -2633,3 +2633,11 @@ body.pp-open { overflow: hidden; }
 .pdf-preview-body { flex: 1; overflow: auto; padding: 8px; display: flex; flex-direction: column; align-items: center; }
 .pdf-preview-sheet { position: relative; overflow: hidden; margin: 0 auto; }
 .pdf-preview-sheet .ds-page { margin-bottom: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.fq-fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.fq-fold > summary::-webkit-details-marker { display: none; }
+.fq-fold > summary .grow { display: flex; flex-direction: column; gap: 2px; }
+.fq-fold > summary strong { font-size: 1.05rem; }
+.fq-fold > summary small { font-size: .8rem; }
+.fq-chev { transition: transform .2s; opacity: .7; }
+.fq-fold[open] .fq-chev { transform: rotate(180deg); }
+.fq-fold[open] > summary { margin-bottom: 10px; }

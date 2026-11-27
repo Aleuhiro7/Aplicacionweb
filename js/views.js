@@ -2824,8 +2824,8 @@
     if (q.answeredAt) {
       const chips = (arr) => (arr && arr.length ? arr.map((x) => `<span class="fq-chip">${esc(x)}</span>`).join('') : '<span class="muted">Ninguno</span>');
       const supps = (q.supps || []).map((k) => (SUPPLEMENTS.find((s) => s.k === k) || {}).n).filter(Boolean);
-      return `<div class="diet-sec fq-card">
-        <div class="card-header"><h2>🍽️ Lo que eligió ${esc(first)}</h2><span class="muted" style="font-size:.82rem">Cuestionario de alimentación · ${esc(fmtDate(q.answeredAt))}</span></div>
+      return `<details class="diet-sec fq-card fq-fold">
+        <summary><span class="grow"><strong>🍽️ Lo que eligió ${esc(first)}</strong><small class="muted">Cuestionario de alimentación · ${esc(fmtDate(q.answeredAt))} · ${esc(q.meals || '—')} comidas al día</small></span><span class="fq-chev">${U.icon('down')}</span></summary>
         <dl class="fq-list">
           <div><dt>Comidas al día</dt><dd><strong>${esc(q.meals || '—')}</strong></dd></div>
           ${FQ_GROUPS.map(([k, label, ic]) => `<div><dt>${ic} ${label}</dt><dd>${chips(q[k])}</dd></div>`).join('')}
@@ -2835,7 +2835,7 @@
           ${supps.length ? `<button class="btn sm" data-action="fq-supps" data-client="${c.id}">${U.icon('check')}Marcar sus suplementos abajo</button>` : ''}
           <button class="btn sm" data-action="fq-send" data-client="${c.id}" data-value="new">${U.icon('message')}Enviar otro cuestionario</button>
         </div>
-      </div>`;
+      </details>`;
     }
     return `<div class="diet-sec fq-card">
       <div class="card-header"><h2>🍽️ Cuestionario de alimentación</h2>${q.token ? '<span class="badge">Enviado</span>' : ''}</div>
