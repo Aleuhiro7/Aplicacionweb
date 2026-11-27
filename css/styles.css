@@ -2614,3 +2614,8 @@ p.mp-fq > span { flex: 1; }
 .ex-order-list small { font-size: .76rem; }
 .ex-order-list .icon-btn[disabled] { opacity: .25; }
 .ex-order-list .grow { flex: 1 1 auto; }
+.day-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.day-add-row .muted { font-size: .85rem; margin-right: 2px; }
+.exercise-list .ex-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.exercise-list .ex-actions .icon-btn[disabled] { opacity: .25; }
+@media (max-width: 480px) { .exercise-list .ex-actions .icon-btn { width: 34px; height: 34px; } }

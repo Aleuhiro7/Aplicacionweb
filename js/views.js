@@ -591,7 +591,7 @@
 
   function exerciseRow(c, d, ex, list) {
     const i = list.indexOf(ex);
-    return `<li>
+    return `<li data-exrow="${ex.id}">
         <span class="ex-num">${i + 1}</span>
         ${exThumb(ex.libraryId && Store.get('library', ex.libraryId), 'sm')}
         <div class="grow">
@@ -600,6 +600,8 @@
           ${ex.notes ? `<div class="meta ex-notes">${esc(ex.notes)}</div>` : ''}
         </div>
         <div class="ex-actions">
+          <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ejercicio" ${i === 0 ? 'disabled' : ''}>${U.icon('up')}</button>
+          <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ejercicio" ${i === list.length - 1 ? 'disabled' : ''}>${U.icon('down')}</button>
           <button class="icon-btn" data-action="ex-edit" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" aria-label="Editar ejercicio">${U.icon('edit')}</button>
         </div>
       </li>`;
@@ -671,25 +673,11 @@
             <div class="day-muscles-label">Músculos que entrena</div>
             <div class="chips">${groups.map((g) => `<button type="button" class="chip${muscles.includes(g) ? ' active' : ''}" data-action="day-muscle" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}" aria-pressed="${muscles.includes(g)}">${muscles.includes(g) ? `<span class="chip-order">${muscles.indexOf(g) + 1}</span>` : ''}${esc(g)}</button>`).join('')}</div>
           </div>
-          ${muscles.length ? muscles.map((g) => {
-            const exs = list.filter((ex) => exGroup(ex) === g);
-            return `<div class="muscle-block">
-              <div class="muscle-head">
-                <h3>${esc(g)} <span class="muted">${exs.length || ''}</span></h3>
-                ${g === 'Otros' ? '' : `<button class="btn sm primary" data-action="muscle-pick" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}">${U.icon('plus')}Ejercicios de ${esc(g)}</button>`}
-              </div>
-              ${exs.length ? `<ol class="list exercise-list">${exs.map((ex) => exerciseRow(c, d, ex, exs)).join('')}</ol>` : `<p class="muted muscle-empty">Pulsa «Ejercicios de ${esc(g)}» para elegirlos de la biblioteca.</p>`}
-            </div>`;
-          }).join('') : '<p class="muted" style="margin:6px 0 0">Marca arriba los músculos que entrena este día.</p>'}
-          ${list.length > 1 ? `<div class="ex-order">
-            <h3>Orden del entreno <span class="muted">· así lo hará el cliente</span></h3>
-            <ol class="ex-order-list">${list.map((ex, i) => `<li>
-              <span class="ex-num">${i + 1}</span>
-              <div class="grow"><strong>${esc(ex.name)}</strong><small class="muted">${esc(exGroup(ex))}</small></div>
-              <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ${esc(ex.name)}" ${i === 0 ? 'disabled' : ''}>${U.icon('up')}</button>
-              <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ${esc(ex.name)}" ${i === list.length - 1 ? 'disabled' : ''}>${U.icon('down')}</button>
-            </li>`).join('')}</ol>
-          </div>` : ''}
+          ${muscles.length ? `<div class="day-add-row"><span class="muted">Añadir:</span>${muscles.filter((g) => g !== 'Otros').map((g) => `<button class="btn sm" data-action="muscle-pick" data-client="${c.id}" data-day="${d.id}" data-value="${esc(g)}">${U.icon('plus')}${esc(g)}</button>`).join('')}</div>` : '<p class="muted" style="margin:6px 0 0">Marca arriba los músculos que entrena este día.</p>'}
+          ${list.length ? dayRuns(d).map((run) => `<div class="muscle-block">
+              <div class="muscle-head"><h3>${esc(run.g)}</h3></div>
+              <ol class="list exercise-list">${run.exs.map((ex) => exerciseRow(c, d, ex, list)).join('')}</ol>
+            </div>`).join('') : muscles.length ? '<p class="muted muscle-empty" style="margin-top:10px">Pulsa «Añadir» para elegir los ejercicios de la biblioteca.</p>' : ''}
         </section>`;
       }).join('')}`;
   }
@@ -5172,8 +5160,13 @@
       const i = list.findIndex((x) => x.id === d.ex);
       const j = i + Number(d.dir);
       if (i < 0 || j < 0 || j >= list.length) return;
+      const row = document.querySelector(`[data-exrow="${d.ex}"]`);
+      const before = row ? row.getBoundingClientRect().top : null;
       [list[i], list[j]] = [list[j], list[i]];
       saveRoutine(r);
+      // La pantalla no salta: el ejercicio movido se queda donde estaba el dedo.
+      const after = document.querySelector(`[data-exrow="${d.ex}"]`);
+      if (after && before !== null) window.scrollBy(0, after.getBoundingClientRect().top - before);
     },
     'routine-days': (d) => setRoutineDays(d.client, Number(d.value)),
     'health-asked': (d) => {
