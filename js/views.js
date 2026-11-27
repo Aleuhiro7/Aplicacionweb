@@ -1813,9 +1813,9 @@
 
   /** Colores del PDF según el tipo de alimento, todos dentro del degradado Glaciar (azul → cian → menta). */
   const FOOD_TONES = {
-    // Carnes en rojo, lácteos en blanco, verdura en verde, hidratos (y fruta) en naranja y grasas en amarillo.
+    // Carnes en rojo, lácteos en blanco, verdura en verde, hidratos en naranja, fruta en rosa y grasas en amarillo.
     carne: '#f87171', pescado: '#6e8bff', huevo: '#99f6e4', polvo: '#a5b4fc', vegetal: '#38bdf8',
-    hidrato: '#fb923c', fruta: '#fb923c', aceite: '#facc15', fruto: '#facc15', queso: '#facc15', lacteo: '#f8fafc', verdura: '#4ade80',
+    hidrato: '#fb923c', fruta: '#f472b6', aceite: '#facc15', fruto: '#facc15', queso: '#facc15', lacteo: '#f8fafc', verdura: '#4ade80',
   };
   const BLOCK_TONE = {
     'blk-carnes-magras': 'carne', 'blk-carnes-grasas': 'carne', 'blk-embutidos': 'carne',

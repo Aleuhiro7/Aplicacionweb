@@ -1079,7 +1079,7 @@ button.diet-row:hover { color: var(--primary); }
 .ds-groups { width: 100%; flex: 1; display: flex; flex-direction: column; gap: 5mm; text-align: left; }
 .ds-group { border: 1px solid var(--ds-line); border-radius: 14px; padding: 5mm 7mm; background: #fff; flex: var(--rows, 2) 1 auto; display: flex; flex-direction: column; box-shadow: 0 1px 0 rgba(15, 23, 42, .03); position: relative; overflow: hidden; }
 .ds-group::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--ds-accent, var(--ds-teal)); }
-.ds-protein { --ds-accent: var(--ds-p); } .ds-carbs { --ds-accent: var(--ds-c); } .ds-fat { --ds-accent: var(--ds-f); } .ds-extra { --ds-accent: var(--ds-x); }
+.ds-protein { --ds-accent: var(--ds-p); } .ds-carbs { --ds-accent: var(--ds-c); } .ds-fat { --ds-accent: var(--ds-f); } .ds-extra { --ds-accent: var(--ds-x); } .ds-fruit { --ds-accent: #f472b6; }
 .ds-glabel { display: flex; align-items: center; gap: 8px; margin-bottom: 2mm; font-size: 10pt; letter-spacing: .12em; text-transform: uppercase; color: var(--ds-muted); }
 .ds-glabel i { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-accent); }
 .ds-glabel b { color: var(--ds-navy); font-weight: 800; }
