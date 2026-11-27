@@ -170,7 +170,9 @@ Cómo trabajar:
 - Para consultar, usa las herramientas y responde con los datos. Si falta un dato para hacer algo (por ejemplo el importe),
   pregúntalo en una frase corta.
 - Para tocar la rutina de un cliente, mira primero ver_rutina (y buscar_ejercicio si hay que añadir uno).
-- Para hacer una dieta: primero datos_dieta. Calcula las calorías según su mantenimiento y su objetivo (déficit o superávit
+- Para hacer una dieta: primero datos_dieta. Si dice que David ya ha fijado los objetivos (objetivosFijados), NO los cambies:
+  no mandes kcal ni porcentajes y haz las comidas para esos objetivos. Si ya tiene comidas fijadas (comidasFijadas), usa
+  exactamente esas comidas, con esos nombres y en ese orden, y solo pon los alimentos. Si no hay nada fijado: calcula las calorías según su mantenimiento y su objetivo (déficit o superávit
   moderado) y un reparto de macros sensato (proteína alta, unos 1,8–2,2 g/kg). Usa las comidas al día que eligió si las hay.
   Sus alimentos preferidos son solo una sugerencia a tener en cuenta: puedes y debes usar otros de la biblioteca para que
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
@@ -225,7 +227,7 @@ const ASIS_TOOLS = [
       actividad: { type: 'number', description: 'Factor de actividad: 1.2, 1.375, 1.55, 1.725 o 1.9' },
       comidas: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string', enum: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'] }, alimentos: { type: 'array', items: { type: 'string', description: 'id del alimento' } } }, required: ['nombre', 'alimentos'] } },
       suplementos: { type: 'array', items: { type: 'string', enum: ['whey', 'creatina', 'eaa', 'bcaa', 'glutamina', 'multi', 'omega3', 'vitd', 'magnesio', 'zinc', 'cafeina', 'pre', 'betaalanina', 'citrulina', 'carbos', 'electrolitos', 'colageno', 'melatonina', 'ashwagandha'] } },
-    }, required: ['cliente_id', 'kcal', 'proteinas_pct', 'hidratos_pct', 'grasas_pct', 'comidas'] } },
+    }, required: ['cliente_id', 'comidas'] } },
   { name: 'ajustar_dieta', description: 'Cambia solo las calorías y/o el reparto de macros de la dieta de un cliente (las cantidades de las comidas se recalculan). Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, kcal: { type: 'integer' }, proteinas_pct: { type: 'number' }, hidratos_pct: { type: 'number' }, grasas_pct: { type: 'number' } }, required: ['cliente_id'] } },
   { name: 'abrir', description: 'Abre una pantalla de la app: el panel, los pagos, o la ficha de un cliente en una pestaña (resumen, progreso, rutina, dieta, fotos, pagos, entrenos).',
