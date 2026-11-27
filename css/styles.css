@@ -2625,3 +2625,11 @@ p.mp-fq > span { flex: 1; }
 .cz-dl { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 9px; border-radius: 999px; border: 1px solid rgba(110, 139, 255, .4); background: rgba(110, 139, 255, .12); color: #c7d2ff; font: 700 .72rem/1 "Archivo", sans-serif; letter-spacing: .06em; cursor: pointer; }
 .cz-dl svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .cz-dl.busy { opacity: .7; min-width: 46px; justify-content: center; }
+/* Vista previa del PDF (rutina o dieta) */
+body.pp-open { overflow: hidden; }
+.pdf-preview { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: #0b0f17; }
+.pdf-preview-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px) 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.pdf-preview-bar strong { flex: 1; min-width: 0; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pdf-preview-body { flex: 1; overflow: auto; padding: 8px; display: flex; flex-direction: column; align-items: center; }
+.pdf-preview-sheet { position: relative; overflow: hidden; margin: 0 auto; }
+.pdf-preview-sheet .ds-page { margin-bottom: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.4); }

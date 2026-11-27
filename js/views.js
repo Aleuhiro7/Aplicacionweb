@@ -647,6 +647,7 @@
             <div class="muted" style="font-size:.85rem">Actualizada el ${esc(fmtDate((r.updatedAt || r.createdAt || '').slice(0, 10) || today()))} · ${plural(days.reduce((n, d) => n + (d.exercises || []).length, 0), 'ejercicio', 'ejercicios')}</div>
           </div>
           <div class="actions">
+            <button class="btn sm" data-action="plan-preview" data-kind="rutina" data-client="${c.id}">${U.icon('file')}Ver PDF</button>
             <button class="btn sm primary wa-btn" data-action="routine-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
             ${c.planLinks && c.planLinks.rutina ? `<a class="btn sm" href="${planUrl('rutina', c.planLinks.rutina)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
             <button class="btn sm" data-action="routine-copy" data-client="${c.id}">${U.icon('file')}Copiar</button>
@@ -1692,6 +1693,7 @@
       <div class="card-header"><h2>Enviar al cliente</h2></div>
       <p class="muted" style="margin:0 0 12px">Le llega un enlace por WhatsApp con su tarjeta. Al abrirlo ve su dieta y se la descarga en PDF (portada, sus datos, su plan, una página por comida y hábitos). Si cambias algo, vuelve a enviarlo: el enlace es el mismo y se actualiza.</p>
       <div class="actions">
+        <button class="btn" data-action="plan-preview" data-kind="dieta" data-client="${c.id}">${U.icon('file')}Ver PDF</button>
         <button class="btn primary wa-btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
         ${c.planLinks && c.planLinks.dieta ? `<a class="btn" href="${planUrl('dieta', c.planLinks.dieta)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
         <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
@@ -2120,6 +2122,62 @@
     rutina: { page: 'rutina.html', label: 'rutina de entrenamiento', emoji: '💪', open: 'Ábrela y descárgatela en PDF' },
     dieta: { page: 'dieta.html', label: 'plan de alimentación', emoji: '🥗', open: 'Ábrelo y descárgatelo en PDF' },
   };
+
+  /** Vista previa del PDF de la rutina o la dieta, tal cual le llegará al cliente (antes de enviarlo). */
+  async function previewPlan(kind, clientId) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    let html = '';
+    if (kind === 'rutina') {
+      const r = Store.routineFor(clientId);
+      if (!r || !(r.days || []).some((d) => (d.exercises || []).length)) { UI.toast('Añade algún ejercicio a la rutina para ver el PDF'); return; }
+      html = routineSheet(c, r);
+    } else {
+      const d = Store.dietFor(clientId);
+      if (!d || !dietSendable(d)) { UI.toast('Completa la dieta para ver el PDF'); return; }
+      html = dietSheet(c, d);
+    }
+    const ov = document.createElement('div');
+    ov.className = 'pdf-preview';
+    ov.innerHTML = `<header class="pdf-preview-bar"><strong>${kind === 'rutina' ? 'Rutina' : 'Dieta'} de ${esc(c.name.split(' ')[0])} · vista previa</strong>
+        <button type="button" class="btn sm" id="pp-dl">${U.icon('download') || '⬇'}Descargar</button>
+        <button type="button" class="icon-btn" id="pp-close" aria-label="Cerrar">${U.icon('close')}</button></header>
+      <div class="pdf-preview-body"><p class="muted" style="text-align:center;margin:40px 0">Preparando el PDF…</p></div>`;
+    document.body.appendChild(ov);
+    document.body.classList.add('pp-open');
+    const close = () => { ov.remove(); document.body.classList.remove('pp-open'); window.removeEventListener('resize', fit); };
+    ov.querySelector('#pp-close').onclick = close;
+    const body = ov.querySelector('.pdf-preview-body');
+    let sheet = '';
+    const fit = () => {
+      const art = body.querySelector('.ds');
+      const page = art && art.querySelector('.ds-page');
+      if (!page) return;
+      const k = Math.min(1, (body.clientWidth - 16) / page.offsetWidth);
+      art.style.transform = `scale(${k})`;
+      art.style.transformOrigin = 'top left';
+      art.parentElement.style.height = `${art.offsetHeight * k}px`;
+      art.parentElement.style.width = `${page.offsetWidth * k}px`;
+    };
+    try {
+      sheet = await PdfMaker.prepared(html, kind === 'rutina' ? paginateRoutine : null);
+      body.innerHTML = `<div class="pdf-preview-sheet">${sheet}</div>`;
+      await PdfMaker.loadFonts().catch(() => {});
+      fit();
+      setTimeout(fit, 300);
+      window.addEventListener('resize', fit);
+    } catch (e) {
+      console.error(e);
+      body.innerHTML = '<p class="muted" style="text-align:center;margin:40px 0">No se ha podido preparar la vista previa.</p>';
+    }
+    ov.querySelector('#pp-dl').onclick = async (ev) => {
+      const b = ev.currentTarget;
+      if (!sheet || b.disabled) return;
+      b.disabled = true;
+      try { const blob = await PdfMaker.make(sheet); PdfMaker.save(blob, PdfMaker.fileName(`${kind === 'rutina' ? 'Rutina' : 'Dieta'} ${c.name}`)); } catch (e) { console.error(e); UI.toast('No se ha podido crear el PDF'); }
+      b.disabled = false;
+    };
+  }
 
   async function sendPlanLink(kind, clientId) {
     const c = Store.get('clients', clientId);
@@ -5164,6 +5222,7 @@
     'routine-edit': (d) => routineForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'routine-copy': (d) => copyRoutine(Store.get('clients', d.client)),
     'routine-pdf': (d) => sendPlanLink('rutina', d.client),
+    'plan-preview': (d) => previewPlan(d.kind, d.client),
     'day-add': (d) => dayForm(Store.get('clients', d.client), Store.routineFor(d.client)),
     'day-edit': (d) => { const r = Store.routineFor(d.client); dayForm(Store.get('clients', d.client), r, findDay(r, d.day)); },
     'day-move': (d) => { const r = Store.routineFor(d.client); moveItem(r.days, d.day, Number(d.dir)); saveRoutine(r); },
