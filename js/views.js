@@ -1282,6 +1282,8 @@
     const blocks = Store.blocksForFood(item.foodId);
     if (isProteinPowder(food) || blocks.some((b) => b.id === 'blk-proteina-polvo')) return 'extra';
     if (blocks.some((b) => b.id === 'blk-verdura') || food.category === 'Verduras y hortalizas') return 'veg';
+    // La fruta va aparte (como la verdura): pones tú los gramos y sus hidratos se descuentan de los demás.
+    if (food.category === 'Frutas' || blocks.some((b) => b.id === 'blk-fruta')) return 'fruit';
     // El bloque con el que se eligió; si el alimento ya no está en él (bloques reorganizados), el bloque en el que esté ahora.
     let b = item.blockId && Store.get('foodBlocks', item.blockId);
     if (!b || !(b.foodIds || []).includes(item.foodId)) b = Store.blocksForFood(item.foodId)[0];
@@ -1290,9 +1292,9 @@
     return MACRO_KEYS.reduce((a, k) => (kc[k] > kc[a] ? k : a), 'protein');
   }
 
-  const ROLE_LABEL = { protein: 'Proteína', carbs: 'Hidratos', fat: 'Grasa', veg: 'Verdura', extra: 'Añadido' };
+  const ROLE_LABEL = { protein: 'Proteína', carbs: 'Hidratos', fat: 'Grasa', veg: 'Verdura', fruit: 'Fruta', extra: 'Añadido' };
   /** Redondeo de las cantidades: grasas de 5 en 5; proteínas e hidratos de 10 en 10. */
-  const stepOf = (role) => (role === 'protein' || role === 'carbs' || role === 'veg' ? 10 : 5);
+  const stepOf = (role) => (role === 'protein' || role === 'carbs' || role === 'veg' || role === 'fruit' ? 10 : 5);
 
   /**
    * Agrupa los alimentos de una comida por el macro que aportan. Los alimentos de un mismo
@@ -1301,14 +1303,14 @@
   function mealGroups(meal) {
     const rows = (meal.items || []).map((it) => ({ it, f: Store.get('foods', it.foodId) })).filter((r) => r.f);
     rows.forEach((r) => { r.role = roleOf(r.it, r.f); });
-    return MACRO_KEYS.concat('veg', 'extra').map((k) => ({ key: k, rows: rows.filter((r) => r.role === k) })).filter((g) => g.rows.length);
+    return MACRO_KEYS.concat('veg', 'fruit', 'extra').map((k) => ({ key: k, rows: rows.filter((r) => r.role === k) })).filter((g) => g.rows.length);
   }
 
   /**
    * Opción de referencia de un grupo: la fijada a mano o, si no, la primera. Las demás opciones
    * aportan lo mismo de su macro principal; para el resto de macros se cuenta la de referencia.
    */
-  const refRow = (g) => g.rows.find((r) => r.it.locked && (g.key === 'veg' ? kcalPer1g(r.f) : per1g(r.f, g.key)) > 0) || g.rows[0];
+  const refRow = (g) => g.rows.find((r) => r.it.locked && (g.key === 'veg' || g.key === 'fruit' ? kcalPer1g(r.f) : per1g(r.f, g.key)) > 0) || g.rows[0];
   function rowAmount(r, key) {
     return (Number(r.it.grams) || 0) * (key === 'kcal' ? (num(r.f.kcal) || 0) / 100 : per1g(r.f, key));
   }
@@ -1339,8 +1341,15 @@
       if (!(Number(ref.it.grams) > 0)) ref.it.grams = 150;
       for (const r of veg.rows) if (r !== ref && !r.it.locked && kcalPer1g(r.f) > 0) r.it.grams = roundStep(rowAmount(ref, 'kcal') / kcalPer1g(r.f), 10);
     }
-    const extraAmount = (k) => extras.reduce((n, r) => n + rowAmount(r, k), veg ? rowAmount(refRow(veg), k) : 0);
-    const groups = all.filter((g) => g.key !== 'extra' && g.key !== 'veg');
+    // La fruta igual: 150 g por defecto (o los que pongas) y sus opciones con las mismas kcal; lo que aporta se descuenta.
+    const fruit = all.find((g) => g.key === 'fruit');
+    if (fruit) {
+      const ref = refRow(fruit);
+      if (!(Number(ref.it.grams) > 0)) ref.it.grams = 150;
+      for (const r of fruit.rows) if (r !== ref && !r.it.locked && kcalPer1g(r.f) > 0) r.it.grams = roundStep(rowAmount(ref, 'kcal') / kcalPer1g(r.f), 10);
+    }
+    const extraAmount = (k) => extras.reduce((n, r) => n + rowAmount(r, k), (veg ? rowAmount(refRow(veg), k) : 0) + (fruit ? rowAmount(refRow(fruit), k) : 0));
+    const groups = all.filter((g) => g.key !== 'extra' && g.key !== 'veg' && g.key !== 'fruit');
     groups.forEach((g) => g.rows.forEach((r) => { if (!r.it.locked && !(Number(r.it.grams) > 0)) r.it.grams = 100; }));
     for (let iter = 0; iter < 40; iter++) {
       for (const g of groups) {
@@ -1431,7 +1440,7 @@
         ${macroBars(tot, target)}
         ${multi ? `<p class="muted meal-note">Las opciones de un mismo grupo son equivalentes: ${equivBy() === 'kcal' ? 'todas aportan las mismas <strong>calorías</strong>' : 'todas aportan lo mismo de su macro'}. Las barras cuentan la primera opción de cada grupo (o la que fijes con el candado).</p>` : ''}
         ${items.length ? groups.map((g) => `<div class="meal-group m-${g.key}">
-          <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.key === 'extra' ? '<span class="muted">resta su proteína a las demás opciones</span>' : g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
+          <div class="meal-group-head"><span class="dot"></span><strong>${ROLE_LABEL[g.key]}</strong>${g.key === 'extra' ? '<span class="muted">resta su proteína a las demás opciones</span>' : g.key === 'fruit' ? `<span class="muted">pon los gramos · sus hidratos se restan del resto${g.rows.length > 1 ? ' · elige una' : ''}</span>` : g.rows.length > 1 ? `<span class="muted">${g.rows.length} opciones · elige una</span>` : ''}</div>
           <ul class="list meal-items">${g.rows.map(({ it, f }, i) => {
           const gr = Number(it.grams) || 0;
           let b = it.blockId && Store.get('foodBlocks', it.blockId);
@@ -4186,7 +4195,7 @@
     fat: { label: 'grasa', short: 'G' },
     kcal: { label: 'kcal', short: 'kcal' },
   };
-  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Grasas', 'Lácteos', 'Otros'];
+  const BLOCK_FAMILIES = ['Proteínas', 'Hidratos de carbono', 'Fruta', 'Grasas', 'Lácteos', 'Otros'];
   const unitOf = (f) => (/ml/.test(f.portion || '') ? 'ml' : 'g');
 
   /** Gramos de un alimento que aportan la cantidad de referencia del bloque, con sus macros. */

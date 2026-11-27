@@ -2641,3 +2641,5 @@ body.pp-open { overflow: hidden; }
 .fq-chev { transition: transform .2s; opacity: .7; }
 .fq-fold[open] .fq-chev { transform: rotate(180deg); }
 .fq-fold[open] > summary { margin-bottom: 10px; }
+.meal-group.m-fruit .dot { color: #f472b6; }
+.meal-group.m-fruit { border-top: 1px dashed var(--border); padding-top: 12px; }

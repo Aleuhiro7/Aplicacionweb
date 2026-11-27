@@ -275,7 +275,7 @@
  * Se cargan una sola vez; después el entrenador puede editarlos o crear los suyos. */
 /* Versión de los bloques de serie. Al subirla, los bloques indicados en FOOD_BLOCKS_CHANGES se
  * actualizan también en los datos ya guardados de cada dispositivo. */
-window.FOOD_BLOCKS_VERSION = 10;
+window.FOOD_BLOCKS_VERSION = 11;
 window.FOOD_BLOCKS_CHANGES = {
   2: { replace: ['blk-carnes-magras', 'blk-carnes-grasas'], remove: ['blk-aves'], add: ['blk-embutidos'] },
   3: { replace: ['blk-huevos'], remove: ['blk-lacteos-proteicos', 'blk-leche', 'blk-quesos'], add: ['blk-lacteos-menos-grasa', 'blk-lacteos-mas-grasa'] },
@@ -286,6 +286,7 @@ window.FOOD_BLOCKS_CHANGES = {
   8: { replace: ['blk-verdura'] },
   9: { remove: ['blk-verdura'] },
   10: { replace: ['blk-cereales'] },
+  11: { replace: ['blk-fruta'] },
 };
 
 window.FOOD_BLOCKS_DEFAULT = [
@@ -320,7 +321,7 @@ window.FOOD_BLOCKS_DEFAULT = [
     foods: ['Lentejas (secas)', 'Garbanzos (secos)', 'Alubias blancas (secas)'] },
   { id: 'blk-legumbres-cocidas', family: 'Hidratos de carbono', name: 'Legumbres cocidas (bote)', macro: 'carbs', amount: 40,
     foods: ['Lentejas cocidas (bote, escurridas)', 'Garbanzos cocidos (bote, escurridos)', 'Alubias cocidas (bote, escurridas)', 'Guisantes congelados', 'Habas', 'Maíz dulce (lata, escurrido)'] },
-  { id: 'blk-fruta', family: 'Hidratos de carbono', name: 'Fruta (una ración)', macro: 'carbs', amount: 15,
+  { id: 'blk-fruta', family: 'Fruta', name: 'Fruta', macro: 'carbs', amount: 15,
     foods: ['Manzana', 'Plátano', 'Naranja', 'Mandarina', 'Pera', 'Fresas', 'Uvas', 'Melocotón', 'Nectarina', 'Kiwi', 'Piña', 'Melón', 'Sandía', 'Mango', 'Arándanos', 'Frambuesas', 'Cerezas', 'Ciruela', 'Higos', 'Granada'] },
 
   { id: 'blk-grasas', family: 'Grasas', name: 'Aceite, aguacate y aceitunas', macro: 'fat', amount: 10,
