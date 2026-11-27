@@ -123,6 +123,19 @@
       Store.update('routines', r.id, { days: r.days });
       return { ok: true };
     },
+    mover_ejercicio({ cliente_id, ejercicio_id, posicion, dia }) {
+      const f = findEx(cliente_id, ejercicio_id);
+      if (f.error) return f;
+      const to = dia ? (f.r.days || [])[Number(dia) - 1] : f.day;
+      if (!to) return { error: 'No existe ese día en su rutina' };
+      f.day.exercises = f.day.exercises.filter((e) => e.id !== ejercicio_id);
+      to.exercises = to.exercises || [];
+      const i = Math.max(0, Math.min(to.exercises.length, (Number(posicion) || 1) - 1));
+      to.exercises.splice(i, 0, f.ex);
+      if (f.ex.group && !(to.muscles || []).includes(f.ex.group)) to.muscles = (to.muscles || []).concat(f.ex.group);
+      Store.update('routines', f.r.id, { days: f.r.days });
+      return { ok: true, ordenDelDia: to.exercises.map((e) => e.name) };
+    },
     cambiar_ejercicio({ cliente_id, ejercicio_id, series, repeticiones, descanso }) {
       const f = findEx(cliente_id, ejercicio_id);
       if (f.error) return f;
@@ -191,6 +204,7 @@
       case 'enviar_enlace': return `Enviar a ${who} el enlace de ${{ medidas: 'medidas y fotos', alimentacion: 'alimentación', cuestionario: 'cuestionario inicial', zona: 'su app de entrenamiento' }[i.tipo] || i.tipo} por WhatsApp`;
       case 'quitar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Quitar «${f.ex ? f.ex.name : '?'}» de la rutina de ${who}${f.day ? ` (${f.day.name})` : ''}`; }
       case 'anadir_ejercicio': { const l = Store.get('library', i.biblioteca_id); const f = i.sustituir_id ? findEx(i.cliente_id, i.sustituir_id) : {}; return `${f.ex ? `Cambiar «${f.ex.name}» por` : 'Añadir'} «${l ? l.name : '?'}» en el día ${i.dia} de la rutina de ${who}`; }
+      case 'mover_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Mover «${f.ex ? f.ex.name : '?'}» al puesto ${i.posicion}${i.dia ? ` del día ${i.dia}` : ''} en la rutina de ${who}`; }
       case 'cambiar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Cambiar «${f.ex ? f.ex.name : '?'}» de ${who}: ${[i.series ? `${i.series} series` : '', i.repeticiones ? `repeticiones ${i.repeticiones}` : '', i.descanso ? `descanso ${i.descanso}` : ''].filter(Boolean).join(', ')}`; }
       default: return b.name;
     }
