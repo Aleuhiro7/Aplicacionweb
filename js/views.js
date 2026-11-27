@@ -2292,8 +2292,28 @@
       if (!window.Sync || !Sync.state.user) return;
       for (const c of Store.data.clients) {
         if (c.portalToken) publishPortal(c).catch((e) => console.error('Zona del cliente sin actualizar', e));
+        if (c.planLinks && (c.planLinks.rutina || c.planLinks.dieta)) refreshPlanLinks(c).catch((e) => console.error('Enlace de rutina/dieta sin actualizar', e));
       }
     }, delay);
+  }
+  /** Los enlaces de rutina y dieta ya enviados se actualizan solos cuando cambian (el cliente siempre ve lo último). */
+  async function refreshPlanLinks(c) {
+    for (const kind of ['rutina', 'dieta']) {
+      const token = c.planLinks && c.planLinks[kind];
+      if (!token) continue;
+      let html = '';
+      if (kind === 'rutina') { const r = Store.routineFor(c.id); if (r && (r.days || []).some((d) => (d.exercises || []).length)) html = routineSheet(c, r); }
+      else { const d = Store.dietFor(c.id); if (d && dietSendable(d)) html = dietSheet(c, d); }
+      if (!html) continue;
+      const key = `entrenapro:plan:${token}`;
+      let last = null;
+      try { last = localStorage.getItem(key); } catch (e) { /* sin almacenamiento */ }
+      const sig = String(html.length) + ':' + html.split('').reduce((h, ch) => ((h * 31) + ch.charCodeAt(0)) | 0, 0);
+      if (last === sig) continue;
+      const sheet = await PdfMaker.prepared(html, kind === 'rutina' ? paginateRoutine : null);
+      await Sync.publishPlan(token, { kind, clientName: c.name, title: `${kind === 'rutina' ? 'Rutina' : 'Dieta'} ${c.name}`, html: sheet });
+      try { localStorage.setItem(key, sig); } catch (e) { /* sin espacio */ }
+    }
   }
   Store.onSave(() => syncPortals());
   // Al abrir la app también: los cambios que hace la propia app al cargar (por ejemplo, descansos nuevos de la
