@@ -2619,3 +2619,9 @@ p.mp-fq > span { flex: 1; }
 .exercise-list .ex-actions { display: flex; gap: 2px; flex-shrink: 0; }
 .exercise-list .ex-actions .icon-btn[disabled] { opacity: .25; }
 @media (max-width: 480px) { .exercise-list .ex-actions .icon-btn { width: 34px; height: 34px; } }
+/* Descargar en PDF: botón pequeño junto al título */
+.cz-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cz-title-row h1 { min-width: 0; }
+.cz-dl { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 9px; border-radius: 999px; border: 1px solid rgba(110, 139, 255, .4); background: rgba(110, 139, 255, .12); color: #c7d2ff; font: 700 .72rem/1 "Archivo", sans-serif; letter-spacing: .06em; cursor: pointer; }
+.cz-dl svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.cz-dl.busy { opacity: .7; min-width: 46px; justify-content: center; }

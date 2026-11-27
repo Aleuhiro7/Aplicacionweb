@@ -293,7 +293,9 @@ function render() {
         <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-refresh" id="cz-refresh" title="Actualizar" aria-label="Actualizar">↻</button><button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
       </div>
       <small class="cz-hero-date">${esc(todayTxt)}</small>
-      <h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
+      <div class="cz-title-row"><h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
+        ${tab === 'rutina' && portal.routineHtml ? '<button type="button" class="cz-dl" id="cz-dl" aria-label="Descargar tu rutina en PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>PDF</span></button>' : ''}
+        ${tab === 'dieta' && portal.dietHtml ? '<button type="button" class="cz-dl" id="cz-dl" aria-label="Descargar tu dieta en PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>PDF</span></button>' : ''}</div>
     </header>
     <div class="cz-body">${body}</div>
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
@@ -302,6 +304,12 @@ function render() {
   const main = (h === '' || h === tab) && tab !== 'dieta' && window.innerWidth >= 340 && window.innerHeight >= 540;
   document.body.classList.toggle('cz-lock', main);
   document.body.dataset.tab = main ? tab : '';
+  // Botón discreto para descargar la rutina o la dieta en PDF (se crea en el propio móvil).
+  const dl = document.getElementById('cz-dl');
+  if (dl) {
+    const isDiet = tab === 'dieta';
+    pdfButton(dl, isDiet ? portal.dietHtml : portal.routineHtml, `${isDiet ? 'Dieta' : 'Rutina'} ${portal.clientName || ''}`, '✓');
+  }
   bindLogout();
   bindInstall();
   const rf = document.getElementById('cz-refresh');
@@ -491,20 +499,22 @@ function setupDiet() {
 
 /** Botón que crea el PDF (en el propio móvil del cliente) a partir de la hoja y lo descarga. */
 function pdfButton(btn, html, name, done) {
+  btn.dataset.html = btn.innerHTML;
   btn.onclick = async () => {
     if (btn.disabled) return;
     btn.disabled = true;
     const label = btn.textContent;
-    btn.textContent = 'Creando el PDF…';
+    btn.classList.add('busy');
+    btn.textContent = btn.classList.contains('cz-dl') ? '…' : 'Creando el PDF…';
     try {
       const blob = await window.PdfMaker.make(sanitize(html));
       window.PdfMaker.save(blob, window.PdfMaker.fileName(name));
       btn.textContent = done;
     } catch (e) {
       console.error(e);
-      btn.textContent = 'No se pudo crear. Toca para reintentar';
+      btn.textContent = btn.classList.contains('cz-dl') ? '✕' : 'No se pudo crear. Toca para reintentar';
     }
-    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 4000);
+    setTimeout(() => { if (btn.dataset.html) btn.innerHTML = btn.dataset.html; else btn.textContent = label; btn.disabled = false; btn.classList.remove('busy'); }, 3000);
   };
 }
 
