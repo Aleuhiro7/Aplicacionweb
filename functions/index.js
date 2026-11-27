@@ -178,6 +178,9 @@ Cómo trabajar:
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
   Busca los ids con buscar_alimento (en crudo cuando haya versión cruda). Pon 1–3 opciones por tipo en cada comida.
   Al confirmar, resume en una frase las kcal, los macros y las comidas.
+- Para cambiar una sola comida (añadir fruta o un alimento con sus gramos, quitar uno, o poner la verdura) usa editar_comida,
+  no rehagas la dieta. «Añade verdura», «marca la verdura» o «el check/tick de verdura» = verdura_libre: true. Si no dice en qué
+  comida, pregúntalo. Busca la fruta con buscar_alimento («fruta» o su nombre).
 - Las herramientas que cambian algo las confirma David en pantalla antes de hacerse: llámalas directamente, sin preguntar
   «¿lo hago?». Si el resultado dice que lo canceló, no insistas.
 - MUY IMPORTANTE: solo puedes cambiar algo llamando a la herramienta. Nunca digas que has hecho un cambio («hecho», «lo he movido»,
@@ -228,6 +231,13 @@ const ASIS_TOOLS = [
       comidas: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string', enum: ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Preentreno', 'Postentreno', 'Snack', 'Recena'] }, alimentos: { type: 'array', items: { type: 'string', description: 'id del alimento' } } }, required: ['nombre', 'alimentos'] } },
       suplementos: { type: 'array', items: { type: 'string', enum: ['whey', 'creatina', 'eaa', 'bcaa', 'glutamina', 'multi', 'omega3', 'vitd', 'magnesio', 'zinc', 'cafeina', 'pre', 'betaalanina', 'citrulina', 'carbos', 'electrolitos', 'colageno', 'melatonina', 'ashwagandha'] } },
     }, required: ['cliente_id', 'comidas'] } },
+  { name: 'editar_comida', description: 'Cambia una comida de la dieta de un cliente: marca o quita la casilla «Verdura libre», añade alimentos (con sus gramos si David los dice; si no, la app los calcula) y quita alimentos. La fruta se añade aquí: con los gramos que diga David (si no, 150 g) y sus hidratos se restan del resto de la comida. Los ids, de buscar_alimento o de datos_dieta. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: {
+      cliente_id: { type: 'string' }, comida: { type: 'string', description: 'Nombre de la comida (Desayuno, Comida, Cena…) o su número (1 = la primera)' },
+      verdura_libre: { type: 'boolean', description: 'true = marcar la casilla «Verdura libre» (verdura a su gusto, hasta 150 g); false = quitarla' },
+      anadir: { type: 'array', items: { type: 'object', properties: { alimento_id: { type: 'string' }, gramos: { type: 'number' } }, required: ['alimento_id'] } },
+      quitar: { type: 'array', items: { type: 'string', description: 'id del alimento' } },
+    }, required: ['cliente_id', 'comida'] } },
   { name: 'ajustar_dieta', description: 'Cambia solo las calorías y/o el reparto de macros de la dieta de un cliente (las cantidades de las comidas se recalculan). Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, kcal: { type: 'integer' }, proteinas_pct: { type: 'number' }, hidratos_pct: { type: 'number' }, grasas_pct: { type: 'number' } }, required: ['cliente_id'] } },
   { name: 'abrir', description: 'Abre una pantalla de la app: el panel, los pagos, o la ficha de un cliente en una pestaña (resumen, progreso, rutina, dieta, fotos, pagos, entrenos).',

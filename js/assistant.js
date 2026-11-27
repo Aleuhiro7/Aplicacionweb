@@ -12,6 +12,13 @@
   const today = () => U.today();
   const num = (n) => (n == null || n === '' ? '' : String(Math.round(Number(n) * 10) / 10).replace('.', ','));
   const A = () => Views.assistant;
+  /** Comida por nombre («desayuno», «la cena»…) o por número (1 = la primera). */
+  const findMeal = (meals, q) => {
+    const n = Number(q);
+    if (Number.isInteger(n) && n >= 1 && n <= meals.length) return meals[n - 1];
+    const k = norm(String(q || '')).replace(/^(el|la|en|de)\s+/, '').trim();
+    return meals.find((m) => norm(m.name) === k) || meals.find((m) => norm(m.name).includes(k) || (k && k.includes(norm(m.name))));
+  };
   const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
   let history = []; // conversación tal cual la usa Claude (se reenvía entera en cada turno)
@@ -164,7 +171,7 @@
         objetivosFijados: !!(d && d.targets && Number(d.targets.kcal) > 0) && 'David ya ha fijado las kcal y los macros: no los cambies.',
         comidasFijadas: d && (d.meals || []).length ? d.meals.map((m) => m.name) : null,
         dietaActual: d && d.targets ? { kcal: d.targets.kcal, proteinasPct: d.targets.proteinPct, hidratosPct: d.targets.carbsPct, grasasPct: d.targets.fatPct,
-          comidas: (d.meals || []).map((m) => ({ nombre: m.name, alimentos: (m.items || []).map((it) => name(it.foodId)).filter(Boolean) })) } : null,
+          comidas: (d.meals || []).map((m) => ({ nombre: m.name, verduraLibre: !!m.vegFree, alimentos: (m.items || []).map((it) => { const n = name(it.foodId); return n ? { id: it.foodId, nombre: n, gramos: Math.round(Number(it.grams) || 0) } : null; }).filter(Boolean) })) } : null,
         cuestionarioAlimentacion: fq ? { comidasAlDia: fq.meals, preferidos: { proteinas: fq.proteinas, hidratos: fq.hidratos, grasas: fq.grasas },
           suplementos: fq.supps, nota: 'Preferencias para tener en cuenta, no una lista cerrada.' } : 'No lo ha rellenado',
       };
@@ -221,6 +228,35 @@
       if (c.noDiet) Store.update('clients', c.id, { noDiet: false });
       A().saveDiet(c.id, patch);
       return { ok: true, objetivos: fixed ? 'Se han respetado los objetivos que fijó David' : 'Objetivos nuevos', ...(missing.length ? { avisos: `No existen estos alimentos y no se han puesto: ${missing.join(', ')}` } : {}) };
+    },
+    editar_comida({ cliente_id, comida, verdura_libre, anadir, quitar }) {
+      const c = client(cliente_id);
+      const d = c && Store.dietFor(c.id);
+      if (!d || !(d.meals || []).length) return { error: 'Ese cliente no tiene comidas en la dieta todavía' };
+      const meals = d.meals.map((m) => Object.assign({}, m, { items: (m.items || []).map((x) => Object.assign({}, x)) }));
+      const meal = findMeal(meals, comida);
+      if (!meal) return { error: `No hay ninguna comida «${comida}». Las comidas son: ${meals.map((m) => m.name).join(', ')}` };
+      const avisos = [];
+      if (verdura_libre != null) meal.vegFree = !!verdura_libre;
+      for (const id of quitar || []) {
+        const n = meal.items.length;
+        meal.items = meal.items.filter((it) => it.foodId !== id);
+        if (meal.items.length === n) avisos.push(`«${(Store.get('foods', id) || {}).name || id}» no estaba en ${meal.name}`);
+      }
+      for (const x of anadir || []) {
+        const f = Store.get('foods', x.alimento_id);
+        if (!f) { avisos.push(`No existe el alimento ${x.alimento_id}`); continue; }
+        const isFruit = f.category === 'Frutas' || Store.blocksForFood(f.id).some((b) => b.id === 'blk-fruta');
+        const g = Number(x.gramos) > 0 ? Math.round(Number(x.gramos)) : 0;
+        const had = meal.items.find((it) => it.foodId === f.id);
+        if (had) { if (g) { had.grams = g; had.locked = true; } continue; }
+        meal.items.push({ id: U.uid(), foodId: f.id, blockId: isFruit ? 'blk-fruta' : ((Store.blocksForFood(f.id)[0] || {}).id || ''), grams: g, locked: !!g });
+      }
+      const tmp = Object.assign({}, d, { meals });
+      A().solveMeal(meal, A().mealTargets(tmp, meal.id));
+      A().saveDiet(c.id, { meals });
+      const name = (id) => (Store.get('foods', id) || {}).name;
+      return { ok: true, comida: meal.name, verduraLibre: !!meal.vegFree, alimentos: meal.items.map((it) => `${name(it.foodId)} ${Math.round(Number(it.grams) || 0)} g`), ...(avisos.length ? { avisos: avisos.join('; ') } : {}) };
     },
     ajustar_dieta({ cliente_id, kcal, proteinas_pct, hidratos_pct, grasas_pct }) {
       const c = client(cliente_id);
@@ -302,6 +338,16 @@
         const ft = od && od.targets && Number(od.targets.kcal) > 0 ? od.targets : null;
         const goal = ft ? `con tus objetivos: ${ft.kcal} kcal (P ${ft.proteinPct} % · H ${ft.carbsPct} % · G ${ft.fatPct} %)` : `${i.kcal} kcal (P ${i.proteinas_pct} % · H ${i.hidratos_pct} % · G ${i.grasas_pct} %)`;
         return `${had ? 'Rehacer las comidas de la dieta' : 'Hacer la dieta'} de ${who} ${goal}, ${(od && (od.meals || []).length) || (i.comidas || []).length} comidas — ${(i.comidas || []).map((m) => `${m.nombre}: ${(m.alimentos || []).map(food).filter(Boolean).join(', ')}`).join(' | ')}${(i.suplementos || []).length ? ` · suplementos: ${i.suplementos.map((k) => (A().SUPPLEMENTS.find((s) => s.k === k) || {}).n || k).join(', ')}` : ''}`;
+      }
+      case 'editar_comida': {
+        const food = (id) => { const f = Store.get('foods', id); return f ? f.name.replace(/\s*\(crud[oa]s?\)/i, '') : id; };
+        const d = c && Store.dietFor(c.id);
+        const m = d && findMeal(d.meals || [], i.comida);
+        const parts = [];
+        if (i.verdura_libre != null) parts.push(i.verdura_libre ? 'marcar «Verdura libre»' : 'quitar «Verdura libre»');
+        if ((i.anadir || []).length) parts.push('añadir ' + i.anadir.map((x) => `${food(x.alimento_id)}${Number(x.gramos) > 0 ? ` (${Math.round(x.gramos)} g)` : ''}`).join(', '));
+        if ((i.quitar || []).length) parts.push('quitar ' + i.quitar.map(food).join(', '));
+        return `En ${m ? m.name : `«${i.comida}»`} de ${who}: ${parts.join(' y ') || 'sin cambios'}`;
       }
       case 'ajustar_dieta': return `Ajustar la dieta de ${who}: ${[i.kcal ? `${i.kcal} kcal` : '', i.proteinas_pct != null ? `P ${i.proteinas_pct} %` : '', i.hidratos_pct != null ? `H ${i.hidratos_pct} %` : '', i.grasas_pct != null ? `G ${i.grasas_pct} %` : ''].filter(Boolean).join(' · ')}`;
       case 'quitar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Quitar «${f.ex ? f.ex.name : '?'}» de la rutina de ${who}${f.day ? ` (${f.day.name})` : ''}`; }
