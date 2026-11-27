@@ -2648,3 +2648,8 @@ body.pp-open { overflow: hidden; }
 .fruit-ico { font-size: 1.3rem; }
 .fruit-plus { color: #f472b6; }
 .fruit-list { display: grid; gap: 4px; max-height: 50vh; overflow-y: auto; }
+
+/* Dieta: barra de enviar / ver / descargar arriba, como en la rutina */
+.diet-head { margin: 4px 0 14px; padding: 12px 0 12px; border-bottom: 1px solid var(--border, rgba(0,0,0,.08)); }
+.diet-head .card-header { margin-bottom: 4px; }
+.diet-head-note { margin: 4px 0 0; font-size: .82rem; }

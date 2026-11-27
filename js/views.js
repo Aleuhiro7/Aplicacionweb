@@ -1719,6 +1719,21 @@
     }
     return `<section class="card diet-panel">
     ${toggle}
+    ${dietSendable(d) ? `<div class="diet-head">
+      <div class="card-header">
+        <div>
+          <h2>Dieta</h2>
+          <div class="muted" style="font-size:.85rem">${d.updatedAt ? `Actualizada el ${esc(fmtDate(String(d.updatedAt).slice(0, 10)))} · ` : ''}${d.targets && Number(d.targets.kcal) > 0 ? `${fmtNum(d.targets.kcal, 0)} kcal · ` : ''}${plural((d.meals || []).length, 'comida', 'comidas')}</div>
+        </div>
+        <div class="actions">
+          <button class="btn sm" data-action="plan-preview" data-kind="dieta" data-client="${c.id}">${U.icon('file')}Ver PDF</button>
+          <button class="btn sm primary wa-btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
+          ${c.planLinks && c.planLinks.dieta ? `<a class="btn sm" href="${planUrl('dieta', c.planLinks.dieta)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
+          <button class="btn sm" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
+        </div>
+      </div>
+      <p class="muted diet-head-note">Le llega un enlace por WhatsApp: ve su dieta y se la descarga en PDF. Si cambias algo, vuelve a enviarlo (el enlace es el mismo y se actualiza).</p>
+    </div>` : ''}
     ${foodQuizCard(c)}
     ${dietTargetsCard(c, d)}
     ${mealsSection(c, d)}
@@ -1730,16 +1745,6 @@
         <div class="actions" style="margin-top:10px"><button type="submit" class="btn primary">${U.icon('check')}Guardar</button></div>
       </form>
     </div>
-    ${dietSendable(d) ? `<div class="diet-sec diet-send">
-      <div class="card-header"><h2>Enviar al cliente</h2></div>
-      <p class="muted" style="margin:0 0 12px">Le llega un enlace por WhatsApp con su tarjeta. Al abrirlo ve su dieta y se la descarga en PDF (portada, sus datos, su plan, una página por comida y hábitos). Si cambias algo, vuelve a enviarlo: el enlace es el mismo y se actualiza.</p>
-      <div class="actions">
-        <button class="btn" data-action="plan-preview" data-kind="dieta" data-client="${c.id}">${U.icon('file')}Ver PDF</button>
-        <button class="btn primary wa-btn" data-action="diet-pdf" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button>
-        ${c.planLinks && c.planLinks.dieta ? `<a class="btn" href="${planUrl('dieta', c.planLinks.dieta)}" target="_blank" rel="noopener">${U.icon('file')}Ver lo que ve</a>` : ''}
-        <button class="btn" data-action="diet-copy" data-client="${c.id}">${U.icon('file')}Copiar texto</button>
-      </div>
-    </div>` : ''}
     ${has ? `<div class="diet-sec diet-delete">
       <button class="btn danger" data-action="diet-delete" data-client="${c.id}">${U.icon('trash')}Eliminar toda la dieta</button>
       <span class="muted">Borra los objetivos, las comidas y las indicaciones.</span>
