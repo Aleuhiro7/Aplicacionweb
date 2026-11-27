@@ -3378,7 +3378,22 @@
     const fqDone = d.clients.filter((c) => c.foodQuiz && c.foodQuiz.answeredAt && !c.foodQuiz.seenAt);
     // Clientes activos con dieta a los que todavía no se les ha enviado el cuestionario de alimentación.
     const noFoodQuiz = active.filter((c) => !c.noDiet && !(c.foodQuiz && c.foodQuiz.token));
+    // Medidas o revisiones que han enviado por el enlace y que todavía no has mirado (del último mes).
+    const rvSince = U.toISODate(new Date(Date.now() - 30 * 864e5));
+    const rvDone = d.clients.flatMap((c) => (c.revisions || []).filter((r) => r.answeredAt && !r.seenAt && r.answeredAt >= rvSince).map((r) => ({ c, r })))
+      .sort((a, b) => (a.r.answeredAt < b.r.answeredAt ? 1 : -1));
+    const rvWhat = (r) => [r.peso ? `${fmtNum(r.peso)} kg` : '', r.cintura ? `${fmtNum(r.cintura)} cm de cintura` : '', r.fotos ? plural(r.fotos, 'foto', 'fotos') : ''].filter(Boolean).join(' · ');
     const alertSections = [
+      section('medidas-recibidas', '📸 Medidas recibidas', rvDone.length, '',
+        `<ul class="list">${rvDone.map(({ c, r }) => `<li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">${r.first ? 'Sus medidas iniciales' : 'Su revisión'} · la envió el ${esc(fmtDate(r.answeredAt))}${rvWhat(r) ? ` · ${esc(rvWhat(r))}` : ''}</div>
+              <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary" data-action="rv-open" data-client="${c.id}" data-token="${esc(r.token)}">${U.icon('file')}Verlas</button><button class="btn sm" data-action="rv-seen" data-client="${c.id}" data-token="${esc(r.token)}">${U.icon('check')}Visto</button></div>
+            </div>
+          </li>`).join('')}</ul>`,
+        'Nada nuevo'),
       section('alimentacion-completada', '🍽️ Cuestionario de alimentación completado', fqDone.length, '',
         `<ul class="list">${fqDone.map((c) => `<li class="plan-item">
             ${avatar(c)}
@@ -4642,6 +4657,11 @@
     UI.toast('Enlace preparado en WhatsApp: el peso, la cintura y las fotos llegarán solos a su ficha');
   }
   /** Pasa a la ficha las revisiones que ya han enviado los clientes. Devuelve cuántas había. */
+  /** Marca como vista una revisión (o medidas iniciales) recibida por enlace: deja de salir en el panel. */
+  function markRevisionSeen(clientId, token) {
+    const c = Store.get('clients', clientId);
+    if (c) Store.update('clients', c.id, { revisions: (c.revisions || []).map((r) => (r.token === token ? Object.assign({}, r, { seenAt: today() }) : r)) });
+  }
   async function importRevisions(onlyClientId) {
     let found = 0;
     for (const c of Store.data.clients.filter((x) => pendingRevision(x) && (!onlyClientId || x.id === onlyClientId))) {
@@ -4657,7 +4677,7 @@
         if (id && !Store.get('photos', id)) Store.add('photos', { id, clientId: c.id, date, note: { frente: 'Frente', perfil: 'Perfil', espalda: 'Espalda' }[pose], cloud: true, createdAt: new Date(base + i).toISOString() });
       });
       const fresh = Store.get('clients', c.id);
-      Store.update('clients', c.id, { revisions: (fresh.revisions || []).map((r) => (r.token === pend.token ? Object.assign({}, r, { answeredAt: date }) : r)) });
+      Store.update('clients', c.id, { revisions: (fresh.revisions || []).map((r) => (r.token === pend.token ? Object.assign({}, r, { answeredAt: date, peso: Number(rv.peso) || null, cintura: Number(rv.cintura) || null, fotos: ['frente', 'perfil', 'espalda'].filter((x) => rv.fotos && rv.fotos[x]).length }) : r)) });
       found++;
       UI.toast(`${c.name.split(' ')[0]} ha enviado su revisión: peso, cintura y fotos`);
       try {
@@ -5341,6 +5361,8 @@
     'fq-supps': (d) => applyFoodQuizSupps(d.client),
     'foods-restore': () => restoreFoods(),
     'fq-seen': (d) => { const c = Store.get('clients', d.client); if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) }); App.render(); },
+    'rv-seen': (d) => { markRevisionSeen(d.client, d.token); App.render(); },
+    'rv-open': (d) => { markRevisionSeen(d.client, d.token); state.clientTab = 'progreso'; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'fq-open': (d) => {
       const c = Store.get('clients', d.client);
       if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) });
