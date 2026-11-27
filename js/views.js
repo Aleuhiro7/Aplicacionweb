@@ -5310,6 +5310,7 @@
     // Para el asistente por voz (assistant.js)
     assistant: {
       clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod,
+      estimateMaintenance, dayTargets, mealTargets, solveMeal, saveDiet, foodMacros, SUPPLEMENTS,
       sendLink: (clientId, tipo) => (tipo === 'medidas' ? sendRevisionLink(clientId) : tipo === 'alimentacion' ? sendFoodQuiz(clientId) : tipo === 'cuestionario' ? sendQuestionnaireLink(clientId) : invitePortal(clientId)),
     },
   };
