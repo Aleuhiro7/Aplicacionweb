@@ -15,7 +15,7 @@
   const LEGS = ['Cuádriceps', 'Isquiotibiales', 'Glúteos', 'Aductores', 'Gemelos'];
   const SHORT = ['Bíceps', 'Tríceps', 'Hombros']; // músculos pequeños: 1:30 min
   const restOf = (group) => (LEGS.includes(group) ? '3 min' : SHORT.includes(group) ? '1:30 min' : '2 min');
-  const METHOD_REPS = '12–15 a 1 del fallo / 6–8 pesada al fallo / peso de la 1.ª al fallo';
+  const METHOD_REPS = '12–15 repeticiones a 1 del fallo / 6–8 repeticiones pesada al fallo / peso de la 1.ª al fallo';
   /** Añade los ejercicios de un patrón (comparten grupo, patrón, descanso y tempo). */
   function pattern(group, prefix, name, { rest = '', tempo = '' } = {}, exercises) {
     let k = 0; // los ejercicios con id propio (extra.id) no cambian la numeración de los demás
