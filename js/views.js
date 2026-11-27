@@ -1458,6 +1458,8 @@
         }).join('')}</ul></div>`).join('') : `<p class="muted" style="margin:12px 0">Añade alimentos de los bloques: la app calculará las cantidades para cuadrar ${target ? 'el objetivo de esta comida' : 'los objetivos (fíjalos arriba)'}. Si eliges varios del mismo tipo (pollo, pavo, lomo…), serán opciones a elegir.</p>`}
         <label class="veg-free${meal.vegFree ? ' on' : ''}"><input type="checkbox" data-action-change="meal-veg" data-client="${c.id}" data-meal="${meal.id}" ${meal.vegFree ? 'checked' : ''}>
           <span><strong>Verdura libre</strong><span class="muted">Se puede añadir hasta 150 g de verdura (la que quiera)</span></span></label>
+        <button type="button" class="fruit-add" data-action="meal-fruit" data-client="${c.id}" data-meal="${meal.id}">
+          <span class="fruit-ico">🍎</span><span><strong>Añadir fruta</strong><span class="muted">Eliges la fruta y los gramos; sus hidratos se restan del resto</span></span><span class="fruit-plus">${U.icon('plus')}</span></button>
         <div class="actions">
           <button class="btn primary sm" data-action="meal-add" data-client="${c.id}" data-meal="${meal.id}">${U.icon('plus')}Añadir alimentos</button>
           ${items.length && target ? `<button class="btn sm" data-action="meal-solve" data-client="${c.id}" data-meal="${meal.id}">${U.icon('activity')}Reajustar cantidades</button>` : ''}
@@ -1561,14 +1563,44 @@
     });
   }
 
+  /** Añadir fruta a una comida: todas las frutas de la biblioteca y los gramos (va aparte, como la verdura). */
+  function fruitPicker(clientId, mealId) {
+    const d = Store.dietFor(clientId);
+    const meal = d && (d.meals || []).find((m) => m.id === mealId);
+    if (!meal) return;
+    const fruits = Store.foods().filter((f) => f.category === 'Frutas' || Store.blocksForFood(f.id).some((b) => b.id === 'blk-fruta'));
+    const have = new Set((meal.items || []).map((x) => x.foodId));
+    UI.openModal({
+      title: `Fruta en ${meal.name}`,
+      body: `<div class="field" style="margin:0 0 12px"><label for="fr-g">Gramos</label><input id="fr-g" type="number" inputmode="numeric" min="10" step="10" value="150"></div>
+        <p class="muted" style="margin:0 0 8px;font-size:.88rem">Marca una o varias (si marcas varias, son opciones a elegir con las mismas calorías).</p>
+        <div class="fruit-list">${fruits.map((f) => `<label class="pick-item${have.has(f.id) ? ' fav' : ''}"><input type="checkbox" value="${f.id}" ${have.has(f.id) ? 'checked disabled' : ''}><span class="grow">${esc(f.name.replace(/\s*\(crud[oa]s?\)/i, ''))}</span><span class="muted">${fmtNum(f.kcal, 0)} kcal · H ${fmtNum(f.carbs)}</span></label>`).join('')}</div>`,
+      footer: '<button type="button" class="btn" data-close>Cancelar</button><button type="submit" class="btn primary">Añadir</button>',
+      onSubmit: () => {
+        const dlg = document.getElementById('modal');
+        const ids = [...dlg.querySelectorAll('.fruit-list input:checked:not(:disabled)')].map((i) => i.value);
+        const grams = Math.max(10, Math.round(Number(dlg.querySelector('#fr-g').value) || 150));
+        if (!ids.length) { UI.toast('Marca alguna fruta'); return; }
+        updateMeal(clientId, mealId, (m) => {
+          ids.forEach((id, k) => m.items.push({ id: U.uid(), foodId: id, blockId: 'blk-fruta', grams: k === 0 ? grams : 0, locked: k === 0 }));
+        });
+        state.openMeal = mealId;
+        UI.closeModal();
+        UI.toast(ids.length === 1 ? 'Fruta añadida' : `${ids.length} frutas añadidas (opciones)`);
+      },
+    });
+  }
+
   /** Abre la biblioteca de bloques para elegir varios alimentos y añadirlos a una comida. */
   function mealPicker(clientId, mealId) {
     const d = Store.dietFor(clientId);
     const meal = d && (d.meals || []).find((m) => m.id === mealId);
     if (!meal) return;
-    const blocks = Store.data.foodBlocks;
-    const inBlocks = new Set(blocks.flatMap((b) => b.foodIds || []));
-    const others = Store.foods().filter((f) => !inBlocks.has(f.id));
+    // La fruta se añade con su propio botón («Añadir fruta»), como la verdura: aquí no sale.
+    const isFruit = (f) => f && (f.category === 'Frutas' || Store.blocksForFood(f.id).some((x) => x.id === 'blk-fruta'));
+    const blocks = Store.data.foodBlocks.filter((b) => b.id !== 'blk-fruta');
+    const inBlocks = new Set(Store.data.foodBlocks.flatMap((b) => b.foodIds || []));
+    const others = Store.foods().filter((f) => !inBlocks.has(f.id) && !isFruit(f));
     const fams = BLOCK_FAMILIES.filter((fm) => blocks.some((b) => (b.family || 'Otros') === fm));
     // Si el cliente rellenó el cuestionario de alimentación, los alimentos que eligió salen marcados con ★ y los
     // primeros de cada bloque (y todos juntos arriba), para ver de un vistazo cuáles prefiere. Se pueden elegir todos.
@@ -5342,6 +5374,7 @@
     'meal-name-edit': (d, el, ev) => { if (ev) { ev.preventDefault(); ev.stopPropagation(); } mealNameForm(d.client, d.meal); },
     'meal-rename': (d, el) => { const name = el.value.trim(); if (name) updateMeal(d.client, d.meal, (m) => { m.name = name; }, { solve: false }); },
     'meal-add': (d) => mealPicker(d.client, d.meal),
+    'meal-fruit': (d) => fruitPicker(d.client, d.meal),
     'meal-solve': (d) => { updateMeal(d.client, d.meal, () => {}); UI.toast('Cantidades reajustadas'); },
     'meal-grams': (d, el) => updateMeal(d.client, d.meal, (m) => { const it = m.items.find((x) => x.id === d.item); if (it) { it.grams = Math.max(0, Number(el.value) || 0); it.locked = true; } }),
     'meal-lock': (d) => updateMeal(d.client, d.meal, (m) => { const it = m.items.find((x) => x.id === d.item); if (it) it.locked = !it.locked; }),
