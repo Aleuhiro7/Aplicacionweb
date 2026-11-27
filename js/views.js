@@ -1900,23 +1900,41 @@
     n += 0;
     out.push(...meals.map(mealPage));
     n += meals.length;
+    // Plato improvisado a la medida de sus macros: ¼ de verdura y el resto del plato repartido entre proteína e
+    // hidrato según los gramos de su dieta; la grasa, según su porcentaje.
+    const sp = d && d.targets && Number(d.targets.kcal) > 0 ? macroSplit(d.targets) : null;
+    const gP = sp ? (sp.find((m) => m.key === 'protein') || {}).grams || 0 : 1;
+    const gH = sp ? (sp.find((m) => m.key === 'carbs') || {}).grams || 0 : 1;
+    const fatPct = sp ? (sp.find((m) => m.key === 'fat') || {}).pct || 0 : 25;
+    const VEG = 0.25;
+    let shP = gP + gH > 0 ? (1 - VEG) * (gP / (gP + gH)) : 0.375;
+    shP = Math.min(0.6, Math.max(0.25, Math.round(shP * 20) / 20)); // entre ¼ y 60 %, en pasos de 5 %
+    const shH = Math.max(0, 1 - VEG - shP);
+    const pctTxt = (x) => `${Math.round(x * 100)} %`;
+    const arc = (a0, a1, color) => {
+      if (a1 - a0 <= 0.0001) return '';
+      const P = (a) => [100 + 88 * Math.sin(a * 2 * Math.PI), 100 - 88 * Math.cos(a * 2 * Math.PI)].map((v) => v.toFixed(1)).join(' ');
+      return `<path d="M100 100 L${P(a0)} A88 88 0 ${a1 - a0 > 0.5 ? 1 : 0} 1 ${P(a1)} Z" fill="${color}" stroke="#121722" stroke-width="2"/>`;
+    };
+    const lbl = (a0, a1, t) => { const m = (a0 + a1) / 2; return a1 - a0 < 0.06 ? '' : `<text x="${(100 + 55 * Math.sin(m * 2 * Math.PI)).toFixed(1)}" y="${(104 - 55 * Math.cos(m * 2 * Math.PI)).toFixed(1)}" text-anchor="middle" class="ds-pl">${t}</text>`; };
+    const s1 = shP; const s2 = shP + VEG;
+    const fatTip = fatPct >= 35 ? 'Grasa generosa: aceite de oliva, aguacate, frutos secos o huevo entero (tu dieta lleva bastante grasa).'
+      : fatPct <= 20 ? 'Solo un chorrito de aceite: tu dieta lleva poca grasa, evita fritos y salsas.'
+      : 'Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.';
     const plate = `<div class="ds-plate">
         <svg viewBox="0 0 200 200" class="ds-plate-svg" aria-hidden="true">
           <circle cx="100" cy="100" r="96" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
-          <path d="M100 100 L100 12 A88 88 0 0 0 100 188 Z" fill="#f87171"/>
-          <path d="M100 100 L100 12 A88 88 0 0 1 188 100 Z" fill="#4ade80"/>
-          <path d="M100 100 L188 100 A88 88 0 0 1 100 188 Z" fill="#fb923c"/>
-          <line x1="100" y1="10" x2="100" y2="190" stroke="#121722" stroke-width="3"/><line x1="100" y1="100" x2="190" y2="100" stroke="#121722" stroke-width="3"/>
-          <text x="54" y="104" text-anchor="middle" class="ds-pl">½</text><text x="140" y="68" text-anchor="middle" class="ds-pl">¼</text><text x="140" y="146" text-anchor="middle" class="ds-pl">¼</text>
+          ${arc(0, s1, '#f87171')}${arc(s1, s2, '#4ade80')}${arc(s2, 1, '#fb923c')}
+          ${lbl(0, s1, pctTxt(shP))}${lbl(s1, s2, pctTxt(VEG))}${lbl(s2, 1, pctTxt(shH))}
         </svg>
         <div class="ds-plate-legend">
-          <div style="--ds-accent:#f87171"><b>½ Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
-          <div style="--ds-accent:#4ade80"><b>¼ Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
-          <div style="--ds-accent:#fb923c"><b>¼ Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>
-          <div style="--ds-accent:#facc15"><b>+ Un toque de grasa</b><span>Un chorrito de aceite de oliva, unas aceitunas o un poco de aguacate.</span></div>
+          <div style="--ds-accent:#f87171"><b>${pctTxt(shP)} Proteína</b><span>Pollo, pavo, ternera magra, pescado, huevos, tofu…</span></div>
+          <div style="--ds-accent:#4ade80"><b>${pctTxt(VEG)} Verdura</b><span>Ensalada, verduras a la plancha, al horno o al vapor.</span></div>
+          ${shH > 0 ? `<div style="--ds-accent:#fb923c"><b>${pctTxt(shH)} Hidrato</b><span>Arroz, pasta, patata, pan integral, legumbres…</span></div>` : ''}
+          <div style="--ds-accent:#facc15"><b>+ Grasa</b><span>${fatTip}</span></div>
         </div>
       </div>
-      <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes y no te equivocarás.</p>`;
+      <p class="ds-plan-note">Úsalo cuando comas fuera o tengas que improvisar: divide el plato en estas partes${sp ? ', que van según el reparto de tu dieta' : ''}, y no te equivocarás.</p>`;
     out.push(page(++n, 'Para comer fuera o improvisar', 'Tu plato improvisado', plate));
     const L = waterLiters(c.id);
     const lastW = weights[weights.length - 1];
