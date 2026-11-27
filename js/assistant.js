@@ -217,9 +217,12 @@
     if (pending) cancelPending('David ha dicho otra cosa en lugar de confirmar.');
     history.push({ role: 'user', content: text });
     addBubble('me', text);
+    wroteThisTurn = false;
     await turn();
   }
 
+  let wroteThisTurn = false; // si en esta orden se ha cambiado algo de verdad
+  const CLAIM = /\b(hecho|listo|he (cambiado|movido|quitado|eliminado|a[ñn]adido|apuntado|registrado|puesto|creado)|(cambiad|movid|quitad|eliminad|a[ñn]adid|apuntad|registrad|cread)[oa]s?)\b/i;
   async function turn() {
     busy = true; render();
     try {
@@ -234,7 +237,16 @@
         if (said) { addBubble('ai', said); speak(said, !needsConfirm && /\?\s*$/.test(said) ? autoListen : null); }
         if (res.stop_reason === 'refusal') { addBubble('ai', 'No puedo ayudarte con eso.'); break; }
         const uses = (res.content || []).filter((b) => b.type === 'tool_use');
-        if (!uses.length) break;
+        if (!uses.length) {
+          // Dice que lo ha hecho pero no ha usado ninguna herramienta: no se ha cambiado nada. Se avisa y se le corrige.
+          if (said && !wroteThisTurn && CLAIM.test(said)) {
+            addBubble('err', '⚠️ En realidad no se ha cambiado nada. Lo intento otra vez…');
+            history.push({ role: 'user', content: 'Aviso de la app: no has llamado a ninguna herramienta, así que no se ha cambiado nada. Si David te ha pedido un cambio, hazlo ahora con la herramienta que corresponda.' });
+            wroteThisTurn = true; // solo se corrige una vez
+            continue;
+          }
+          break;
+        }
         const results = [];
         const toConfirm = [];
         for (const b of uses) {
@@ -279,6 +291,7 @@
     // Confirmado con la voz no hay toque, y el móvil no deja abrir otra pestaña: WhatsApp se abre en esta misma.
     const orig = window.open;
     if (byVoice === true) window.open = (url) => { if (url && url !== 'about:blank') setTimeout(() => { location.href = url; }, 600); return null; };
+    wroteThisTurn = true;
     try { for (const b of blocks) results.push(run(b)); } finally { if (byVoice === true) setTimeout(() => { window.open = orig; }, 3000); }
     App.render();
     addBubble('ok', `✓ ${blocks.map(describe).join(' · ')}`);

@@ -172,6 +172,8 @@ Cómo trabajar:
 - Para tocar la rutina de un cliente, mira primero ver_rutina (y buscar_ejercicio si hay que añadir uno).
 - Las herramientas que cambian algo las confirma David en pantalla antes de hacerse: llámalas directamente, sin preguntar
   «¿lo hago?». Si el resultado dice que lo canceló, no insistas.
+- MUY IMPORTANTE: solo puedes cambiar algo llamando a la herramienta. Nunca digas que has hecho un cambio («hecho», «lo he movido»,
+  «cambiado»…) si en este turno no has llamado a la herramienta y su resultado ha sido ok. Si no puedes hacerlo, dilo.
 - No inventes datos ni hagas cosas que no te ha pedido. Las fechas, en formato AAAA-MM-DD (hoy es la fecha que te indica la app).
 
 Cómo responder (te van a escuchar en voz alta):
@@ -236,7 +238,7 @@ export const asistente = onCall(
         model: MODEL,
         max_tokens: 4000,
         thinking: { type: 'adaptive' },
-        output_config: { effort: 'low' }, // respuestas rápidas: es una conversación por voz
+        output_config: { effort: 'medium' }, // equilibrio: rápido, pero sin saltarse las herramientas
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
         system: `${ASIS_SYSTEM}\n\nHoy es ${hoy}.`,
