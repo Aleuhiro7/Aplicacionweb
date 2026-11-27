@@ -415,34 +415,59 @@
   let rec = null; let listening = false;
   /** Volver a escuchar sola (sin tocar): solo si el asistente está abierto y no está ya escuchando ni pensando. */
   const autoListen = () => { if (open && !listening && !busy) listen(); };
+  // El navegador da por terminada la frase en cuanto haces una pausa corta. Para que dé tiempo a hablar con calma,
+  // si se corta antes de tiempo se vuelve a escuchar sola y se junta el texto: solo se envía tras SILENCE ms callado
+  // (o al pulsar ■). Si aún no has dicho nada, espera hasta FIRST_WAIT ms.
+  const SILENCE = 2600; const FIRST_WAIT = 9000;
+  let stopListening = null;
   function listen() {
     if (!Rec) { UI.toast('Este navegador no entiende la voz: escribe abajo (en Android, usa Chrome).'); return; }
-    if (listening) { rec.stop(); return; }
+    if (listening) { if (stopListening) stopListening(); return; }
     window.speechSynthesis && speechSynthesis.cancel();
-    rec = new Rec();
-    rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false;
-    const input = document.getElementById('asis-text');
-    let finalText = '';
-    rec.onresult = (ev) => {
-      let interim = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        if (ev.results[i].isFinal) finalText += ev.results[i][0].transcript; else interim += ev.results[i][0].transcript;
-      }
-      if (input) input.value = (finalText + interim).trim();
-    };
-    rec.onerror = (ev) => { if (ev.error === 'not-allowed') UI.toast('Permite el micrófono para hablar con el asistente'); };
-    rec.onend = () => {
+    const input = () => document.getElementById('asis-text');
+    let saved = '';        // texto de los trozos anteriores
+    let current = '';      // texto del trozo que se está escuchando
+    let heard = false; let finished = false; let timer = null;
+    const text = () => (saved + ' ' + current).replace(/\s+/g, ' ').trim();
+    const finish = () => {
+      if (finished) return;
+      finished = true; clearTimeout(timer); stopListening = null;
+      try { rec.onend = null; rec.abort(); } catch (e) { /* ya parado */ }
       listening = false; render();
-      const t = (finalText || (input && input.value) || '').trim();
-      if (!t) return;
-      if (input) input.value = '';
+      const t = text();
+      const box = input(); if (box) box.value = '';
+      if (!t || !open) return;
       // «Sí» / «confirma» con una acción esperando: se confirma; «no» / «cancela»: se cancela.
       if (pending && /^(s[ií]|vale|ok|okay|confirm[ao]?|hazlo|adelante|dale|correcto|perfecto|venga)(?=$|[\s,.!¡?¿])/i.test(t)) { confirmPending(true); return; }
       if (pending && /^(no|cancela|cancelar|d[eé]jalo|para|espera)(?=$|[\s,.!¡?¿])/i.test(t)) { cancelPending(); return; }
       send(t);
     };
-    listening = true; render();
-    rec.start();
+    const arm = () => { clearTimeout(timer); timer = setTimeout(finish, heard ? SILENCE : FIRST_WAIT); };
+    stopListening = finish;
+    const startChunk = () => {
+      if (finished) return;
+      rec = new Rec();
+      rec.lang = 'es-ES'; rec.interimResults = true; rec.continuous = false;
+      rec.onresult = (ev) => {
+        let t = '';
+        for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
+        current = t; heard = true; arm();
+        const box = input(); if (box) box.value = text();
+      };
+      rec.onerror = (ev) => {
+        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { UI.toast('Permite el micrófono para hablar con el asistente'); finish(); }
+      };
+      rec.onend = () => {
+        if (finished) return;
+        saved = text(); current = '';
+        // Se ha cortado en una pausa: si no se ha cerrado el asistente, se sigue escuchando.
+        if (!open) { finish(); return; }
+        try { startChunk(); } catch (e) { finish(); }
+      };
+      rec.start();
+    };
+    listening = true; render(); arm();
+    try { startChunk(); } catch (e) { finish(); }
   }
   /** Dice el texto en voz alta; al terminar, «then» (por ejemplo, volver a escuchar). */
   function speak(text, then) {
@@ -515,7 +540,7 @@
       </form>`;
     const logEl = document.getElementById('asis-log');
     logEl.scrollTop = logEl.scrollHeight;
-    document.getElementById('asis-close').onclick = () => { open = false; if (rec && listening) rec.stop(); window.speechSynthesis && speechSynthesis.cancel(); render(); };
+    document.getElementById('asis-close').onclick = () => { open = false; if (listening && stopListening) stopListening(); window.speechSynthesis && speechSynthesis.cancel(); render(); };
     document.getElementById('asis-new').onclick = () => { history = []; log.length = 0; pending = null; window.speechSynthesis && speechSynthesis.cancel(); render(); };
     document.getElementById('asis-mute').onclick = () => { muted = !muted; try { localStorage.setItem('entrenapro:asis-mute', muted ? '1' : '0'); } catch (e) { /* nada */ } if (muted && window.speechSynthesis) speechSynthesis.cancel(); render(); };
     document.getElementById('asis-mic').onclick = listen;
