@@ -560,6 +560,31 @@
     // En el orden en que los eliges: el primero que marcas es el primero del día.
     return [...new Set([...(d.muscles || []), ...(d.exercises || []).map(exGroup)])];
   }
+  /** Ejercicios de un día en su orden real, en tramos seguidos del mismo músculo (un músculo puede salir dos veces
+   * si lo intercalas con otro). Es el orden en que se entrena, en el PDF y en la app del cliente. */
+  function dayRuns(d) {
+    const runs = [];
+    for (const ex of d.exercises || []) {
+      const g = exGroup(ex);
+      const last = runs[runs.length - 1];
+      if (last && last.g === g) last.exs.push(ex); else runs.push({ g, exs: [ex] });
+    }
+    return runs;
+  }
+  /** Mete un ejercicio nuevo detrás del último de su músculo (o donde le toque según el orden de los músculos). */
+  function insertExercise(day, ex) {
+    const list = (day.exercises = day.exercises || []);
+    const g = exGroup(ex);
+    let at = -1;
+    list.forEach((x, i) => { if (exGroup(x) === g) at = i; });
+    if (at < 0) {
+      const order = dayMuscles(day);
+      const mine = order.indexOf(g);
+      at = list.findIndex((x) => order.indexOf(exGroup(x)) > mine) - 1;
+      if (at < -1) at = list.length - 1;
+    }
+    list.splice(at + 1, 0, ex);
+  }
   const dayCountPicker = (c, n) => `<div class="day-count" role="group" aria-label="Días de entrenamiento a la semana">
       ${[1, 2, 3, 4, 5, 6, 7].map((k) => `<button type="button" class="day-count-btn${k === n ? ' active' : ''}" data-action="routine-days" data-client="${c.id}" data-value="${k}" aria-pressed="${k === n}">${k}</button>`).join('')}
     </div>`;
@@ -575,8 +600,6 @@
           ${ex.notes ? `<div class="meta ex-notes">${esc(ex.notes)}</div>` : ''}
         </div>
         <div class="ex-actions">
-          ${i > 0 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ejercicio">${U.icon('up')}</button>` : ''}
-          ${i < list.length - 1 ? `<button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ejercicio">${U.icon('down')}</button>` : ''}
           <button class="icon-btn" data-action="ex-edit" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" aria-label="Editar ejercicio">${U.icon('edit')}</button>
         </div>
       </li>`;
@@ -658,6 +681,15 @@
               ${exs.length ? `<ol class="list exercise-list">${exs.map((ex) => exerciseRow(c, d, ex, exs)).join('')}</ol>` : `<p class="muted muscle-empty">Pulsa «Ejercicios de ${esc(g)}» para elegirlos de la biblioteca.</p>`}
             </div>`;
           }).join('') : '<p class="muted" style="margin:6px 0 0">Marca arriba los músculos que entrena este día.</p>'}
+          ${list.length > 1 ? `<div class="ex-order">
+            <h3>Orden del entreno <span class="muted">· así lo hará el cliente</span></h3>
+            <ol class="ex-order-list">${list.map((ex, i) => `<li>
+              <span class="ex-num">${i + 1}</span>
+              <div class="grow"><strong>${esc(ex.name)}</strong><small class="muted">${esc(exGroup(ex))}</small></div>
+              <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="-1" aria-label="Subir ${esc(ex.name)}" ${i === 0 ? 'disabled' : ''}>${U.icon('up')}</button>
+              <button class="icon-btn" data-action="ex-move" data-client="${c.id}" data-day="${d.id}" data-ex="${ex.id}" data-dir="1" aria-label="Bajar ${esc(ex.name)}" ${i === list.length - 1 ? 'disabled' : ''}>${U.icon('down')}</button>
+            </li>`).join('')}</ol>
+          </div>` : ''}
         </section>`;
       }).join('')}`;
   }
@@ -710,7 +742,7 @@
           const lib = Store.get('library', id);
           if (!lib) continue;
           const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
-          day.exercises.push({ id: U.uid(), libraryId: lib.id, group: lib.group, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes });
+          insertExercise(day, { id: U.uid(), libraryId: lib.id, group: lib.group, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes });
         }
         if (!(day.muscles || []).includes(group)) day.muscles = (day.muscles || []).concat(group);
         UI.closeModal();
@@ -772,11 +804,11 @@
     if (r.notes) lines.push('', r.notes);
     (r.days || []).forEach((d, di) => {
       lines.push('', `*${d.name || `Día ${di + 1}`}*`);
-      for (const g of dayMuscles(d)) {
-        const exs = (d.exercises || []).filter((ex) => exGroup(ex) === g);
-        if (!exs.length) continue;
+      let n = 0;
+      for (const { g, exs } of dayRuns(d)) {
         lines.push(`_${g}_`);
-        exs.forEach((ex, ei) => {
+        exs.forEach((ex) => {
+          const ei = n++;
           const meta = exerciseMeta(ex);
           lines.push(`${ei + 1}. ${ex.name}${meta ? ` — ${meta}` : ''}`);
           if (ex.notes) lines.push(`   _${ex.notes}_`);
@@ -889,7 +921,7 @@
         else {
           // Si el nombre es el de un ejercicio de la biblioteca, queda enlazado (fotos y pautas al día).
           const m = Store.library().find((x) => x.name.toLowerCase() === String(v.name).trim().toLowerCase());
-          (day.exercises = day.exercises || []).push(Object.assign({ id: U.uid() }, group ? { group } : {}, m ? { libraryId: m.id, group: group || m.group } : {}, v));
+          insertExercise(day, Object.assign({ id: U.uid() }, group ? { group } : {}, m ? { libraryId: m.id, group: group || m.group } : {}, v));
         }
         saveRoutine(r);
         if (!ex) UI.toast('Ejercicio añadido');
@@ -1981,10 +2013,7 @@
     const pages = [];
     days.forEach((d, di) => {
       const parts = [];
-      for (const g of dayMuscles(d)) {
-        const exs = (d.exercises || []).filter((ex) => exGroup(ex) === g);
-        if (exs.length) parts.push({ g, exs, cont: false });
-      }
+      for (const { g, exs } of dayRuns(d)) parts.push({ g, exs, cont: false });
       pages.push({ d, di, parts });
     });
     const tips = window.GUIDES.tips;
@@ -2133,10 +2162,10 @@
     const r = !c.noTraining && Store.routineFor(c.id);
     const days = r ? (r.days || []).filter((d) => (d.exercises || []).length).map((d, di) => ({
       name: d.name || `Día ${di + 1}`,
-      groups: dayMuscles(d).map((g, gi) => ({
+      groups: dayRuns(d).map(({ g, exs: runExs }, gi) => ({
         g,
         color: RS_TONES[gi % RS_TONES.length],
-        exs: (d.exercises || []).filter((ex) => exGroup(ex) === g).map((ex) => {
+        exs: runExs.map((ex) => {
           const lib = ex.libraryId && Store.get('library', ex.libraryId);
           const img = lib && imgOf(lib);
           return { id: ex.id, name: ex.name || '', sets: ex.sets || '', reps: ex.reps || '', rest: ex.rest || '', load: ex.load || '', notes: ex.notes || '', img0: img ? exImg(lib, 0) : '', img1: img ? exImg(lib, 1) : '' };
@@ -4320,7 +4349,7 @@
     if (!pick || !lib) return;
     const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
     const ex = { id: U.uid(), libraryId: lib.id, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes };
-    (pick.day.exercises = pick.day.exercises || []).push(ex);
+    insertExercise(pick.day, ex);
     saveRoutine(pick.routine);
     const { client, day } = pick;
     backToRoutine(client.id);
@@ -5137,15 +5166,12 @@
     'pick-manual': () => { const p = pickContext(); if (!p) return; const { client, routine, day } = p; backToRoutine(client.id); setTimeout(() => exerciseForm(client, routine, day), 50); },
     'ex-edit': (d) => { const r = Store.routineFor(d.client); const day = findDay(r, d.day); exerciseForm(Store.get('clients', d.client), r, day, day.exercises.find((x) => x.id === d.ex)); },
     'ex-move': (d) => {
-      // Se mueve dentro de su músculo: se intercambia con el ejercicio anterior/siguiente del mismo músculo.
+      // Se mueve en el orden del día, aunque sea de otro músculo: se intercambia con el de arriba o el de abajo.
       const r = Store.routineFor(d.client);
       const list = findDay(r, d.day).exercises;
-      const ex = list.find((x) => x.id === d.ex);
-      if (!ex) return;
-      const same = list.filter((x) => exGroup(x) === exGroup(ex));
-      const other = same[same.indexOf(ex) + Number(d.dir)];
-      if (!other) return;
-      const i = list.indexOf(ex), j = list.indexOf(other);
+      const i = list.findIndex((x) => x.id === d.ex);
+      const j = i + Number(d.dir);
+      if (i < 0 || j < 0 || j >= list.length) return;
       [list[i], list[j]] = [list[j], list[i]];
       saveRoutine(r);
     },

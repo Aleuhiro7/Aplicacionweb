@@ -151,6 +151,19 @@
       base.settings.repsV3 = true;
       migrated = true;
     }
+    // Una sola vez: el orden de los ejercicios de cada día pasa a ser el que se veía (agrupados por músculo, en el orden
+    // de los músculos del día). A partir de aquí el orden se cambia a mano y vale tal cual, aunque se mezclen músculos.
+    if (!base.settings.exOrderV1) {
+      const libGroup = new Map(base.library.map((x) => [x.id, x.group]));
+      const gOf = (ex) => ex.group || libGroup.get(ex.libraryId) || 'Otros';
+      for (const r of base.routines) for (const d of r.days || []) {
+        const exs = d.exercises || [];
+        const order = [...new Set([...(d.muscles || []), ...exs.map(gOf)])];
+        d.exercises = exs.map((ex, i) => [ex, i]).sort((a, b) => order.indexOf(gOf(a[0])) - order.indexOf(gOf(b[0])) || a[1] - b[1]).map((x) => x[0]);
+      }
+      base.settings.exOrderV1 = true;
+      migrated = true;
+    }
     // Limpieza única: el jamón ibérico no se usa en ningún sitio (tampoco si se añadió a mano).
     if (!base.settings.ibericoRemoved) {
       base.foods = base.foods.filter((f) => !/jam[oó]n\s+ib[eé]rico/i.test(f.name || ''));
