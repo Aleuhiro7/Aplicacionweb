@@ -2778,3 +2778,4 @@ body.pp-open { overflow: hidden; }
 .cz-st-hint { margin: 16px 0 0; font-size: .9rem; color: #94a3b8; }
 .cz-st-hint .link-btn { font-size: inherit; color: #6e8bff; font-weight: 600; }
 .cz-st-hint .link-btn { padding: 0; margin: 0; min-height: 0; display: inline; }
+.pdf-preview-sheet { flex: none; } /* que no se encoja: así la vista previa se desliza */
