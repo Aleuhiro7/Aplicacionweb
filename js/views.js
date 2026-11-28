@@ -3383,7 +3383,22 @@
     const rvDone = d.clients.flatMap((c) => (c.revisions || []).filter((r) => r.answeredAt && !r.seenAt && r.answeredAt >= rvSince).map((r) => ({ c, r })))
       .sort((a, b) => (a.r.answeredAt < b.r.answeredAt ? 1 : -1));
     const rvWhat = (r) => [r.peso ? `${fmtNum(r.peso)} kg` : '', r.cintura ? `${fmtNum(r.cintura)} cm de cintura` : '', r.fotos ? plural(r.fotos, 'foto', 'fotos') : ''].filter(Boolean).join(' · ');
+    // Enlaces de medidas iniciales, seguimiento o revisión enviados y todavía sin rellenar.
+    const rvWaiting = d.clients.filter((c) => (c.status || 'activo') === 'activo' && pendingRevision(c)).map((c) => ({ c, r: pendingRevision(c) }))
+      .sort((a, b) => (a.r.sentAt > b.r.sentAt ? 1 : -1));
+    const rvKind = (r) => (r.first || r.tipo === 'inicial' ? 'medidas iniciales' : r.tipo === 'seguimiento' ? 'seguimiento' : 'revisión');
+    const ago = (date) => { const n = U.daysBetween(date, today()); return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : `hace ${n} días`; };
     const alertSections = [
+      section('revision-sin-rellenar', '📨 Enviado y sin rellenar', rvWaiting.length, '',
+        `<ul class="list">${rvWaiting.map(({ c, r }) => `<li class="plan-item">
+            ${avatar(c)}
+            <div class="grow">
+              <a class="title" href="#/clientes/${c.id}" style="color:inherit;text-decoration:none">${esc(c.name)}</a>
+              <div class="meta">Le enviaste el enlace de <b>${rvKind(r)}</b> ${ago(r.sentAt)} (${esc(fmtDate(r.sentAt))}) y aún no lo ha rellenado</div>
+              <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary wa-btn" data-action="send-revision" data-client="${c.id}">${U.icon('message')}Recordárselo</button><button class="btn sm" data-action="check-revision" data-client="${c.id}">${U.icon('check')}Comprobar</button></div>
+            </div>
+          </li>`).join('')}</ul>`,
+        'Nadie tiene nada pendiente de rellenar'),
       section('medidas-recibidas', '📸 Medidas recibidas', rvDone.length, '',
         `<ul class="list">${rvDone.map(({ c, r }) => `<li class="plan-item">
             ${avatar(c)}
@@ -4652,7 +4667,8 @@
       : `Hola ${c.name.split(' ')[0]}, ¡toca revisión! 📸 Envíame tu peso, tu cintura y tus 3 fotos desde este enlace (te explico cómo hacerlo):\n${url}`;
     const wa = `${U.waLink(c.phone) || 'https://wa.me/'}?text=${encodeURIComponent(text)}`;
     if (win) win.location.href = wa; else window.open(wa, '_blank');
-    if (!pend) Store.update('clients', c.id, { revisions: [...(c.revisions || []), { token, sentAt: today(), answeredAt: '', first }] });
+    const ri = !first && Store.reviewInfo(c);
+    if (!pend) Store.update('clients', c.id, { revisions: [...(c.revisions || []), { token, sentAt: today(), answeredAt: '', first, tipo: first ? 'inicial' : ri && ri.type === 'mensual' ? 'revision' : ri ? 'seguimiento' : 'revision' }] });
     App.render();
     UI.toast('Enlace preparado en WhatsApp: el peso, la cintura y las fotos llegarán solos a su ficha');
   }
