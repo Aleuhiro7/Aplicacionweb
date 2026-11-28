@@ -5121,6 +5121,13 @@
           <p class="muted" style="font-size:.8rem;margin:8px 0 0">Máximo 8 segundos. Los clientes lo oyen al momento (en cuanto tu app se conecte a la nube).</p>`}
         </section>
         <section class="card">
+          <div class="card-header"><h2>Cómo escribes (asistente)</h2></div>
+          <p class="muted" style="margin:0 0 10px">Pega aquí 3–6 mensajes de WhatsApp que hayas mandado tú a clientes, tal cual (deja una línea en blanco entre uno y otro). El asistente los copia para que lo que escriba parezca tuyo.</p>
+          <textarea id="wa-examples" rows="7" style="width:100%" placeholder="Buenas Eduardo, mañana te toca revisión, mándame las fotos cuando puedas&#10;&#10;Carlos te recuerdo que el 5 te toca renovar, cualquier cosa me dices">${esc(s.waExamples || '')}</textarea>
+          <div class="actions" style="margin-top:8px"><button class="btn primary sm" data-action="save-wa-style">${U.icon('check')}Guardar</button>
+            ${(s.waLearned || []).length ? `<span class="muted" style="font-size:.85rem">Además ha aprendido de ${plural(s.waLearned.length, 'mensaje que corregiste', 'mensajes que corregiste')}</span><button class="btn sm" data-action="clear-wa-learned">Olvidarlos</button>` : ''}</div>
+        </section>
+        <section class="card">
           <div class="card-header"><h2>Avisos de pago</h2></div>
           <p class="muted" style="margin:0 0 12px">Te aviso ${Store.REMIND_DAYS} días antes de que a un cliente le toque pagar: en el resumen y, si lo activas, con una notificación del navegador.</p>
           ${notificationStatus() ? `<p style="margin:0 0 12px">${esc(notificationStatus())}</p>` : ''}
@@ -5423,6 +5430,8 @@
     'fq-supps': (d) => applyFoodQuizSupps(d.client),
     'foods-restore': () => restoreFoods(),
     'fq-seen': (d) => { const c = Store.get('clients', d.client); if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) }); App.render(); },
+    'save-wa-style': () => { const t = document.getElementById('wa-examples'); Store.settings.waExamples = t ? t.value.trim() : ''; Store.save(); UI.toast('Guardado: el asistente escribirá como tú'); },
+    'clear-wa-learned': () => { Store.settings.waLearned = []; Store.save(); App.render(); UI.toast('Olvidados'); },
     'alert-omit': (d) => {
       omitAlert(d.value); App.render();
       UI.toast('Aviso omitido: no volverá a salir', { label: 'Deshacer', onClick: () => { unomitAlert(d.value); App.render(); } });

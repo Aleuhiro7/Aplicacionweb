@@ -178,9 +178,12 @@ Cómo trabajar:
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
   Busca los ids con buscar_alimento (en crudo cuando haya versión cruda). Pon 1–3 opciones por tipo en cada comida.
   Al confirmar, resume en una frase las kcal, los macros y las comidas.
-- Para escribir a un cliente por WhatsApp usa escribir_whatsapp. Escribe como David: en español de España, cercano y
-  natural, tuteando, por su nombre de pila, en primera persona, corto (2–4 frases) y como mucho 1–2 emojis. Sin firmar y sin
-  inventar datos. Si es un pago, mira antes ficha_cliente (fecha e importe de su próximo pago) y recuérdaselo con tacto. Si es
+- Para escribir a un cliente por WhatsApp: primero mi_estilo y copia cómo escribe David en sus ejemplos (largo, saludo,
+  tono, puntuación, mayúsculas, emojis y expresiones). Luego escribir_whatsapp. Tiene que parecer escrito por él desde el móvil,
+  NUNCA por una IA: corto (1–3 frases), sencillo, tuteando y por el nombre de pila. Prohibido: frases hechas de IA («espero
+  que estés bien», «no dudes en…», «quería recordarte que…», «¡sigue así!», «estoy aquí para lo que necesites», «un abrazo
+  fuerte»), signos de exclamación en cada frase, guiones largos (—), listas, comillas, palabras rebuscadas y textos
+  perfectos o redondos. Sin emojis salvo que él los use en sus ejemplos (y entonces como él). Sin firmar y sin inventar datos. Si es un pago, mira antes ficha_cliente (fecha e importe de su próximo pago) y recuérdaselo con tacto. Si es
   un cumpleaños, motivo cumpleanos. Si David te dicta el mensaje, respeta lo que dice y solo ponlo bonito. Si te pide escribir
   a varios, hazlo de uno en uno (WhatsApp solo abre un chat cada vez): escribe al primero y pregunta «¿Sigo con X?».
 - Para hacer una rutina completa: primero biblioteca_rutina con el cliente y los músculos que vas a trabajar. Si David no dice
@@ -220,6 +223,8 @@ const ASIS_TOOLS = [
     input_schema: { type: 'object', properties: { tarea_id: { type: 'string' } }, required: ['tarea_id'] } },
   { name: 'registrar_pago', description: 'Registra que un cliente ha pagado. Si no se dice el importe se usa su cuota. Por defecto el próximo pago queda a 1 mes. Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, importe: { type: 'number' }, meses: { type: 'integer', description: 'Meses que cubre el pago (1, 2, 3, 6…)' }, metodo: { type: 'string', enum: ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'] } }, required: ['cliente_id'] } },
+  { name: 'mi_estilo', description: 'Ejemplos de mensajes reales de David a sus clientes, para escribir exactamente como él. Úsala siempre antes de escribir_whatsapp.',
+    input_schema: { type: 'object', properties: {} } },
   { name: 'escribir_whatsapp', description: 'Escribe un mensaje de WhatsApp a un cliente de parte de David y lo deja abierto en WhatsApp para que él lo envíe (recordar un pago, avisar de la revisión, felicitar, motivar, quedar…). Si hay que mandar un enlace de la app (medidas, cuestionarios, su app de entrenamiento), usa enviar_enlace. Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: {
       cliente_id: { type: 'string' }, mensaje: { type: 'string', description: 'El texto completo, como lo escribiría David' },

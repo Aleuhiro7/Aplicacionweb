@@ -28,7 +28,7 @@
   try { muted = localStorage.getItem('entrenapro:asis-mute') === '1'; } catch (e) { /* sin almacenamiento */ }
 
   /* ---------- Herramientas (se ejecutan aquí, con los datos de la app) ---------- */
-  const READ = ['buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'biblioteca_rutina', 'datos_dieta', 'buscar_alimento'];
+  const READ = ['mi_estilo', 'buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'biblioteca_rutina', 'datos_dieta', 'buscar_alimento'];
   const client = (id) => Store.get('clients', id);
 
   function clientBrief(c) {
@@ -349,6 +349,11 @@
       Store.update('clients', c.id, { nextDue: next, rate: amount });
       return { ok: true, proximoPago: next };
     },
+    mi_estilo() {
+      const own = String(Store.settings.waExamples || '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+      const learned = Store.settings.waLearned || [];
+      return { ejemplos: own.concat(learned).slice(-20), nota: own.length || learned.length ? 'Mensajes reales de David: copia su forma de escribir (largo, tono, saludos, puntuación, emojis, expresiones).' : 'David aún no ha guardado ejemplos: escribe natural y sencillo.' };
+    },
     escribir_whatsapp({ cliente_id, mensaje, motivo }) {
       const c = client(cliente_id);
       if (!c) return { error: 'No existe ese cliente' };
@@ -469,7 +474,7 @@
         const toConfirm = [];
         for (const b of uses) {
           if (READ.includes(b.name)) results.push(run(b));
-          else if (tools[b.name]) toConfirm.push(b);
+          else if (tools[b.name]) { if (b.name === 'escribir_whatsapp') b.original = String((b.input || {}).mensaje || ''); toConfirm.push(b); }
           else results.push({ type: 'tool_result', tool_use_id: b.id, content: 'Herramienta desconocida', is_error: true });
         }
         if (toConfirm.length) {
@@ -504,10 +509,21 @@
     }
   }
 
+  /** Si David ha cambiado el mensaje antes de enviarlo, se guarda su versión: así el asistente aprende cómo escribe. */
+  function learnStyle(b) {
+    const fin = String(b.input.mensaje || '').trim();
+    if (!b.original) return;
+    if (!fin || fin === b.original.trim()) return;
+    const list = (Store.settings.waLearned || []).filter((x) => x !== fin);
+    list.push(fin);
+    Store.settings.waLearned = list.slice(-12);
+    Store.save();
+  }
   function confirmPending(byVoice) {
     if (!pending) return;
     const { blocks, results } = pending;
     pending = null;
+    for (const b of blocks) if (b.name === 'escribir_whatsapp') learnStyle(b);
     // Confirmado con la voz no hay toque, y el móvil no deja abrir otra pestaña: WhatsApp se abre en esta misma.
     const orig = window.open;
     if (byVoice === true) window.open = (url) => { if (url && url !== 'about:blank') setTimeout(() => { location.href = url; }, 600); return null; };
@@ -538,6 +554,7 @@
   // (o al pulsar ■). Si aún no has dicho nada, espera hasta FIRST_WAIT ms.
   const SILENCE = 2600; const FIRST_WAIT = 9000;
   let stopListening = null;
+  let quietStop = false; // parar de escuchar sin enviar lo oído
   function listen() {
     if (!Rec) { UI.toast('Este navegador no entiende la voz: escribe abajo (en Android, usa Chrome).'); return; }
     if (listening) { if (stopListening) stopListening(); return; }
@@ -554,7 +571,7 @@
       listening = false; render();
       const t = text();
       const box = input(); if (box) box.value = '';
-      if (!t || !open) return;
+      if (!t || !open || quietStop) return;
       // «Sí» / «confirma» con una acción esperando: se confirma; «no» / «cancela»: se cancela.
       if (pending && /^(s[ií]|vale|ok|okay|confirm[ao]?|hazlo|adelante|dale|correcto|perfecto|venga)(?=$|[\s,.!¡?¿])/i.test(t)) { confirmPending(true); return; }
       if (pending && /^(no|cancela|cancelar|d[eé]jalo|para|espera)(?=$|[\s,.!¡?¿])/i.test(t)) { cancelPending(); return; }
@@ -634,6 +651,8 @@
     if (!open) return;
     const typed = document.getElementById('asis-text');
     const keep = typed ? typed.value : '';
+    const ed = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('asis-wa-edit') ? document.activeElement : null;
+    const edKeep = ed ? { id: ed.dataset.id, a: ed.selectionStart, b: ed.selectionEnd, top: ed.scrollTop } : null;
     panel.innerHTML = `
       <header class="asis-head">
         <strong>🎙️ Asistente</strong>
@@ -647,7 +666,9 @@
           <ul><li>«Apunta a Eduardo 78,4 kilos y 86 de cintura»</li><li>«Ponme una tarea para el viernes: llamar a Laura»</li><li>«Registra el pago de Carlos»</li><li>«Mándale a Marta el enlace de medidas»</li><li>«Quita las sentadillas de la rutina de Eduardo»</li><li>«¿Quién tiene pagos pendientes?» · «¿Cómo va Eduardo?»</li></ul>
           <p class="muted">Antes de cambiar nada te lo enseño para que lo confirmes.</p></div>`}
         ${log.map((m) => `<div class="asis-msg ${m.who}">${esc(m.text)}</div>`).join('')}
-        ${pending ? `<div class="asis-confirm"><strong>¿Lo hago?</strong><ul>${pending.blocks.map((b) => `<li>${esc(describe(b))}</li>`).join('')}</ul>
+        ${pending ? `<div class="asis-confirm"><strong>¿Lo hago?</strong><ul>${pending.blocks.map((b) => (b.name === 'escribir_whatsapp'
+          ? `<li class="asis-wa">Escribir a ${esc((client(b.input.cliente_id) || {}).name || '?')} por WhatsApp <span class="muted">(puedes cambiarlo; aprendo de tus cambios)</span><textarea class="asis-wa-edit" data-id="${esc(b.id)}" rows="4">${esc(b.input.mensaje || '')}</textarea></li>`
+          : `<li>${esc(describe(b))}</li>`)).join('')}</ul>
           <div class="asis-confirm-btns"><button type="button" class="btn primary" id="asis-yes">${U.icon('check')}Confirmar</button><button type="button" class="btn" id="asis-no">Cancelar</button></div></div>` : ''}
         ${busy ? '<div class="asis-msg ai asis-dots"><i></i><i></i><i></i></div>' : ''}
       </div>
@@ -657,7 +678,13 @@
         <button type="submit" class="btn primary" ${busy ? 'disabled' : ''} aria-label="Enviar">➤</button>
       </form>`;
     const logEl = document.getElementById('asis-log');
-    logEl.scrollTop = logEl.scrollHeight;
+    if (!edKeep) logEl.scrollTop = logEl.scrollHeight;
+    panel.querySelectorAll('.asis-wa-edit').forEach((t) => {
+      t.oninput = () => { const bl = pending && pending.blocks.find((x) => x.id === t.dataset.id); if (bl) bl.input.mensaje = t.value; };
+      // Mientras lo editas, el micro no escucha (si no, se enviaría lo que oiga).
+      t.onfocus = () => { if (listening && stopListening) { const f = stopListening; quietStop = true; f(); quietStop = false; } };
+      if (edKeep && t.dataset.id === edKeep.id) { t.focus(); t.setSelectionRange(edKeep.a, edKeep.b); t.scrollTop = edKeep.top; }
+    });
     document.getElementById('asis-close').onclick = () => { open = false; if (listening && stopListening) stopListening(); window.speechSynthesis && speechSynthesis.cancel(); render(); };
     document.getElementById('asis-new').onclick = () => { history = []; log.length = 0; pending = null; window.speechSynthesis && speechSynthesis.cancel(); render(); };
     document.getElementById('asis-mute').onclick = () => { muted = !muted; try { localStorage.setItem('entrenapro:asis-mute', muted ? '1' : '0'); } catch (e) { /* nada */ } if (muted && window.speechSynthesis) speechSynthesis.cancel(); render(); };

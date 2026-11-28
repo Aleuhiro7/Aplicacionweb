@@ -2660,3 +2660,9 @@ body.pp-open { overflow: hidden; }
 .alert-omit .ico, .alert-omit svg { width: 16px; height: 16px; }
 .alert-omit:hover, .alert-omit:focus-visible { color: var(--success, #3ee6a0); border-color: color-mix(in srgb, var(--success, #3ee6a0) 55%, var(--border)); background: color-mix(in srgb, var(--success, #3ee6a0) 10%, transparent); }
 .omitted-line { margin: 2px 4px 0; font-size: .85rem; text-align: right; }
+
+/* Asistente: mensaje de WhatsApp editable antes de enviarlo */
+.asis-wa { list-style: none; margin-left: -18px; }
+.asis-wa .muted { font-size: .8rem; }
+.asis-wa-edit { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--wa, #25d366) 45%, var(--border)); background: var(--surface-2, rgba(255,255,255,.04)); color: var(--text); font: inherit; font-size: .95rem; line-height: 1.4; resize: vertical; }
+#wa-examples { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,.04)); color: var(--text); font: inherit; font-size: .92rem; resize: vertical; }
