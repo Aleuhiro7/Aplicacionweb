@@ -275,9 +275,9 @@ function render() {
     portal.noRoutine ? null : ['diario', 'Diario'],
     portal.noRoutine ? null : ['rutina', 'Rutina'],
     portal.noDiet ? null : ['dieta', 'Dieta'],
-    portal.noRoutine ? null : ['guia', 'Guía'],
     portal.noRoutine ? null : ['estudio', 'Estudio'],
     ['datos', 'Tus datos'],
+    portal.noRoutine ? null : ['guia', 'Guía'],
   ].filter(Boolean);
   let body;
   if (h.startsWith('dia-') && days[Number(h.slice(4))]) body = dayView(days, Number(h.slice(4)));
