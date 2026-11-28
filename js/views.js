@@ -2287,7 +2287,6 @@
     if (st.target) {
       out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} ${st.perWeek === 1 ? 'vez' : 'veces'} por semana y su rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumple prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumple la mayor parte, aunque se deja algún entreno' : st.adherence >= 40 ? 'hace aproximadamente la mitad de lo planificado' : 'entrena bastante menos de lo planificado'} (${st.adherence} %).`);
     } else out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} veces por semana.`);
-    if (since != null) out.constancia.push(since <= 3 ? `Su último entreno fue ${since === 0 ? 'hoy' : since === 1 ? 'ayer' : `hace ${since} días`}: sigue activo.` : `Lleva ${since} días sin apuntar ningún entreno.`);
     const maxGap = st.gaps.length ? Math.max(...st.gaps) : 0;
     if (maxGap >= 10) out.constancia.push(`Su parón más largo en este periodo ha sido de ${maxGap} días.`);
     const low = st.porDia.filter((d) => st.porDia.length > 1 && d.veces < Math.max(...st.porDia.map((x) => x.veces)) * 0.5);
