@@ -226,6 +226,7 @@
     ['Sentadilla hack (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Espalda apoyada y pies en la mitad baja de la plataforma para cargar el cuádriceps. Baja profundo.'],
     ['Sentadilla péndulo (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Recorrido en arco muy profundo con la espalda apoyada. Una de las mejores para cuádriceps.'],
     ['Sentadilla con cinturón (belt squat)', 'Máquina de discos', '3', STD(12, 10, 8), 'La carga va a la cadera: cero carga en la columna. Ideal si hay molestias lumbares.'],
+    ['Sentadilla guiada en máquina', 'Máquina', '3', STD(12, 10, 8), 'Espalda bien apoyada y pies algo adelantados en la plataforma. El recorrido guiado deja centrarse en el cuádriceps: baja profundo y controlado.', { id: 'cua-sent-guiada' }],
     ['Prensa inclinada 45° (máquina de discos)', 'Máquina de discos', '3', STD(12, 10, 8), 'Pies a la anchura de la cadera en la mitad de la plataforma. Baja sin que la pelvis se despegue.'],
   ]);
   pattern('Cuádriceps', 'cua-p2', 'Patrón 2 · Prensa y unilaterales', { rest: '2 min', tempo: '2 s excéntrica / concéntrica controlada' }, [
