@@ -321,7 +321,7 @@ function render() {
   if (tab === 'diario') bindDiary();
   if (main && tab === 'rutina') requestAnimationFrame(fitDayCards);
   root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
-  root.querySelectorAll('[data-study-weeks]').forEach((b) => { b.onclick = () => { if (b.disabled) return; studyWeeks = Number(b.dataset.studyWeeks); try { localStorage.setItem('cz:studyWeeks', String(studyWeeks)); } catch (e) { /* nada */ } render(); }; });
+  root.querySelectorAll('[data-study-weeks]').forEach((b) => { b.onclick = () => { studyWeeks = Number(b.dataset.studyWeeks); if (!b.classList.contains('locked')) { try { localStorage.setItem('cz:studyWeeks', String(studyWeeks)); } catch (e) { /* nada */ } } render(); }; });
   root.querySelectorAll('[data-open-w]').forEach((b) => { b.onclick = () => { location.hash = `#resumen/${b.dataset.openW}`; }; });
   if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
   const del = root.querySelector('[data-del]');
@@ -1308,19 +1308,23 @@ function studyView() {
   const days = first ? Math.round((Date.parse(`${ymd()}T12:00:00`) - Date.parse(`${first}T12:00:00`)) / 864e5) : 0;
   const OPTS = [1, 4, 8, 12];
   const open = OPTS.filter((n) => days >= n * 7);
-  if (open.length && !open.includes(studyWeeks)) studyWeeks = open[open.length - 1];
+  // El elegido puede estar bloqueado: entonces se ve qué falta para desbloquearlo.
+  if (!OPTS.includes(studyWeeks)) studyWeeks = open.length ? open[open.length - 1] : 1;
   const filter = `<div class="cz-st-filter" role="group" aria-label="Periodo">${OPTS.map((n) => {
     const ok = open.includes(n);
-    return `<button type="button" class="${ok && n === studyWeeks ? 'on' : ''}" data-study-weeks="${n}" ${ok ? '' : 'disabled'} aria-pressed="${ok && n === studyWeeks}"><b>${ok ? '' : '<i aria-hidden="true">🔒</i>'}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`;
+    return `<button type="button" class="${n === studyWeeks ? 'on' : ''}${ok ? '' : ' locked'}" data-study-weeks="${n}" aria-pressed="${n === studyWeeks}"><b>${ok ? '' : '<i aria-hidden="true">🔒</i>'}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`;
   }).join('')}</div>`;
-  if (!open.length) {
-    const left = Math.max(1, 7 - days);
-    const pct = Math.min(100, Math.round((days / 7) * 100));
+  if (!open.includes(studyWeeks)) {
+    const n = studyWeeks; const need = n * 7;
+    const left = Math.max(1, need - days);
+    const pct = Math.min(100, Math.round((days / need) * 100));
+    const per = n === 1 ? 'tu primera semana' : `estas ${n} semanas`;
     return `${filter}<section class="card cz-st-locked">
-      <div class="cz-st-lock-ico">📊</div>
-      <h2>Tu estudio estará listo en ${left} ${left === 1 ? 'día' : 'días'}</h2>
-      <p class="muted">${first ? 'Cuando lleves 1 semana apuntando tus entrenos en la app' : 'Cuando lleves 1 semana apuntando tus entrenos'} verás aquí tu constancia, cómo evoluciona tu fuerza en cada ejercicio y mis recomendaciones. Cada entreno que apuntes cuenta.</p>
-      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de 7 días` : 'Empieza tu primer entreno desde el Diario'}</small>
+      <div class="cz-st-lock-ico">🔒</div>
+      <h2>Tu estudio de ${n} ${n === 1 ? 'semana' : 'semanas'} se desbloquea en ${left} ${left === 1 ? 'día' : 'días'}</h2>
+      <p class="muted">Sigue entrenando y <b>apunta tus pesos en cada entreno</b>. Cuando lleves ${n} ${n === 1 ? 'semana' : 'semanas'} con la app verás cómo has evolucionado en ${per}: tu constancia, cuánto ha subido tu fuerza en cada ejercicio, tus récords y mis recomendaciones para seguir progresando.</p>
+      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de ${need} días` : 'Empieza tu primer entreno desde el Diario'}</small>
+      ${open.length ? `<p class="cz-st-hint">Mientras tanto, mira tu estudio de <button type="button" class="link-btn" data-study-weeks="${open[open.length - 1]}">${open[open.length - 1]} ${open[open.length - 1] === 1 ? 'semana' : 'semanas'}</button>.</p>` : ''}
     </section>`;
   }
   const r = routine();

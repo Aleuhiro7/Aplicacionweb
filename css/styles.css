@@ -2772,3 +2772,9 @@ body.pp-open { overflow: hidden; }
 .cz-st-filter button b i { font-style: normal; font-size: .8rem; }
 .cz-st-filter button small { font-size: .72rem; opacity: .85; }
 @media (max-width: 370px) { .cz-st-filter button small { font-size: .66rem; } }
+.cz-st-filter button.locked { opacity: .5; }
+.cz-st-filter button.locked.on { opacity: 1; background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .35); color: #fff; }
+.cz-st-locked p b { color: #fff; }
+.cz-st-hint { margin: 16px 0 0; font-size: .9rem; color: #94a3b8; }
+.cz-st-hint .link-btn { font-size: inherit; color: #6e8bff; font-weight: 600; }
+.cz-st-hint .link-btn { padding: 0; margin: 0; min-height: 0; display: inline; }
