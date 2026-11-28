@@ -2293,7 +2293,7 @@
     if (!st.list.length) { UI.toast(st0.list.length ? `No ha apuntado entrenos en ${st.label.replace(/^todo.*/, 'este periodo')}` : 'Todavía no ha apuntado ningún entreno'); if (st0.list.length && W !== 'all') previewStudy(clientId, 'all'); return; }
     await showSheet({
       title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
-      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 2, 4, 8, 12, 'all'].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}">${n === 'all' ? '<b>Todo</b><small>desde el inicio</small>' : `<b>${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`).join('')}</div>`,
+      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 2, 4, 8, 12, 'all'].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}">${n === 'all' ? '<b>Todo</b><small>desde el inicio</small>' : `<b>${n === 1 ? 'Última' : `Últimas ${n}`}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`).join('')}</div>`,
       onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (String(b.dataset.weeks) === String(W)) return; close(); previewStudy(clientId, b.dataset.weeks); }; }); },
     });
   }

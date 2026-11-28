@@ -2785,3 +2785,5 @@ body.pp-open { overflow: hidden; }
 /* 6 periodos: dos filas de tres (en pantallas anchas, una fila) */
 .cz-st-filter { grid-template-columns: repeat(3, 1fr); }
 @media (min-width: 720px) { .pp-weeks.cz-st-filter { grid-template-columns: repeat(6, 1fr); max-width: 760px; } }
+.cz-st-filter button b { font-size: 1.15rem; }
+@media (max-width: 370px) { .cz-st-filter button b { font-size: 1rem; } }

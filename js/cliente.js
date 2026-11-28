@@ -1325,7 +1325,7 @@ function studyView() {
   const filter = `<div class="cz-st-filter" role="group" aria-label="Periodo">${OPTS.map((n) => {
     const ok = open.includes(n);
     const lock = ok ? '' : '<i aria-hidden="true">🔒</i>';
-    return `<button type="button" class="${n === studyWeeks ? 'on' : ''}${ok ? '' : ' locked'}" data-study-weeks="${n}" aria-pressed="${n === studyWeeks}">${n === 'all' ? `<b>${lock}Todo</b><small>desde el inicio</small>` : `<b>${lock}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`;
+    return `<button type="button" class="${n === studyWeeks ? 'on' : ''}${ok ? '' : ' locked'}" data-study-weeks="${n}" aria-pressed="${n === studyWeeks}">${n === 'all' ? `<b>${lock}Todo</b><small>desde el inicio</small>` : `<b>${lock}${n === 1 ? 'Última' : `Últimas ${n}`}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`;
   }).join('')}</div>`;
   if (!open.includes(studyWeeks)) {
     const n = studyWeeks; const nd = need(n);
