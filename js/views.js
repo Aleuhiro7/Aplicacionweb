@@ -3212,32 +3212,50 @@
   }
 
   /** Avisos: pagos que vencen pronto o vencidos, seguimientos/revisiones y tareas pendientes. */
+  /* Avisos omitidos a mano (✓ en cada aviso): no vuelven a salir. La clave lleva la fecha o el envío concreto, así que
+   * si ocurre algo nuevo (otro pago, otra revisión, otro entreno…) el aviso vuelve a aparecer. */
+  const omittedAlerts = () => Store.settings.omittedAlerts || {};
+  const isOmitted = (k) => !!omittedAlerts()[k];
+  function omitAlert(k) {
+    const m = Object.assign({}, omittedAlerts());
+    const limit = U.addDays(today(), -180); // limpieza de los muy antiguos
+    for (const [key, d] of Object.entries(m)) if (d < limit) delete m[key];
+    m[k] = today();
+    Store.settings.omittedAlerts = m; Store.save();
+  }
+  function unomitAlert(k) {
+    const m = Object.assign({}, omittedAlerts());
+    if (k) delete m[k]; else for (const key of Object.keys(m)) delete m[key];
+    Store.settings.omittedAlerts = m; Store.save();
+  }
+  const omitBtn = (k) => `<button type="button" class="alert-omit" data-action="alert-omit" data-value="${esc(k)}" title="Omitir este aviso" aria-label="Omitir este aviso">${U.icon('check')}</button>`;
+
   function computeAlerts() {
     const pay = [];
     for (const c of Store.clients().filter((x) => clientStatus(x) === 'activo')) {
       const di = Store.dueInfo(c);
-      if (di && di.status !== 'al-dia') pay.push({ c, di, kind: 'pago' });
+      if (di && di.status !== 'al-dia' && !isOmitted(`pago:${c.id}:${di.date}`)) pay.push({ c, di, kind: 'pago', key: `pago:${c.id}:${di.date}` });
     }
     pay.sort((a, b) => a.di.date.localeCompare(b.di.date));
     const tasks = Store.pendingTasks().map((task) => ({ c: Store.get('clients', task.clientId), task, kind: 'tarea' }));
     const reviews = Store.clients()
       .map((c) => ({ c, ri: Store.reviewInfo(c), kind: 'revision' }))
-      .filter((x) => x.ri && x.ri.status !== 'al-dia')
+      .filter((x) => x.ri && x.ri.status !== 'al-dia' && !isOmitted(`revision:${x.c.id}:${x.ri.date}`))
       .sort((a, b) => a.ri.date.localeCompare(b.ri.date));
     const plans = Store.clients().map((c) => ({ c, gaps: Store.planGaps(c), kind: 'plan' })).filter((x) => x.gaps);
     // Cuestionarios respondidos por enlace que aún no se han marcado como revisados.
     const answers = Store.clients()
       .filter((c) => c.questionnaire && c.questionnaire.answeredAt && c.questionnaire.linkToken && !c.questionnaire.reviewedAt)
       .sort((a, b) => b.questionnaire.answeredAt.localeCompare(a.questionnaire.answeredAt))
-      .map((c) => ({ c, kind: 'cuestionario' }));
+      .map((c) => ({ c, kind: 'cuestionario' })).filter((x) => !isOmitted(`cuestionario:${x.c.id}:${x.c.questionnaire.answeredAt}`));
     const birthdays = Store.clients()
       .filter((c) => clientStatus(c) !== 'inactivo')
       .map((c) => ({ c, bi: birthdayInfo(c), kind: 'cumple' }))
-      .filter((x) => x.bi && x.bi.days <= BIRTHDAY_NOTICE)
+      .filter((x) => x.bi && x.bi.days <= BIRTHDAY_NOTICE && !isOmitted(`cumple:${x.c.id}:${U.addDays(today(), x.bi.days).slice(0, 4)}`))
       .sort((a, b) => a.bi.days - b.bi.days);
     const health = Store.clients()
       .filter((c) => clientStatus(c) !== 'inactivo' && !c.healthAsked && clientFlags(c).length)
-      .map((c) => ({ c, flags: clientFlags(c), kind: 'salud' }));
+      .map((c) => ({ c, flags: clientFlags(c), kind: 'salud' })).filter((x) => !isOmitted(`salud:${x.c.id}`));
     return pay.concat(health, birthdays, answers, reviews, plans, tasks);
   }
 
@@ -3331,15 +3349,15 @@
     const alerts = computeAlerts();
 
     const payAlerts = alerts.filter((a) => a.kind === 'pago');
-    const taskAlerts = alerts.filter((a) => a.kind === 'tarea');
+    const taskAlerts = alerts.filter((a) => a.kind === 'tarea' && !isOmitted(`tarea:${a.task.id}`));
     const reviewAlerts = alerts.filter((a) => a.kind === 'revision');
     const planAlerts = alerts.filter((a) => a.kind === 'plan');
     const answerAlerts = alerts.filter((a) => a.kind === 'cuestionario');
     const bdayAlerts = alerts.filter((a) => a.kind === 'cumple');
     const healthAlerts = alerts.filter((a) => a.kind === 'salud');
     const formAlerts = []; // los formularios de personas nuevas van en el aviso grande de arriba
-    const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine);
-    const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet);
+    const routineGapAlerts = planAlerts.filter((a) => a.gaps.noRoutine && !isOmitted(`sin-rutina:${a.c.id}`));
+    const dietGapAlerts = planAlerts.filter((a) => a.gaps.noDiet && !isOmitted(`sin-dieta:${a.c.id}`));
     const planItem = (c, tab, text, label) => `
           <li class="plan-item">
             ${avatar(c)}
@@ -3351,7 +3369,11 @@
           </li>`;
 
     /* Avisos: primero las tarjetas con algo pendiente; las que están al día, en una sola línea al final. */
-    const section = (id, title, n, link, list, okText) => ({
+    const section = (id, title, n, link, list, okText, keys) => {
+      if (keys) { let i = 0; list = list.replace(/<li\b([^>]*)>/g, (m, at) => { const k = keys[i++]; return k ? `<li${at} data-omit-host>${omitBtn(k)}` : m; }); }
+      return sectionBox(id, title, n, link, list, okText);
+    };
+    const sectionBox = (id, title, n, link, list, okText) => ({
       n,
       html: n
         ? `<section class="card alert-card has-items" id="${id}">
@@ -3362,7 +3384,7 @@
             <h2>${title}</h2><span class="ok-text">${U.icon('done')}${esc(okText)}</span>
           </section>`,
     });
-    const wkAlerts = unseenWorkouts();
+    const wkAlerts = unseenWorkouts().filter((x) => !isOmitted(`entreno:${x.c.id}:${x.w.id}`));
     // Clientes activos a los que les falta algo de la medición de partida: peso, cintura o fotos.
     const startMissing = (c) => {
       const ms = Store.measurementsFor(c.id);
@@ -3373,18 +3395,18 @@
       ].filter(Boolean);
     };
     const listJoin = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} y ${a[a.length - 1]}` : a[0]);
-    const noMeasures = active.filter((c) => startMissing(c).length);
+    const noMeasures = active.filter((c) => startMissing(c).length && !isOmitted(`medidas-iniciales:${c.id}`));
     // Cuestionarios de alimentación ya rellenados que todavía no has mirado.
-    const fqDone = d.clients.filter((c) => c.foodQuiz && c.foodQuiz.answeredAt && !c.foodQuiz.seenAt);
+    const fqDone = d.clients.filter((c) => c.foodQuiz && c.foodQuiz.answeredAt && !c.foodQuiz.seenAt && !isOmitted(`alimentacion:${c.id}:${c.foodQuiz.answeredAt}`));
     // Clientes activos con dieta a los que todavía no se les ha enviado el cuestionario de alimentación.
-    const noFoodQuiz = active.filter((c) => !c.noDiet && !(c.foodQuiz && c.foodQuiz.token));
+    const noFoodQuiz = active.filter((c) => !c.noDiet && !(c.foodQuiz && c.foodQuiz.token) && !isOmitted(`sin-alimentacion:${c.id}`));
     // Medidas o revisiones que han enviado por el enlace y que todavía no has mirado (del último mes).
     const rvSince = U.toISODate(new Date(Date.now() - 30 * 864e5));
-    const rvDone = d.clients.flatMap((c) => (c.revisions || []).filter((r) => r.answeredAt && !r.seenAt && r.answeredAt >= rvSince).map((r) => ({ c, r })))
+    const rvDone = d.clients.flatMap((c) => (c.revisions || []).filter((r) => r.answeredAt && !r.seenAt && r.answeredAt >= rvSince && !isOmitted(`medidas-recibidas:${c.id}:${r.token}`)).map((r) => ({ c, r })))
       .sort((a, b) => (a.r.answeredAt < b.r.answeredAt ? 1 : -1));
     const rvWhat = (r) => [r.peso ? `${fmtNum(r.peso)} kg` : '', r.cintura ? `${fmtNum(r.cintura)} cm de cintura` : '', r.fotos ? plural(r.fotos, 'foto', 'fotos') : ''].filter(Boolean).join(' · ');
     // Enlaces de medidas iniciales, seguimiento o revisión enviados y todavía sin rellenar.
-    const rvWaiting = d.clients.filter((c) => (c.status || 'activo') === 'activo' && pendingRevision(c)).map((c) => ({ c, r: pendingRevision(c) }))
+    const rvWaiting = d.clients.filter((c) => (c.status || 'activo') === 'activo' && pendingRevision(c) && !isOmitted(`sin-rellenar:${c.id}:${pendingRevision(c).token}`)).map((c) => ({ c, r: pendingRevision(c) }))
       .sort((a, b) => (a.r.sentAt > b.r.sentAt ? 1 : -1));
     const rvKind = (r) => (r.first || r.tipo === 'inicial' ? 'medidas iniciales' : r.tipo === 'seguimiento' ? 'seguimiento' : 'revisión');
     const ago = (date) => { const n = U.daysBetween(date, today()); return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : `hace ${n} días`; };
@@ -3398,7 +3420,7 @@
               <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary wa-btn" data-action="send-revision" data-client="${c.id}">${U.icon('message')}Recordárselo</button><button class="btn sm" data-action="check-revision" data-client="${c.id}">${U.icon('check')}Comprobar</button></div>
             </div>
           </li>`).join('')}</ul>`,
-        'Nadie tiene nada pendiente de rellenar'),
+        'Nadie tiene nada pendiente de rellenar', rvWaiting.map(({ c, r }) => `sin-rellenar:${c.id}:${r.token}`)),
       section('medidas-recibidas', '📸 Medidas recibidas', rvDone.length, '',
         `<ul class="list">${rvDone.map(({ c, r }) => `<li class="plan-item">
             ${avatar(c)}
@@ -3408,7 +3430,7 @@
               <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary" data-action="rv-open" data-client="${c.id}" data-token="${esc(r.token)}">${U.icon('file')}Verlas</button><button class="btn sm" data-action="rv-seen" data-client="${c.id}" data-token="${esc(r.token)}">${U.icon('check')}Visto</button></div>
             </div>
           </li>`).join('')}</ul>`,
-        'Nada nuevo'),
+        'Nada nuevo', rvDone.map(({ c, r }) => `medidas-recibidas:${c.id}:${r.token}`)),
       section('alimentacion-completada', '🍽️ Cuestionario de alimentación completado', fqDone.length, '',
         `<ul class="list">${fqDone.map((c) => `<li class="plan-item">
             ${avatar(c)}
@@ -3418,7 +3440,7 @@
               <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary" data-action="fq-open" data-client="${c.id}">${U.icon('file')}Verlo en su dieta</button><button class="btn sm" data-action="fq-seen" data-client="${c.id}">${U.icon('check')}Visto</button></div>
             </div>
           </li>`).join('')}</ul>`,
-        'Nada nuevo'),
+        'Nada nuevo', fqDone.map((c) => `alimentacion:${c.id}:${c.foodQuiz.answeredAt}`)),
       section('sin-cuestionario-alimentacion', '🍽️ Sin cuestionario de alimentación', noFoodQuiz.length, '',
         `<ul class="list">${noFoodQuiz.map((c) => `<li class="plan-item">
             ${avatar(c)}
@@ -3428,7 +3450,7 @@
               <div class="rv-actions" style="margin-top:8px"><button class="btn sm primary wa-btn" data-action="fq-send" data-client="${c.id}">${U.icon('message')}Enviar por WhatsApp</button></div>
             </div>
           </li>`).join('')}</ul>`,
-        'Todos lo tienen enviado'),
+        'Todos lo tienen enviado', noFoodQuiz.map((c) => `sin-alimentacion:${c.id}`)),
       section('medidas-iniciales', '📏 Faltan medidas iniciales', noMeasures.length, '',
         `<ul class="list">${noMeasures.map((c) => {
           const pend = pendingRevision(c);
@@ -3444,7 +3466,7 @@
             </div>
           </li>`;
         }).join('')}</ul>`,
-        'Todos tienen peso, cintura y fotos'),
+        'Todos tienen peso, cintura y fotos', noMeasures.map((c) => `medidas-iniciales:${c.id}`)),
       section('entrenos-nuevos', '💪 Entrenos completados', wkAlerts.length, wkAlerts.length ? '<button class="btn sm" data-action="wk-seen-all">Marcar todos como vistos</button>' : '',
         `<ul class="list task-list">${wkAlerts.map(({ c, w, list }) => {
           const done = (w.exercises || []).reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0);
@@ -3463,7 +3485,7 @@
             </div>
           </li>`;
         }).join('')}</ul>`,
-        'No hay entrenos nuevos de tus clientes'),
+        'No hay entrenos nuevos de tus clientes', wkAlerts.map((x) => `entreno:${x.c.id}:${x.w.id}`)),
       section('salud', 'Preguntar por su salud', healthAlerts.length, '',
         `<ul class="list task-list">${healthAlerts.map((a) => `
           <li class="task review">
@@ -3477,7 +3499,7 @@
               <button class="btn sm primary" data-action="health-asked" data-client="${a.c.id}" data-value="1">${U.icon('check')}Ya lo he hablado</button>
             </div>
           </li>`).join('')}</ul>`,
-        'Nadie tiene lesiones, medicación ni alergias pendientes de preguntar'),
+        'Nadie tiene lesiones, medicación ni alergias pendientes de preguntar', healthAlerts.map((a) => `salud:${a.c.id}`)),
       section('cumpleanos', '🎂 Cumpleaños', bdayAlerts.length, '',
         `<ul class="list task-list">${bdayAlerts.map((a) => `
           <li class="task review bday${a.bi.days === 0 ? ' today' : ''}">
@@ -3490,7 +3512,7 @@
               ${a.bi.greeted ? badge('Felicitado', 'success') : a.bi.days === 0 ? `<a class="btn sm primary wa-solid" href="${birthdayWa(a.c)}" target="_blank" rel="noopener" data-action="bday-greet" data-client="${a.c.id}">${U.icon('message')}Felicitar</a>` : badge(a.bi.days === 1 ? 'Mañana' : `En ${a.bi.days} días`, 'info')}
             </div>
           </li>`).join('')}</ul>`,
-        `Ningún cumpleaños en los próximos ${BIRTHDAY_NOTICE} días`),
+        `Ningún cumpleaños en los próximos ${BIRTHDAY_NOTICE} días`, bdayAlerts.map((a) => `cumple:${a.c.id}:${U.addDays(today(), a.bi.days).slice(0, 4)}`)),
       section('cuestionarios', 'Cuestionarios respondidos', answerAlerts.length + formAlerts.length, formAlerts.length ? '<a class="btn sm" href="#/formularios">Formularios</a>' : '',
         `<ul class="list task-list">${answerAlerts.map((a) => `
           <li class="task review">
@@ -3518,22 +3540,22 @@
             </div>
           </li>`;
         }).join('')}</ul>`,
-        'No hay cuestionarios nuevos'),
+        'No hay cuestionarios nuevos', answerAlerts.map((a) => `cuestionario:${a.c.id}:${a.c.questionnaire.answeredAt}`)),
       section('proximos-pagos', 'Pagos pendientes', payAlerts.length, '<a href="#/pagos" class="btn sm">Ver todos</a>',
         `<ul class="list pay-list">${payAlerts.map((a) => payRow(a.c)).join('')}</ul>`,
-        `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`),
+        `Nadie tiene que pagar en los próximos ${Store.REMIND_DAYS} días`, payAlerts.map((a) => a.key)),
       section('revisiones', 'Seguimientos y revisiones', reviewAlerts.length, '',
         `<ul class="list task-list">${reviewAlerts.map((a) => reviewItem(a.c, a.ri)).join('')}</ul>`,
-        `Nada en los próximos ${Store.REVIEW_NOTICE} días`),
+        `Nada en los próximos ${Store.REVIEW_NOTICE} días`, reviewAlerts.map((a) => `revision:${a.c.id}:${a.ri.date}`)),
       section('sin-rutina', 'Sin rutina', routineGapAlerts.length, '',
         `<ul class="list">${routineGapAlerts.map((a) => planItem(a.c, 'rutina', a.gaps.routineEmpty ? 'Tiene la rutina sin ejercicios' : 'Todavía no tiene rutina', a.gaps.routineEmpty ? 'Completar rutina' : 'Crear rutina')).join('')}</ul>`,
-        'Todos tienen rutina'),
+        'Todos tienen rutina', routineGapAlerts.map((a) => `sin-rutina:${a.c.id}`)),
       section('sin-dieta', 'Sin dieta', dietGapAlerts.length, '',
         `<ul class="list">${dietGapAlerts.map((a) => planItem(a.c, 'dieta', a.gaps.hasTargets ? 'Tiene los objetivos fijados, falta rellenar la dieta' : 'Todavía no tiene dieta', a.gaps.hasTargets ? 'Completar dieta' : 'Crear dieta')).join('')}</ul>`,
-        'Todos tienen dieta'),
+        'Todos tienen dieta', dietGapAlerts.map((a) => `sin-dieta:${a.c.id}`)),
       section('tareas-pendientes', 'Tareas pendientes', taskAlerts.length, '',
         `<ul class="list task-list">${taskAlerts.map((a) => taskItem(a.task, { showClient: true })).join('')}</ul>`,
-        'Sin tareas pendientes'),
+        'Sin tareas pendientes', taskAlerts.map((a) => `tarea:${a.task.id}`)),
     ].sort((x, y) => (y.n > 0) - (x.n > 0)); // las que tienen avisos, arriba (sin cambiar su orden)
 
     return `
@@ -3549,6 +3571,7 @@
         ${alertSections.some((x) => x.n)
           ? alertSections.filter((x) => x.n).map((x) => x.html).join('')
           : `<section class="card alert-card alert-ok" id="todo-ok"><h2>Avisos</h2><span class="ok-text">${U.icon('done')}No tienes ningún aviso pendiente. ¡Todo al día!</span></section>`}
+        ${(() => { const n = Object.keys(omittedAlerts()).length; return n ? `<p class="omitted-line muted">${plural(n, 'aviso omitido', 'avisos omitidos')} · <button type="button" class="link-btn" data-action="alert-unomit-all">Volver a mostrarlos</button></p>` : ''; })()}
       </div>
 
       <h2 class="section-title">Este mes</h2>
@@ -5377,6 +5400,11 @@
     'fq-supps': (d) => applyFoodQuizSupps(d.client),
     'foods-restore': () => restoreFoods(),
     'fq-seen': (d) => { const c = Store.get('clients', d.client); if (c && c.foodQuiz) Store.update('clients', c.id, { foodQuiz: Object.assign({}, c.foodQuiz, { seenAt: today() }) }); App.render(); },
+    'alert-omit': (d) => {
+      omitAlert(d.value); App.render();
+      UI.toast('Aviso omitido: no volverá a salir', { label: 'Deshacer', onClick: () => { unomitAlert(d.value); App.render(); } });
+    },
+    'alert-unomit-all': () => { unomitAlert(); App.render(); UI.toast('Vuelven a salir todos los avisos'); },
     'rv-seen': (d) => { markRevisionSeen(d.client, d.token); App.render(); },
     'rv-open': (d) => { markRevisionSeen(d.client, d.token); state.clientTab = 'progreso'; state.keepTab = true; location.hash = `#/clientes/${d.client}`; },
     'fq-open': (d) => {

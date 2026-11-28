@@ -2653,3 +2653,10 @@ body.pp-open { overflow: hidden; }
 .diet-head { margin: 4px 0 14px; padding: 12px 0 12px; border-bottom: 1px solid var(--border, rgba(0,0,0,.08)); }
 .diet-head .card-header { margin-bottom: 4px; }
 .diet-head-note { margin: 4px 0 0; font-size: .82rem; }
+
+/* Panel: ✓ para omitir un aviso (arriba a la derecha de cada aviso) */
+[data-omit-host] { position: relative; padding-right: 44px !important; }
+.alert-omit { position: absolute; top: 8px; right: 4px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border); background: transparent; color: var(--muted, #94a3b8); cursor: pointer; padding: 0; z-index: 1; }
+.alert-omit .ico, .alert-omit svg { width: 16px; height: 16px; }
+.alert-omit:hover, .alert-omit:focus-visible { color: var(--success, #3ee6a0); border-color: color-mix(in srgb, var(--success, #3ee6a0) 55%, var(--border)); background: color-mix(in srgb, var(--success, #3ee6a0) 10%, transparent); }
+.omitted-line { margin: 2px 4px 0; font-size: .85rem; text-align: right; }
