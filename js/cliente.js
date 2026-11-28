@@ -1306,21 +1306,21 @@ function studyView() {
   if (!TS) return '<p class="muted">No se ha podido cargar el estudio. Actualiza la app.</p>';
   const first = workouts.reduce((m, w) => (w.date && (!m || w.date < m) ? w.date : m), '');
   const days = first ? Math.round((Date.parse(`${ymd()}T12:00:00`) - Date.parse(`${first}T12:00:00`)) / 864e5) : 0;
-  const OPTS = [4, 8, 12];
+  const OPTS = [1, 4, 8, 12];
   const open = OPTS.filter((n) => days >= n * 7);
   if (open.length && !open.includes(studyWeeks)) studyWeeks = open[open.length - 1];
   const filter = `<div class="cz-st-filter" role="group" aria-label="Periodo">${OPTS.map((n) => {
     const ok = open.includes(n);
-    return `<button type="button" class="${ok && n === studyWeeks ? 'on' : ''}" data-study-weeks="${n}" ${ok ? '' : 'disabled'} aria-pressed="${ok && n === studyWeeks}">${ok ? '' : '🔒 '}${n} semanas</button>`;
+    return `<button type="button" class="${ok && n === studyWeeks ? 'on' : ''}" data-study-weeks="${n}" ${ok ? '' : 'disabled'} aria-pressed="${ok && n === studyWeeks}"><b>${ok ? '' : '<i aria-hidden="true">🔒</i>'}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`;
   }).join('')}</div>`;
   if (!open.length) {
-    const left = Math.max(0, 28 - days);
-    const pct = Math.min(100, Math.round((days / 28) * 100));
+    const left = Math.max(1, 7 - days);
+    const pct = Math.min(100, Math.round((days / 7) * 100));
     return `${filter}<section class="card cz-st-locked">
       <div class="cz-st-lock-ico">📊</div>
       <h2>Tu estudio estará listo en ${left} ${left === 1 ? 'día' : 'días'}</h2>
-      <p class="muted">${first ? 'Cuando lleves 4 semanas apuntando tus entrenos en la app' : 'Cuando lleves 4 semanas apuntando tus entrenos'} verás aquí tu constancia, cómo evoluciona tu fuerza en cada ejercicio y mis recomendaciones. Cada entreno que apuntes cuenta.</p>
-      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de 28 días` : 'Empieza tu primer entreno desde el Diario'}</small>
+      <p class="muted">${first ? 'Cuando lleves 1 semana apuntando tus entrenos en la app' : 'Cuando lleves 1 semana apuntando tus entrenos'} verás aquí tu constancia, cómo evoluciona tu fuerza en cada ejercicio y mis recomendaciones. Cada entreno que apuntes cuenta.</p>
+      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de 7 días` : 'Empieza tu primer entreno desde el Diario'}</small>
     </section>`;
   }
   const r = routine();
@@ -1338,13 +1338,13 @@ function studyView() {
   const list = (arr) => `<ul class="cz-st-list">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   const badge = (s) => `<span class="st-badge" style="--c:${S[s][0]}"><i></i>${S[s][1]}</span>`;
   const labels = st.weeks.map((w) => TS.shortDate(w.start));
-  if (!st.list.length) return `${filter}<section class="card"><p class="muted" style="margin:0">No has apuntado entrenos en las últimas ${studyWeeks} semanas.</p></section>`;
+  if (!st.list.length) return `${filter}<section class="card"><p class="muted" style="margin:0">No has apuntado entrenos ${studyWeeks === 1 ? 'en la última semana' : `en las últimas ${studyWeeks} semanas`}.</p></section>`;
   const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(TS.shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = new Date(`${wk.start}T12:00:00`); d.setDate(d.getDate() + k); const dd = ymd(d); return `<i class="${st.trainedDays.has(dd) ? 'on' : ''}${dd > ymd() ? ' fut' : ''}"></i>`; }).join('')}</div>`).join('');
   const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
   return `${filter}
     <section class="card cz-st">
       <div class="cz-st-kpis">
-        ${kpi('Entrenos', st.list.length, `en ${studyWeeks} semanas`)}
+        ${kpi('Entrenos', st.list.length, studyWeeks === 1 ? 'esta semana' : `en ${studyWeeks} semanas`)}
         ${kpi('Por semana', f(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : '')}
         ${kpi('Duración', st.durMin ? TS.mins(st.durMin) : '—', 'media por entreno')}

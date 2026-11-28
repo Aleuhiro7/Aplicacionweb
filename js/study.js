@@ -111,8 +111,8 @@
     const pw = fmtNum(Math.round(st.perWeek * 10) / 10);
     const veces = (n) => (n === 1 ? 'vez' : 'veces');
     if (st.target) {
-      out.constancia.push(`${first}, en estas ${st.W} semanas has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana. Tu rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumples prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumples la mayor parte, aunque se te escapa algún entreno' : st.adherence >= 40 ? 'haces más o menos la mitad de lo planificado' : 'estás entrenando bastante menos de lo planificado'} (${st.adherence} %).`);
-    } else out.constancia.push(`${first}, en estas ${st.W} semanas has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana.`);
+      out.constancia.push(`${first}, ${st.W === 1 ? 'esta semana' : `en estas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana. Tu rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumples prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumples la mayor parte, aunque se te escapa algún entreno' : st.adherence >= 40 ? 'haces más o menos la mitad de lo planificado' : 'estás entrenando bastante menos de lo planificado'} (${st.adherence} %).`);
+    } else out.constancia.push(`${first}, ${st.W === 1 ? 'esta semana' : `en estas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana.`);
     const maxGap = st.gaps.length ? Math.max(...st.gaps) : 0;
     if (maxGap >= 10) out.constancia.push(`Tu parón más largo ha sido de ${maxGap} días.`);
     const low = st.porDia.filter((d) => st.porDia.length > 1 && d.veces < Math.max(...st.porDia.map((x) => x.veces)) * 0.5);

@@ -2726,7 +2726,7 @@ body.pp-open { overflow: hidden; }
 .st-kpis { grid-template-columns: repeat(4, 1fr); }
 
 /* ===== App del cliente: «Estudio» del entrenamiento ===== */
-.cz-st-filter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 14px; }
+.cz-st-filter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 14px; }
 .cz-st-filter button { padding: 10px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); color: #e2e8f0; font: 600 .9rem/1.1 inherit; font-family: inherit; cursor: pointer; }
 .cz-st-filter button.on { background: #6e8bff; border-color: #6e8bff; color: #0b1020; }
 .cz-st-filter button:disabled { opacity: .45; cursor: not-allowed; }
@@ -2765,4 +2765,10 @@ body.pp-open { overflow: hidden; }
 .cz-st-locked h2 { font: 700 1.5rem/1.15 'Barlow Condensed', sans-serif; margin: 0 0 8px; }
 .cz-st-progress { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, .08); overflow: hidden; margin: 14px 0 6px; }
 .cz-st-progress i { display: block; height: 100%; background: linear-gradient(90deg, #6e8bff, #22d3ee, #3ee6a0); border-radius: 6px; }
-@media (max-width: 370px) { .cz-st-filter button { font-size: .78rem; padding: 10px 2px; white-space: nowrap; } }
+.cz-st-filter button { font-size: .82rem; padding: 10px 2px; white-space: nowrap; }
+@media (max-width: 370px) { .cz-st-filter { gap: 5px; } .cz-st-filter button { font-size: .72rem; } }
+.cz-st-filter button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; white-space: nowrap; }
+.cz-st-filter button b { font: 700 1.35rem/1 'Barlow Condensed', sans-serif; display: inline-flex; align-items: center; gap: 3px; }
+.cz-st-filter button b i { font-style: normal; font-size: .8rem; }
+.cz-st-filter button small { font-size: .72rem; opacity: .85; }
+@media (max-width: 370px) { .cz-st-filter button small { font-size: .66rem; } }

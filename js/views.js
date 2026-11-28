@@ -2223,13 +2223,13 @@
     // 1 · Portada
     out.push(`<section class="ds-page ds-cover"><div class="ds-cover-in">${DS_BRAND}
       <div class="ds-cover-main"><span class="ds-kicker">Estudio del entrenamiento</span><h1>${esc(c.name)}</h1><span class="ds-rule"></span>
-        <p>${esc(fmtDate(today()))} · últimas ${st.W} semanas (desde el ${esc(fmtDate(st.from))})</p><p class="ds-tag">Lo que se mide, se mejora.</p></div>
+        <p>${esc(fmtDate(today()))} · ${st.W === 1 ? 'última semana' : `últimas ${st.W} semanas`} (desde el ${esc(fmtDate(st.from))})</p><p class="ds-tag">Lo que se mide, se mejora.</p></div>
       <ol class="ds-index">${['Resumen', 'Constancia', 'Carga de trabajo', ...exPages.map((_, i) => `Ejercicio a ejercicio${exPages.length > 1 ? ` (${i + 1})` : ''}`), 'Conclusiones y recomendaciones'].map((x, i) => `<li><span>${i + 2}</span>${esc(x)}</li>`).join('')}</ol>
       <p class="ds-cover-note"></p></div></section>`);
     // 2 · Resumen
     out.push(page(2, 'Visión general', 'Resumen', `
       <div class="st-kpis">
-        ${kpi('Entrenos', st.list.length, `en ${st.W} semanas`)}
+        ${kpi('Entrenos', st.list.length, st.W === 1 ? 'en 1 semana' : `en ${st.W} semanas`)}
         ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : 'sin rutina')}
         ${kpi('Duración', st.durMin ? mins(st.durMin * 60) : '—', 'media por entreno')}
@@ -2292,7 +2292,7 @@
     if (!st.list.length) { UI.toast(`No ha apuntado entrenos en las últimas ${W} semanas`); return; }
     await showSheet({
       title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
-      extra: `<select id="pp-weeks" class="pp-select" aria-label="Periodo">${[4, 8, 12, 26].map((n) => `<option value="${n}"${n === W ? ' selected' : ''}>${n} semanas</option>`).join('')}</select>`,
+      extra: `<select id="pp-weeks" class="pp-select" aria-label="Periodo">${[1, 4, 8, 12, 26].map((n) => `<option value="${n}"${n === W ? ' selected' : ''}>${n} ${n === 1 ? 'semana' : 'semanas'}</option>`).join('')}</select>`,
       onReady: (ov, close) => { ov.querySelector('#pp-weeks').onchange = (e) => { close(); previewStudy(clientId, e.target.value); }; },
     });
   }
