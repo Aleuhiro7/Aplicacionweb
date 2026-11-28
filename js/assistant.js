@@ -382,10 +382,10 @@
         const valid = f.filter((x) => x > 0);
         const first = valid[0] || 0; const lastF = valid[valid.length - 1] || 0;
         const peak = Math.max(0, ...f);
-        const peakIdx = peak ? f.lastIndexOf(peak) : -1;
+        const peakIdx = peak ? f.indexOf(peak) : -1; // desde la primera vez que llegó a su mejor marca
         const sinMejorar = peakIdx >= 0 ? f.length - 1 - peakIdx : 0; // sesiones desde su mejor marca
         const cambio = first ? Math.round(((lastF - first) / first) * 100) : null;
-        const estado = valid.length < 2 ? 'pocos datos' : sinMejorar >= 3 ? 'estancado' : cambio != null && cambio < -5 ? 'bajando' : cambio != null && cambio > 2 ? 'mejorando' : 'estable';
+        const estado = valid.length < 2 ? 'pocos datos' : cambio != null && cambio < -5 ? 'bajando' : sinMejorar >= 3 && valid.length >= 4 ? 'estancado' : cambio != null && cambio > 2 ? 'mejorando' : 'estable';
         return { ejercicio: nombre, sesiones: ses.length, estado, cambioFuerzaPct: cambio, sesionesSinMejorar: sinMejorar,
           mejorMarca: peakIdx >= 0 ? `${ses[peakIdx].mejor.kg} kg × ${ses[peakIdx].mejor.reps} (${ses[peakIdx].fecha})` : null,
           ultimas: ses.slice(-4).map((x) => `${x.fecha}: ${x.series}`) };

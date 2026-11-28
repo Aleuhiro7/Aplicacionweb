@@ -2666,3 +2666,60 @@ body.pp-open { overflow: hidden; }
 .asis-wa .muted { font-size: .8rem; }
 .asis-wa-edit { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--wa, #25d366) 45%, var(--border)); background: var(--surface-2, rgba(255,255,255,.04)); color: var(--text); font: inherit; font-size: .95rem; line-height: 1.4; resize: vertical; }
 #wa-examples { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2, rgba(255,255,255,.04)); color: var(--text); font: inherit; font-size: .92rem; resize: vertical; }
+
+/* ===== Estudio del entrenamiento (PDF A4 oscuro) ===== */
+.st-cta { display: flex; align-items: center; gap: 16px; justify-content: space-between; flex-wrap: wrap; border-color: color-mix(in srgb, #6e8bff 45%, var(--border)); }
+.st-cta h2 { margin: 0 0 4px; }
+.st-cta p { margin: 0; font-size: .9rem; max-width: 60ch; }
+.pp-select { margin-left: auto; margin-right: 6px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: .85rem; }
+.st-page .st-main { flex: 1; display: flex; flex-direction: column; min-height: 0; padding-top: 6mm; }
+.st-page .ds-title { margin-bottom: 2mm; }
+.st-page .ds-rule { margin-bottom: 5mm; }
+.st-h { font: 700 12.5pt/1.2 'Barlow Condensed', sans-serif; letter-spacing: .02em; color: #fff; margin: 5mm 0 2.5mm; text-transform: uppercase; }
+.st-h small { font: 500 9pt/1 'Inter', system-ui, sans-serif; text-transform: none; letter-spacing: 0; color: #94a3b8; }
+.st-muted { color: #94a3b8; font-size: 9.5pt; margin: 0; }
+.st-legend { margin-bottom: 4mm; }
+.st-list { margin: 1mm 0 0; padding-left: 5mm; color: #e2e8f0; font-size: 10.5pt; line-height: 1.5; }
+.st-list li { margin-bottom: 1.6mm; }
+.st-list li::marker { color: #6e8bff; }
+.st-reco { padding-left: 6mm; }
+.st-reco li::marker { font-weight: 700; }
+.st-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3.5mm; }
+.st-kpi { background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .1); border-radius: 12px; padding: 3.5mm 4.5mm; display: flex; flex-direction: column; gap: 1mm; }
+.st-kpi span { font-size: 8.5pt; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; }
+.st-kpi b { font: 700 22pt/1 'Barlow Condensed', sans-serif; color: #fff; }
+.st-kpi small { font-size: 8.5pt; color: #94a3b8; }
+.st-states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3.5mm; }
+.st-state { border-radius: 12px; padding: 3mm 4mm; background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); display: flex; align-items: center; gap: 3mm; }
+.st-state b { font: 700 22pt/1 'Barlow Condensed', sans-serif; color: #fff; }
+.st-badge { display: inline-flex; align-items: center; gap: 1.6mm; font-size: 9pt; font-weight: 600; color: #e2e8f0; white-space: nowrap; }
+.st-badge i { width: 2.4mm; height: 2.4mm; border-radius: 50%; background: var(--c); flex: none; }
+.st-chart { width: 100%; height: auto; display: block; }
+.st-chart .st-grid { stroke: rgba(255, 255, 255, .08); stroke-width: 1; }
+.st-chart .st-base { stroke: rgba(255, 255, 255, .3); stroke-width: 1; }
+.st-chart .st-ax { fill: #94a3b8; font: 500 11px 'Inter', system-ui, sans-serif; }
+.st-chart .st-val { fill: #fff; font: 700 12px 'Inter', system-ui, sans-serif; }
+.st-chart .st-target { stroke: #e2e8f0; stroke-width: 1.5; stroke-dasharray: 6 5; }
+.st-chart .st-tlabel { fill: #e2e8f0; font: 600 11px 'Inter', system-ui, sans-serif; }
+.st-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+.st-cal { display: flex; flex-direction: column; gap: 1.2mm; }
+.st-cal-w { display: grid; grid-template-columns: 13mm repeat(7, 1fr); gap: 1.2mm; align-items: center; }
+.st-cal-w span { font-size: 8pt; color: #94a3b8; }
+.st-cal-w i { height: 4.2mm; border-radius: 3px; background: rgba(255, 255, 255, .07); }
+.st-cal-w i.on { background: #6e8bff; }
+.st-cal-w i.fut { background: transparent; border: 1px dashed rgba(255, 255, 255, .1); }
+.st-hbars { display: flex; flex-direction: column; gap: 3mm; }
+.st-hbar { display: grid; grid-template-columns: 26mm 1fr 8mm; gap: 3mm; align-items: center; font-size: 9.5pt; color: #e2e8f0; }
+.st-hbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-hbar div { height: 4.5mm; background: rgba(255, 255, 255, .06); border-radius: 4px; overflow: hidden; }
+.st-hbar div i { display: block; height: 100%; background: #6e8bff; border-radius: 0 4px 4px 0; }
+.st-hbar b { text-align: right; color: #fff; }
+.st-exs { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.st-ex { border-radius: 12px; padding: 3.5mm 4mm; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); border-top: 3px solid var(--c); display: flex; flex-direction: column; gap: 2mm; min-width: 0; }
+.st-ex-head { display: flex; justify-content: space-between; gap: 3mm; align-items: flex-start; }
+.st-ex-head b { font-size: 10pt; line-height: 1.25; color: #fff; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.st-spark { width: 100%; height: 15mm; display: block; }
+.st-spark-empty { height: 15mm; display: grid; place-items: center; font-size: 8.5pt; color: #64748b; border: 1px dashed rgba(255, 255, 255, .1); border-radius: 8px; }
+.st-ex-nums { display: flex; flex-wrap: wrap; gap: .8mm 3.5mm; font-size: 8.5pt; color: #94a3b8; }
+.st-ex-nums b { color: #fff; }
+.st-page .ds-rule { margin-left: 0; margin-right: auto; align-self: flex-start; }

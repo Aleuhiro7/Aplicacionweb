@@ -2192,6 +2192,303 @@
   };
 
   /** Vista previa del PDF de la rutina o la dieta, tal cual le llegará al cliente (antes de enviarlo). */
+  /* =======================================================
+   * Estudio del entrenamiento (pestaña Entrenos): estadísticas, gráficas y conclusiones, en PDF.
+   * ======================================================= */
+  const ST_BLUE = '#6e8bff';
+  const ST_STATUS = { mejorando: ['#3ee6a0', 'Mejorando'], estable: ['#94a3b8', 'Estable'], estancado: ['#fbbf24', 'Estancado'], bajando: ['#f87171', 'Bajando'], pocos: ['#64748b', 'Pocos datos'] };
+  const e1rm = (kg, reps) => (kg > 0 && reps > 0 ? kg * (1 + Math.min(reps, 15) / 30) : 0);
+  /** Medida de fuerza de una serie: 1RM estimado; con peso corporal (0 kg), las repeticiones. */
+  const strength = (kg, reps) => (kg > 0 ? e1rm(kg, reps) : reps > 0 ? reps : 0);
+  const setTxt = (x) => (x.kg > 0 ? `${kgTxt(x.kg)} × ${x.reps}` : `${x.reps} rep. (peso corporal)`);
+  const kgTxt = (n) => `${fmtNum(Math.round(n * 10) / 10)} kg`;
+  const mondayOf = (iso) => { const d = U.parseDate(iso); const k = (d.getDay() + 6) % 7; d.setDate(d.getDate() - k); return U.toISODate(d); };
+  const shortDate = (iso) => { const d = U.parseDate(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; };
+
+  /** Todo el estudio: números por semana, por día de la rutina y por ejercicio, y las conclusiones. */
+  function trainingStudy(c, all, W) {
+    const t = today();
+    const from = U.addDays(mondayOf(t), -7 * (W - 1));
+    const list = (all || []).filter((w) => w.date && w.date >= from && w.date <= t).sort((a, b) => (a.date < b.date ? -1 : 1));
+    const r = !c.noTraining && Store.routineFor(c.id);
+    const rDays = r ? (r.days || []).filter((d) => (d.exercises || []).length) : [];
+    const done = (e) => (e.sets || []).filter((x) => x.done);
+    const vol = (e) => done(e).reduce((n, x) => n + (Number(x.kg) || 0) * (Number(x.reps) || 0), 0);
+    // Semanas (de lunes a domingo)
+    const weeks = Array.from({ length: W }, (_, i) => { const s = U.addDays(from, 7 * i); return { start: s, n: 0, vol: 0, sets: 0, planned: 0, min: 0 }; });
+    for (const w of list) {
+      const wk = weeks[Math.floor(U.daysBetween(from, w.date) / 7)];
+      if (!wk) continue;
+      wk.n++; wk.min += (w.durationSec || 0) / 60;
+      for (const e of w.exercises || []) { wk.vol += vol(e); wk.sets += done(e).length; wk.planned += (e.sets || []).length; }
+    }
+    // Semanas que cuentan: desde que empezó (alta o primer entreno), para no penalizar las anteriores.
+    const oldest = (all || []).reduce((m, w) => (w.date && w.date < m ? w.date : m), t);
+    const startAt = [oldest, c.startDate].filter(Boolean).sort()[0];
+    const activeWeeks = weeks.filter((wk) => U.addDays(wk.start, 6) >= startAt);
+    const effW = Math.max(1, activeWeeks.length - (U.daysBetween(mondayOf(t), t) < 3 ? 0.5 : 0));
+    const trainedDays = new Set(list.map((w) => w.date));
+    // Por día de la rutina
+    const porDia = rDays.map((d, i) => { const nm = normName(d.name || `Día ${i + 1}`); const ws = list.filter((w) => normName(w.dayName) === nm); return { dia: d.name || `Día ${i + 1}`, veces: ws.length, ultimo: ws.length ? ws[ws.length - 1].date : null }; });
+    // Por ejercicio
+    const byEx = new Map();
+    for (const w of list) for (const e of w.exercises || []) {
+      const ss = done(e).map((x) => ({ kg: Number(x.kg) || 0, reps: Number(x.reps) || 0 }));
+      if (!ss.length) continue;
+      const best = ss.reduce((a, x) => (strength(x.kg, x.reps) > strength(a.kg, a.reps) ? x : a), ss[0]);
+      const k = normName(e.name);
+      if (!byEx.has(k)) byEx.set(k, { name: e.name, ses: [] });
+      byEx.get(k).ses.push({ date: w.date, best, f: strength(best.kg, best.reps), vol: vol(e), sets: ss });
+    }
+    let prs = 0;
+    const exercises = [...byEx.values()].map(({ name, ses }) => {
+      const f = ses.map((x) => x.f);
+      const valid = f.filter((x) => x > 0);
+      let run = 0; f.forEach((x, i) => { if (i && x > Math.max(...f.slice(0, i))) run++; });
+      prs += run;
+      const first = valid[0] || 0; const last = valid[valid.length - 1] || 0;
+      // Estancado: sesiones desde la PRIMERA vez que llegó a su mejor marca (repetir el mismo peso no cuenta como mejorar).
+      const peak = Math.max(0, ...f); const pi = peak ? f.indexOf(peak) : -1;
+      const since = pi >= 0 ? f.length - 1 - pi : 0;
+      const pct = first ? Math.round(((last - first) / first) * 100) : null;
+      const status = valid.length < 2 ? 'pocos' : pct != null && pct < -5 ? 'bajando' : since >= 3 && valid.length >= 4 ? 'estancado' : pct != null && pct > 2 ? 'mejorando' : 'estable';
+      return { name, ses, status, pct, since, prs: run, peak: pi >= 0 ? ses[pi] : null, first: ses[0], last: ses[ses.length - 1], kgDiff: ses[ses.length - 1].best.kg - ses[0].best.kg };
+    }).sort((a, b) => b.ses.length - a.ses.length || a.name.localeCompare(b.name, 'es'));
+    const enRutina = rDays.flatMap((d) => (d.exercises || []).map((e) => e.name));
+    const noHechos = [...new Set(enRutina)].filter((n) => !byEx.has(normName(n)));
+    const totalSets = list.reduce((n, w) => n + (w.exercises || []).reduce((m, e) => m + done(e).length, 0), 0);
+    const planned = list.reduce((n, w) => n + (w.exercises || []).reduce((m, e) => m + (e.sets || []).length, 0), 0);
+    const totalReps = list.reduce((n, w) => n + (w.exercises || []).reduce((m, e) => m + done(e).reduce((k, x) => k + (Number(x.reps) || 0), 0), 0), 0);
+    const totalVol = weeks.reduce((n, wk) => n + wk.vol, 0);
+    const gaps = list.slice(1).map((w, i) => U.daysBetween(list[i].date, w.date));
+    const lastW = (all || []).filter((w) => w.date).sort((a, b) => (a.date < b.date ? 1 : -1))[0] || null;
+    const perWeek = list.length / effW;
+    const target = rDays.length || null;
+    const adherence = target ? Math.min(100, Math.round((perWeek / target) * 100)) : null;
+    const count = (s) => exercises.filter((e) => e.status === s).length;
+    const half = Math.floor(activeWeeks.length / 2);
+    const volA = half ? activeWeeks.slice(0, half).reduce((n, wk) => n + wk.vol, 0) / half : 0;
+    const volB = half ? activeWeeks.slice(half).reduce((n, wk) => n + wk.vol, 0) / (activeWeeks.length - half) : 0;
+    const volTrend = volA ? Math.round(((volB - volA) / volA) * 100) : null;
+    const st = { c, W, from, list, weeks, activeWeeks, trainedDays, porDia, exercises, noHechos, totalSets, planned, totalReps, totalVol, gaps, lastW, perWeek, target, adherence, prs,
+      counts: { mejorando: count('mejorando'), estable: count('estable'), estancado: count('estancado'), bajando: count('bajando'), pocos: count('pocos') },
+      durMin: list.length ? list.reduce((n, w) => n + (w.durationSec || 0), 0) / list.length / 60 : 0,
+      setsPct: planned ? Math.round((totalSets / planned) * 100) : null, volTrend,
+      subir: ((c.aiSummary && c.aiSummary.subir) || []) };
+    st.notes = studyNotes(st);
+    return st;
+  }
+
+  /** Conclusiones y recomendaciones, por escrito (reglas de entrenador, sin IA). */
+  function studyNotes(st) {
+    const first = st.c.name.split(' ')[0];
+    const out = { constancia: [], progreso: [], recomendaciones: [] };
+    const since = st.lastW ? U.daysBetween(st.lastW.date, today()) : null;
+    if (st.target) {
+      out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} ${st.perWeek === 1 ? 'vez' : 'veces'} por semana y su rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumple prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumple la mayor parte, aunque se deja algún entreno' : st.adherence >= 40 ? 'hace aproximadamente la mitad de lo planificado' : 'entrena bastante menos de lo planificado'} (${st.adherence} %).`);
+    } else out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} veces por semana.`);
+    if (since != null) out.constancia.push(since <= 3 ? `Su último entreno fue ${since === 0 ? 'hoy' : since === 1 ? 'ayer' : `hace ${since} días`}: sigue activo.` : `Lleva ${since} días sin apuntar ningún entreno.`);
+    const maxGap = st.gaps.length ? Math.max(...st.gaps) : 0;
+    if (maxGap >= 10) out.constancia.push(`Su parón más largo en este periodo ha sido de ${maxGap} días.`);
+    const low = st.porDia.filter((d) => st.porDia.length > 1 && d.veces < Math.max(...st.porDia.map((x) => x.veces)) * 0.5);
+    if (low.length) out.constancia.push(`Hace mucho menos ${low.map((d) => `«${d.dia}» (${plural(d.veces, 'vez', 'veces')})`).join(' y ')} que el resto de días de la rutina.`);
+    if (st.setsPct != null) out.constancia.push(st.setsPct >= 95 ? `Completa el ${st.setsPct} % de las series: no se deja trabajo a medias.` : `Completa el ${st.setsPct} % de las series que tiene programadas.`);
+    const ups = st.exercises.filter((e) => e.status === 'mejorando').sort((a, b) => (b.pct || 0) - (a.pct || 0));
+    const stuck = st.exercises.filter((e) => e.status === 'estancado');
+    const down = st.exercises.filter((e) => e.status === 'bajando');
+    if (ups.length) out.progreso.push(`Mejora en ${plural(ups.length, 'ejercicio', 'ejercicios')}. Lo más destacado: ${ups.slice(0, 3).map((e) => `${e.name} (de ${setTxt(e.first.best)} a ${setTxt(e.last.best)}, +${e.pct} %)`).join('; ')}.`);
+    if (st.prs) out.progreso.push(`Ha batido su mejor marca ${plural(st.prs, 'vez', 'veces')} en este periodo.`);
+    if (stuck.length) out.progreso.push(`Estancado (3 sesiones o más sin superar su mejor marca) en: ${stuck.map((e) => e.name).join(', ')}.`);
+    if (down.length) out.progreso.push(`Pierde fuerza en: ${down.map((e) => `${e.name} (${e.pct} %)`).join(', ')}.`);
+    if (st.volTrend != null && Math.abs(st.volTrend) >= 5) out.progreso.push(`El volumen de trabajo (kilos × repeticiones) ${st.volTrend > 0 ? 'ha subido' : 'ha bajado'} un ${Math.abs(st.volTrend)} % en la segunda mitad del periodo.`);
+    if (!out.progreso.length) out.progreso.push('Todavía no hay suficientes sesiones repetidas para ver una tendencia clara.');
+    // Recomendaciones
+    if (st.target && st.adherence < 70) out.recomendaciones.push(`Hablar con ${first} sobre la constancia: valorar si su rutina de ${st.target} días encaja con su semana o si conviene pasar a ${Math.max(2, Math.round(st.perWeek))} días.`);
+    if (since != null && since > 7) out.recomendaciones.push(`Escribirle: lleva ${since} días sin entrenar.`);
+    for (const d of low) out.recomendaciones.push(`Revisar por qué se salta «${d.dia}» (¿horario, material, le cuesta ese día?).`);
+    for (const e of stuck.slice(0, 4)) out.recomendaciones.push(`${e.name}: estancado desde ${shortDate(e.peak.date)} con ${setTxt(e.peak.best)}. Probar a subir repeticiones antes que peso o cambiarlo por otro del mismo patrón.`);
+    if (down.length >= 2) out.recomendaciones.push('Varios ejercicios bajan a la vez: revisar descanso, sueño y si la dieta está muy por debajo de su mantenimiento.');
+    else for (const e of down) out.recomendaciones.push(`${e.name}: baja su fuerza. Comprobar técnica, molestias o si lo hace con más cansancio (orden del día).`);
+    for (const x of st.subir.slice(0, 4)) out.recomendaciones.push(`${x.ex}: toca subir peso en la serie ${x.serie}${x.motivo ? ` (${x.motivo})` : ''}.`);
+    if (st.noHechos.length) out.recomendaciones.push(`No ha apuntado nunca: ${st.noHechos.slice(0, 6).join(', ')}${st.noHechos.length > 6 ? '…' : ''}. Confirmar si los hace o sustituirlos.`);
+    if (ups.length && !stuck.length && !down.length && (!st.target || st.adherence >= 80)) out.recomendaciones.push('Va muy bien: mantener la rutina y seguir con la progresión de cargas.');
+    if (!out.recomendaciones.length) out.recomendaciones.push('Seguir como hasta ahora y volver a mirar el estudio en unas semanas.');
+    return out;
+  }
+
+  /* --- Gráficas (SVG, una sola serie cada una; la tabla o el texto acompañan siempre) --- */
+  function stBars(vals, labels, { h = 220, target = null, targetLabel = '', fmt = (v) => fmtNum(v), color = ST_BLUE } = {}) {
+    const W = 680; const padL = 40; const padB = 26; const padT = 22; const n = vals.length;
+    const top0 = Math.max(1, target || 0, ...vals);
+    const raw = top0 / 3; const mag = 10 ** Math.floor(Math.log10(raw)); const nn = raw / mag;
+    const stepV = Math.max(vals.every(Number.isInteger) ? 1 : 0, (nn <= 1 ? 1 : nn <= 2 ? 2 : nn <= 5 ? 5 : 10) * mag);
+    const max = Math.max(top0 * 1.12, stepV * 3);
+    const step = (W - padL - 8) / n; const bw = Math.min(38, step - 6);
+    const y = (v) => padT + (h - padT - padB) * (1 - v / max);
+    const ticks = []; for (let v = 0; v <= max * 0.92; v += stepV) ticks.push(v);
+    const peak = vals.indexOf(Math.max(...vals));
+    let s = `<svg class="st-chart" viewBox="0 0 ${W} ${h}" role="img">`;
+    s += ticks.map((v) => `<line x1="${padL}" x2="${W - 4}" y1="${y(v)}" y2="${y(v)}" class="st-grid"/><text x="${padL - 6}" y="${y(v) + 4}" class="st-ax" text-anchor="end">${fmt(v)}</text>`).join('');
+    vals.forEach((v, i) => {
+      const x = padL + step * i + (step - bw) / 2; const top = y(v); const base = y(0); const r = Math.min(4, (base - top) / 2);
+      if (v > 0) s += `<path d="M${x},${base} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${base} Z" fill="${color}"><title>${esc(labels[i])}: ${esc(fmt(v))}</title></path>`;
+      if (i % Math.ceil(n / 12) === 0) s += `<text x="${x + bw / 2}" y="${h - 8}" class="st-ax" text-anchor="middle">${esc(labels[i])}</text>`;
+      if ((i === peak || i === n - 1) && v > 0) s += `<text x="${x + bw / 2}" y="${top - 6}" class="st-val" text-anchor="middle">${esc(fmt(v))}</text>`;
+    });
+    s += `<line x1="${padL}" x2="${W - 4}" y1="${y(0)}" y2="${y(0)}" class="st-base"/>`;
+    if (target) s += `<line x1="${padL}" x2="${W - 4}" y1="${y(target)}" y2="${y(target)}" class="st-target"/><text x="${W - 6}" y="${y(target) - 6}" class="st-tlabel" text-anchor="end">${esc(targetLabel)}</text>`;
+    return s + '</svg>';
+  }
+  function stSpark(ses, color) {
+    const W = 260; const H = 64; const p = 6;
+    const pts = ses.filter((x) => x.f > 0);
+    if (pts.length < 2) return '<div class="st-spark-empty">Hace falta más de una sesión</div>';
+    const min = Math.min(...pts.map((x) => x.f)); const max = Math.max(...pts.map((x) => x.f));
+    const sx = (i) => p + ((W - 2 * p) * i) / (pts.length - 1);
+    const sy = (v) => (max === min ? H / 2 : p + (H - 2 * p) * (1 - (v - min) / (max - min)));
+    const d = pts.map((x, i) => `${i ? 'L' : 'M'}${sx(i).toFixed(1)},${sy(x.f).toFixed(1)}`).join(' ');
+    const pk = pts.map((x) => x.f).lastIndexOf(max);
+    const dot = (i, big) => `<circle cx="${sx(i).toFixed(1)}" cy="${sy(pts[i].f).toFixed(1)}" r="${big ? 4 : 3}" fill="${color}" stroke="#121722" stroke-width="2"><title>${esc(shortDate(pts[i].date))}: ${esc(setTxt(pts[i].best))}</title></circle>`;
+    return `<svg class="st-spark" viewBox="0 0 ${W} ${H}" role="img"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dot(0)}${pk !== 0 && pk !== pts.length - 1 ? dot(pk, true) : ''}${dot(pts.length - 1, true)}</svg>`;
+  }
+
+  /** El documento (mismo formato que los PDF de rutina y dieta). */
+  function studySheet(st) {
+    const c = st.c;
+    const top = `<header class="ds-top">${DS_BRAND}<span class="ds-client">${esc(c.name)}</span></header>`;
+    const PER = 6;
+    const exPages = []; for (let i = 0; i < st.exercises.length; i += PER) exPages.push(st.exercises.slice(i, i + PER));
+    const total = 4 + exPages.length + 1;
+    const foot = (n) => `<footer class="ds-foot"><span>Estudio del entrenamiento · ${esc(fmtDate(today()))}</span><span class="ds-page-n">${n} / ${total}</span></footer>`;
+    const page = (n, kicker, title, inner) => `<section class="ds-page st-page">${top}<div class="st-main"><span class="ds-kicker">${kicker}</span><h2 class="ds-title">${title}</h2><span class="ds-rule"></span>${inner}</div>${foot(n)}</section>`;
+    const since = st.lastW ? U.daysBetween(st.lastW.date, today()) : null;
+    const kpi = (label, value, sub) => `<div class="st-kpi"><span>${label}</span><b>${value}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+    const bullets = (arr) => `<ul class="st-list">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+    const status = (s) => `<span class="st-badge" style="--c:${ST_STATUS[s][0]}"><i></i>${ST_STATUS[s][1]}</span>`;
+    const wkLabels = st.weeks.map((wk) => shortDate(wk.start));
+    const out = [];
+    // 1 · Portada
+    out.push(`<section class="ds-page ds-cover"><div class="ds-cover-in">${DS_BRAND}
+      <div class="ds-cover-main"><span class="ds-kicker">Estudio del entrenamiento</span><h1>${esc(c.name)}</h1><span class="ds-rule"></span>
+        <p>${esc(fmtDate(today()))} · últimas ${st.W} semanas (desde el ${esc(fmtDate(st.from))})</p><p class="ds-tag">Lo que se mide, se mejora.</p></div>
+      <ol class="ds-index">${['Resumen', 'Constancia', 'Carga de trabajo', ...exPages.map((_, i) => `Ejercicio a ejercicio${exPages.length > 1 ? ` (${i + 1})` : ''}`), 'Conclusiones y recomendaciones'].map((x, i) => `<li><span>${i + 2}</span>${esc(x)}</li>`).join('')}</ol>
+      <p class="ds-cover-note"></p></div></section>`);
+    // 2 · Resumen
+    out.push(page(2, 'Visión general', 'Resumen', `
+      <div class="st-kpis">
+        ${kpi('Entrenos', st.list.length, `en ${st.W} semanas`)}
+        ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} planificados` : '')}
+        ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : 'sin rutina')}
+        ${kpi('Último entreno', since == null ? '—' : since === 0 ? 'Hoy' : since === 1 ? 'Ayer' : `${since} días`, st.lastW ? esc(st.lastW.dayName || '') : '')}
+        ${kpi('Duración media', st.durMin ? mins(st.durMin * 60) : '—', 'por entreno')}
+        ${kpi('Series hechas', fmtNum(st.totalSets), st.setsPct != null ? `${st.setsPct} % de las programadas` : '')}
+        ${kpi('Repeticiones', fmtNum(st.totalReps), 'en total')}
+        ${kpi('Kilos movidos', `${fmtNum(Math.round(st.totalVol / 100) / 10)} t`, 'kilos × repeticiones')}
+        ${kpi('Récords', st.prs, 'mejores marcas batidas')}
+      </div>
+      <h3 class="st-h">Estado de sus ejercicios</h3>
+      <div class="st-states">${['mejorando', 'estable', 'estancado', 'bajando'].map((s) => `<div class="st-state" style="--c:${ST_STATUS[s][0]}"><b>${st.counts[s]}</b>${status(s)}</div>`).join('')}</div>
+      <h3 class="st-h">Lo más importante</h3>
+      ${bullets([...st.notes.constancia.slice(0, 2), ...st.notes.progreso.slice(0, 3)])}`));
+    // 3 · Constancia
+    const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = U.addDays(wk.start, k); const on = st.trainedDays.has(d); return `<i class="${on ? 'on' : ''}${d > today() ? ' fut' : ''}" title="${esc(fmtDate(d))}${on ? ': entrenó' : ''}"></i>`; }).join('')}</div>`).join('');
+    const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
+    out.push(page(3, 'Cuánto entrena', 'Constancia', `
+      <h3 class="st-h">Entrenos por semana${st.target ? ` <small>· línea: los ${st.target} días de su rutina</small>` : ''}</h3>
+      ${stBars(st.weeks.map((wk) => wk.n), wkLabels, { h: 200, target: st.target, targetLabel: st.target ? `Objetivo: ${st.target} por semana` : '', fmt: (v) => fmtNum(Math.round(v * 10) / 10) })}
+      <div class="st-two">
+        <div><h3 class="st-h">Días que entrenó <small>· L M X J V S D</small></h3><div class="st-cal">${cal}</div></div>
+        <div><h3 class="st-h">Días de su rutina</h3>${st.porDia.length ? `<div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div>` : '<p class="st-muted">Sin rutina con ejercicios.</p>'}</div>
+      </div>
+      ${bullets(st.notes.constancia)}`));
+    // 4 · Carga de trabajo
+    out.push(page(4, 'Cuánto trabaja', 'Carga de trabajo', `
+      <h3 class="st-h">Kilos movidos por semana <small>· kilos × repeticiones de todas sus series</small></h3>
+      ${stBars(st.weeks.map((wk) => Math.round(wk.vol)), wkLabels, { h: 190, fmt: (v) => (v >= 1000 ? `${fmtNum(Math.round(v / 100) / 10)} t` : fmtNum(Math.round(v))) })}
+      <h3 class="st-h">Series hechas por semana</h3>
+      ${stBars(st.weeks.map((wk) => wk.sets), wkLabels, { h: 170, fmt: (v) => fmtNum(Math.round(v)) })}
+      <h3 class="st-h">Minutos entrenados por semana</h3>
+      ${stBars(st.weeks.map((wk) => Math.round(wk.min)), wkLabels, { h: 170, fmt: (v) => `${fmtNum(Math.round(v))}′` })}
+      ${bullets([st.volTrend != null ? `Volumen ${st.volTrend >= 0 ? 'al alza' : 'a la baja'}: ${st.volTrend >= 0 ? '+' : ''}${st.volTrend} % entre la primera y la segunda mitad del periodo.` : 'Aún no hay semanas suficientes para comparar el volumen.', `Media de ${fmtNum(Math.round(st.totalSets / Math.max(1, st.list.length)))} series y ${st.durMin ? mins(st.durMin * 60) : '—'} por entreno.`])}`));
+    // 5… · Ejercicio a ejercicio
+    exPages.forEach((exs, pi) => {
+      out.push(page(5 + pi, 'Cómo evoluciona', `Ejercicio a ejercicio${exPages.length > 1 ? ` (${pi + 1}/${exPages.length})` : ''}`, `
+        <p class="st-muted st-legend">La línea es su fuerza estimada (1RM) con la mejor serie de cada sesión. Puntos grandes: la última sesión y su mejor marca.</p>
+        <div class="st-exs">${exs.map((e) => `<div class="st-ex" style="--c:${ST_STATUS[e.status][0]}">
+          <div class="st-ex-head"><b>${esc(e.name)}</b>${status(e.status)}</div>
+          ${stSpark(e.ses, ST_STATUS[e.status][0])}
+          <div class="st-ex-nums"><span>${plural(e.ses.length, 'sesión', 'sesiones')}</span><span>Primera: ${esc(setTxt(e.first.best))}</span><span>Última: <b>${esc(setTxt(e.last.best))}</b></span>${e.peak ? `<span>Mejor: ${esc(setTxt(e.peak.best))} (${esc(shortDate(e.peak.date))})</span>` : ''}${e.pct != null && e.ses.length > 1 ? `<span>Fuerza: <b>${e.pct > 0 ? '+' : ''}${e.pct} %</b></span>` : ''}</div>
+        </div>`).join('')}</div>`));
+    });
+    // Última · Conclusiones
+    out.push(page(total, 'Qué hacer ahora', 'Conclusiones y recomendaciones', `
+      <h3 class="st-h">Constancia</h3>${bullets(st.notes.constancia)}
+      <h3 class="st-h">Progreso</h3>${bullets(st.notes.progreso)}
+      <h3 class="st-h">Recomendaciones</h3><ol class="st-list st-reco">${st.notes.recomendaciones.map((x) => `<li>${esc(x)}</li>`).join('')}</ol>`));
+    return `<article class="ds st-doc">${out.join('')}</article>`;
+  }
+
+  /** Botón «Estudio del entrenamiento»: lo calcula, lo enseña como el PDF y deja descargarlo. */
+  async function previewStudy(clientId, weeks) {
+    const c = Store.get('clients', clientId);
+    if (!c) return;
+    const st0 = portalWk[c.portalToken];
+    if (!st0 || !st0.list) { UI.toast('Cargando sus entrenos…'); loadClientWorkouts(c); return; }
+    const W = Number(weeks) || Number(state.studyWeeks) || 12;
+    state.studyWeeks = W;
+    const st = trainingStudy(c, st0.list, W);
+    if (!st.list.length) { UI.toast(`No ha apuntado entrenos en las últimas ${W} semanas`); return; }
+    await showSheet({
+      title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
+      extra: `<select id="pp-weeks" class="pp-select" aria-label="Periodo">${[4, 8, 12, 26].map((n) => `<option value="${n}"${n === W ? ' selected' : ''}>${n} semanas</option>`).join('')}</select>`,
+      onReady: (ov, close) => { ov.querySelector('#pp-weeks').onchange = (e) => { close(); previewStudy(clientId, e.target.value); }; },
+    });
+  }
+
+  /** Vista previa a pantalla completa de un documento .ds, con botón para descargarlo en PDF. */
+  async function showSheet({ title, file, html, paginate, extra = '', onReady }) {
+    const ov = document.createElement('div');
+    ov.className = 'pdf-preview';
+    ov.innerHTML = `<header class="pdf-preview-bar"><strong>${esc(title)} · vista previa</strong>${extra}
+        <button type="button" class="btn sm" id="pp-dl">${U.icon('download') || '⬇'}Descargar</button>
+        <button type="button" class="icon-btn" id="pp-close" aria-label="Cerrar">${U.icon('close')}</button></header>
+      <div class="pdf-preview-body"><p class="muted" style="text-align:center;margin:40px 0">Preparando el PDF…</p></div>`;
+    document.body.appendChild(ov);
+    document.body.classList.add('pp-open');
+    const body = ov.querySelector('.pdf-preview-body');
+    let sheet = '';
+    const fit = () => {
+      const art = body.querySelector('.ds');
+      const pg = art && art.querySelector('.ds-page');
+      if (!pg) return;
+      const k = Math.min(1, (body.clientWidth - 16) / pg.offsetWidth);
+      art.style.transform = `scale(${k})`;
+      art.style.transformOrigin = 'top left';
+      art.parentElement.style.height = `${art.offsetHeight * k}px`;
+      art.parentElement.style.width = `${pg.offsetWidth * k}px`;
+    };
+    const close = () => { ov.remove(); document.body.classList.remove('pp-open'); window.removeEventListener('resize', fit); };
+    ov.querySelector('#pp-close').onclick = close;
+    if (onReady) onReady(ov, close);
+    try {
+      sheet = await PdfMaker.prepared(html, paginate || null);
+      body.innerHTML = `<div class="pdf-preview-sheet">${sheet}</div>`;
+      await PdfMaker.loadFonts().catch(() => {});
+      fit(); setTimeout(fit, 300);
+      window.addEventListener('resize', fit);
+    } catch (e) {
+      console.error(e);
+      body.innerHTML = '<p class="muted" style="text-align:center;margin:40px 0">No se ha podido preparar la vista previa.</p>';
+    }
+    ov.querySelector('#pp-dl').onclick = async (ev) => {
+      const b = ev.currentTarget;
+      if (!sheet || b.disabled) return;
+      b.disabled = true;
+      try { const blob = await PdfMaker.make(sheet); PdfMaker.save(blob, PdfMaker.fileName(file)); } catch (e) { console.error(e); UI.toast('No se ha podido crear el PDF'); }
+      b.disabled = false;
+    };
+  }
+
   async function previewPlan(kind, clientId) {
     const c = Store.get('clients', clientId);
     if (!c) return;
@@ -2724,6 +3021,10 @@
     }
     const progRows = [...prog.entries()].sort((a, b) => b[1][b[1].length - 1].date.localeCompare(a[1][a[1].length - 1].date));
     return `
+      <section class="card st-cta">
+        <div><h2>📊 Estudio del entrenamiento</h2><p class="muted">Constancia, carga de trabajo y cómo evoluciona en cada ejercicio, con gráficas, conclusiones y recomendaciones. Lo puedes descargar en PDF.</p></div>
+        <button class="btn primary" data-action="training-study" data-client="${c.id}">${U.icon('file')}Ver el estudio</button>
+      </section>
       <div class="stats wk-stats">
         <div class="card stat"><div class="stat-label">Último entreno</div><div class="stat-value" style="font-size:1.7rem">${sinceLast === 0 ? 'Hoy' : sinceLast === 1 ? 'Ayer' : `Hace ${sinceLast} días`}</div><div class="stat-sub">${esc(last.dayName)} · ${esc(fmtDate(last.date))}</div></div>
         <div class="card stat"><div class="stat-label">Últimos 30 días</div><div class="stat-value">${in30}</div><div class="stat-sub">${in30 === 1 ? 'entreno' : 'entrenos'} · ${list.length} en total</div></div>
@@ -5335,6 +5636,7 @@
     'wk-open-seen': (d) => { openWorkout(d.client, d.value); markWorkoutsSeen(d.client); },
     'wk-seen': (d) => markWorkoutsSeen(d.client),
     'wk-seen-all': () => markWorkoutsSeen(),
+    'training-study': (d) => previewStudy(d.client),
     'workouts-refresh': (d) => { const c = Store.get('clients', d.client); if (c) { loadClientWorkouts(c, true); App.render(); } },
     'portal-copy': (d) => { const c = Store.get('clients', d.client); if (c && c.portalToken) copyText(portalUrl(c.portalToken), 'Enlace copiado'); },
     'edit-injury': (d) => openInjuryForm(d.id),
