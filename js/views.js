@@ -5552,6 +5552,16 @@
     // Para el asistente por voz (assistant.js)
     assistant: {
       clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod, clientPlan, planAmount, PAY_PLANS,
+      /** Entrenos del cliente (los carga de la nube si hace falta). */
+      workoutsFor: async (id) => {
+        const c = Store.get('clients', id);
+        if (!c || !c.portalToken) return null;
+        loadClientWorkouts(c, true);
+        for (let i = 0; i < 60 && portalWk[c.portalToken] && portalWk[c.portalToken].loading; i++) await new Promise((r) => setTimeout(r, 250));
+        const st = portalWk[c.portalToken];
+        if (!st || st.error) throw new Error('No se han podido cargar sus entrenos (¿sin conexión?)');
+        return st.list || [];
+      },
       markGreeted: (id) => { const bi = birthdayInfo(Store.get('clients', id)); if (bi) Store.update('clients', id, { bdayGreeted: bi.date }); return !!bi; },
       estimateMaintenance, dayTargets, mealTargets, solveMeal, saveDiet, foodMacros, SUPPLEMENTS,
       sendLink: (clientId, tipo) => (tipo === 'medidas' ? sendRevisionLink(clientId) : tipo === 'alimentacion' ? sendFoodQuiz(clientId) : tipo === 'cuestionario' ? sendQuestionnaireLink(clientId) : invitePortal(clientId)),

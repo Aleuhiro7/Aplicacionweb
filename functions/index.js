@@ -178,6 +178,11 @@ Cómo trabajar:
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
   Busca los ids con buscar_alimento (en crudo cuando haya versión cruda). Pon 1–3 opciones por tipo en cada comida.
   Al confirmar, resume en una frase las kcal, los macros y las comidas.
+- «¿Cómo va X?», «estudia su entrenamiento», «¿está progresando?»: usa estudio_entrenamiento y responde como entrenador
+  experto, al grano y para oírlo (sin tablas): 1) constancia (entrenos por semana frente a sus días de rutina, último entreno,
+  parones o días que se salta); 2) lo que mejora, con 1–2 ejemplos concretos (de X kg × Y a Z); 3) lo estancado o que baja;
+  4) qué harías tú: subir peso, cambiar un ejercicio estancado por otro del mismo patrón, revisar descanso o dieta si baja la
+  fuerza en general, o escribirle si falta. Termina ofreciendo hacerlo (cambiar el ejercicio, escribirle…). No inventes datos.
 - Para escribir a un cliente por WhatsApp: primero mi_estilo y copia cómo escribe David en sus ejemplos (largo, saludo,
   tono, puntuación, mayúsculas, emojis y expresiones). Luego escribir_whatsapp. Tiene que parecer escrito por él desde el móvil,
   NUNCA por una IA: corto (1–3 frases), sencillo, tuteando y por el nombre de pila. Prohibido: frases hechas de IA («espero
@@ -223,6 +228,8 @@ const ASIS_TOOLS = [
     input_schema: { type: 'object', properties: { tarea_id: { type: 'string' } }, required: ['tarea_id'] } },
   { name: 'registrar_pago', description: 'Registra que un cliente ha pagado. Si no se dice el importe se usa su cuota. Por defecto el próximo pago queda a 1 mes. Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, importe: { type: 'number' }, meses: { type: 'integer', description: 'Meses que cubre el pago (1, 2, 3, 6…)' }, metodo: { type: 'string', enum: ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'] } }, required: ['cliente_id'] } },
+  { name: 'estudio_entrenamiento', description: 'Estudio de los entrenos que el cliente apunta en su app: cuántos hace a la semana frente a los días de su rutina, último entreno y parones, días de la rutina que se salta, series completadas, y por ejercicio su evolución de fuerza (mejorando, estable, estancado o bajando), su mejor marca, sus últimas sesiones y los ejercicios de la rutina que no hace.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, semanas: { type: 'integer', description: 'Cuántas semanas mirar (por defecto 8)' } }, required: ['cliente_id'] } },
   { name: 'mi_estilo', description: 'Ejemplos de mensajes reales de David a sus clientes, para escribir exactamente como él. Úsala siempre antes de escribir_whatsapp.',
     input_schema: { type: 'object', properties: {} } },
   { name: 'escribir_whatsapp', description: 'Escribe un mensaje de WhatsApp a un cliente de parte de David y lo deja abierto en WhatsApp para que él lo envíe (recordar un pago, avisar de la revisión, felicitar, motivar, quedar…). Si hay que mandar un enlace de la app (medidas, cuestionarios, su app de entrenamiento), usa enviar_enlace. Cambia datos: David lo confirma.',

@@ -28,7 +28,7 @@
   try { muted = localStorage.getItem('entrenapro:asis-mute') === '1'; } catch (e) { /* sin almacenamiento */ }
 
   /* ---------- Herramientas (se ejecutan aquí, con los datos de la app) ---------- */
-  const READ = ['mi_estilo', 'buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'biblioteca_rutina', 'datos_dieta', 'buscar_alimento'];
+  const READ = ['estudio_entrenamiento', 'mi_estilo', 'buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'biblioteca_rutina', 'datos_dieta', 'buscar_alimento'];
   const client = (id) => Store.get('clients', id);
 
   function clientBrief(c) {
@@ -349,6 +349,69 @@
       Store.update('clients', c.id, { nextDue: next, rate: amount });
       return { ok: true, proximoPago: next };
     },
+    async estudio_entrenamiento({ cliente_id, semanas }) {
+      const c = client(cliente_id);
+      if (!c) return { error: 'No existe ese cliente' };
+      if (!c.portalToken) return { resultado: `${c.name} no tiene la app de entrenamiento, así que no hay entrenos apuntados` };
+      const W = Math.min(26, Math.max(2, Number(semanas) || 8));
+      const all = await A().workoutsFor(c.id);
+      const list = (all || []).filter((w) => w.date && U.daysBetween(w.date, today()) <= W * 7).sort((a, b) => (a.date < b.date ? -1 : 1));
+      const r = !c.noTraining && Store.routineFor(c.id);
+      const rDays = r ? (r.days || []).filter((d) => (d.exercises || []).length) : [];
+      if (!list.length) {
+        const last = (all || [])[0];
+        return { resultado: `No ha apuntado entrenos en las últimas ${W} semanas`, ultimoEntreno: last ? { fecha: last.date, haceDias: U.daysBetween(last.date, today()) } : 'nunca', diasRutina: rDays.length };
+      }
+      const e1 = (kg, reps) => (kg > 0 && reps > 0 ? kg * (1 + Math.min(reps, 15) / 30) : 0); // fuerza estimada (1RM)
+      const sets = (e) => (e.sets || []).filter((x) => x.done);
+      const done = list.reduce((n, w) => n + (w.exercises || []).reduce((m, e) => m + sets(e).length, 0), 0);
+      const planned = list.reduce((n, w) => n + (w.exercises || []).reduce((m, e) => m + (e.sets || []).length, 0), 0);
+      const gaps = list.slice(1).map((w, i) => U.daysBetween(list[i].date, w.date));
+      // Por ejercicio: cada sesión con su mejor serie y su fuerza estimada.
+      const byEx = new Map();
+      for (const w of list) for (const e of w.exercises || []) {
+        const ss = sets(e).map((x) => ({ kg: Number(x.kg) || 0, reps: Number(x.reps) || 0 }));
+        if (!ss.length) continue;
+        const best = ss.reduce((a, x) => (e1(x.kg, x.reps) > e1(a.kg, a.reps) ? x : a), ss[0]);
+        const k = norm(e.name);
+        if (!byEx.has(k)) byEx.set(k, { nombre: e.name, ses: [] });
+        byEx.get(k).ses.push({ fecha: w.date, series: ss.map((x) => `${x.kg || '?'}×${x.reps || '?'}`).join(' '), mejor: best, fuerza: e1(best.kg, best.reps) });
+      }
+      const ejercicios = [...byEx.values()].map(({ nombre, ses }) => {
+        const f = ses.map((x) => x.fuerza);
+        const valid = f.filter((x) => x > 0);
+        const first = valid[0] || 0; const lastF = valid[valid.length - 1] || 0;
+        const peak = Math.max(0, ...f);
+        const peakIdx = peak ? f.lastIndexOf(peak) : -1;
+        const sinMejorar = peakIdx >= 0 ? f.length - 1 - peakIdx : 0; // sesiones desde su mejor marca
+        const cambio = first ? Math.round(((lastF - first) / first) * 100) : null;
+        const estado = valid.length < 2 ? 'pocos datos' : sinMejorar >= 3 ? 'estancado' : cambio != null && cambio < -5 ? 'bajando' : cambio != null && cambio > 2 ? 'mejorando' : 'estable';
+        return { ejercicio: nombre, sesiones: ses.length, estado, cambioFuerzaPct: cambio, sesionesSinMejorar: sinMejorar,
+          mejorMarca: peakIdx >= 0 ? `${ses[peakIdx].mejor.kg} kg × ${ses[peakIdx].mejor.reps} (${ses[peakIdx].fecha})` : null,
+          ultimas: ses.slice(-4).map((x) => `${x.fecha}: ${x.series}`) };
+      }).sort((a, b) => b.sesiones - a.sesiones);
+      // Días de la rutina que hace y que se salta.
+      const porDia = rDays.map((d, i) => {
+        const nm = norm(d.name || `Día ${i + 1}`);
+        const ws = list.filter((w) => norm(w.dayName) === nm);
+        return { dia: d.name || `Día ${i + 1}`, veces: ws.length, ultimo: ws.length ? ws[ws.length - 1].date : null };
+      });
+      const enRutina = new Set(rDays.flatMap((d) => (d.exercises || []).map((e) => norm(e.name))));
+      const lastW = list[list.length - 1];
+      return {
+        cliente: c.name, periodoSemanas: W,
+        entrenos: list.length, entrenosPorSemana: (() => { const oldest = (all || []).reduce((m, w) => (w.date && w.date < m ? w.date : m), today()); const from = [oldest, c.startDate].filter(Boolean).sort()[0]; const wk = Math.max(1, Math.min(W, U.daysBetween(from, today()) / 7)); return Math.round((list.length / wk) * 10) / 10; })(), diasDeRutinaALaSemana: rDays.length || null,
+        ultimoEntreno: { fecha: lastW.date, haceDias: U.daysBetween(lastW.date, today()), dia: lastW.dayName },
+        mayorParonDias: gaps.length ? Math.max(...gaps) : 0,
+        duracionMediaMin: Math.round(list.reduce((n, w) => n + (w.durationSec || 0), 0) / list.length / 60) || null,
+        seriesHechasPct: planned ? Math.round((done / planned) * 100) : null,
+        porDiaDeRutina: porDia.length ? porDia : null,
+        ejercicios,
+        ejerciciosQueNoHaceDeSuRutina: [...enRutina].filter((k) => !byEx.has(k)).map((k) => rDays.flatMap((d) => d.exercises || []).find((e) => norm(e.name) === k).name),
+        subirPesoPendiente: ((c.aiSummary && c.aiSummary.subir) || []).map((x) => `${x.ex} (serie ${x.serie})`),
+        nota: 'fuerza = 1RM estimado de su mejor serie de cada sesión; «estancado» = 3 o más sesiones sin superar su mejor marca.',
+      };
+    },
     mi_estilo() {
       const own = String(Store.settings.waExamples || '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
       const learned = Store.settings.waLearned || [];
@@ -473,7 +536,7 @@
         const results = [];
         const toConfirm = [];
         for (const b of uses) {
-          if (READ.includes(b.name)) results.push(run(b));
+          if (READ.includes(b.name)) results.push(await runAsync(b));
           else if (tools[b.name]) { if (b.name === 'escribir_whatsapp') b.original = String((b.input || {}).mensaje || ''); toConfirm.push(b); }
           else results.push({ type: 'tool_result', tool_use_id: b.id, content: 'Herramienta desconocida', is_error: true });
         }
@@ -499,6 +562,16 @@
     busy = false; render();
   }
 
+  /** Como run, pero espera a las herramientas que cargan datos (p. ej. los entrenos de la nube). */
+  async function runAsync(b) {
+    try {
+      const out = await tools[b.name](b.input || {});
+      return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(out), ...(out && out.error ? { is_error: true } : {}) };
+    } catch (e) {
+      console.error(e);
+      return { type: 'tool_result', tool_use_id: b.id, content: `Error: ${e.message || e}`, is_error: true };
+    }
+  }
   function run(b) {
     try {
       const out = tools[b.name](b.input || {});
