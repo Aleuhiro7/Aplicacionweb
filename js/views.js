@@ -5543,6 +5543,7 @@
     // Para el asistente por voz (assistant.js)
     assistant: {
       clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod, clientPlan, planAmount, PAY_PLANS,
+      markGreeted: (id) => { const bi = birthdayInfo(Store.get('clients', id)); if (bi) Store.update('clients', id, { bdayGreeted: bi.date }); return !!bi; },
       estimateMaintenance, dayTargets, mealTargets, solveMeal, saveDiet, foodMacros, SUPPLEMENTS,
       sendLink: (clientId, tipo) => (tipo === 'medidas' ? sendRevisionLink(clientId) : tipo === 'alimentacion' ? sendFoodQuiz(clientId) : tipo === 'cuestionario' ? sendQuestionnaireLink(clientId) : invitePortal(clientId)),
     },

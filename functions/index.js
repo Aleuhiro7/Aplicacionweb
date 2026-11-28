@@ -178,6 +178,11 @@ Cómo trabajar:
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
   Busca los ids con buscar_alimento (en crudo cuando haya versión cruda). Pon 1–3 opciones por tipo en cada comida.
   Al confirmar, resume en una frase las kcal, los macros y las comidas.
+- Para escribir a un cliente por WhatsApp usa escribir_whatsapp. Escribe como David: en español de España, cercano y
+  natural, tuteando, por su nombre de pila, en primera persona, corto (2–4 frases) y como mucho 1–2 emojis. Sin firmar y sin
+  inventar datos. Si es un pago, mira antes ficha_cliente (fecha e importe de su próximo pago) y recuérdaselo con tacto. Si es
+  un cumpleaños, motivo cumpleanos. Si David te dicta el mensaje, respeta lo que dice y solo ponlo bonito. Si te pide escribir
+  a varios, hazlo de uno en uno (WhatsApp solo abre un chat cada vez): escribe al primero y pregunta «¿Sigo con X?».
 - Para hacer una rutina completa: primero biblioteca_rutina con el cliente y los músculos que vas a trabajar. Si David no dice
   cuántos días, usa lo que respondió el cliente en el cuestionario; si tampoco está, pregúntaselo. Reparte los músculos con
   sentido (p. ej. torso-pierna, empuje-tirón-pierna, o el reparto que pida David) y cada músculo 1–2 veces por semana.
@@ -215,6 +220,11 @@ const ASIS_TOOLS = [
     input_schema: { type: 'object', properties: { tarea_id: { type: 'string' } }, required: ['tarea_id'] } },
   { name: 'registrar_pago', description: 'Registra que un cliente ha pagado. Si no se dice el importe se usa su cuota. Por defecto el próximo pago queda a 1 mes. Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, importe: { type: 'number' }, meses: { type: 'integer', description: 'Meses que cubre el pago (1, 2, 3, 6…)' }, metodo: { type: 'string', enum: ['Transferencia', 'Bizum', 'Tarjeta', 'PayPal', 'Efectivo', 'Otro'] } }, required: ['cliente_id'] } },
+  { name: 'escribir_whatsapp', description: 'Escribe un mensaje de WhatsApp a un cliente de parte de David y lo deja abierto en WhatsApp para que él lo envíe (recordar un pago, avisar de la revisión, felicitar, motivar, quedar…). Si hay que mandar un enlace de la app (medidas, cuestionarios, su app de entrenamiento), usa enviar_enlace. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: {
+      cliente_id: { type: 'string' }, mensaje: { type: 'string', description: 'El texto completo, como lo escribiría David' },
+      motivo: { type: 'string', enum: ['pago', 'revision', 'cumpleanos', 'motivacion', 'otro'] },
+    }, required: ['cliente_id', 'mensaje'] } },
   { name: 'enviar_enlace', description: 'Prepara en WhatsApp un enlace para el cliente: medidas (peso, cintura y fotos; primeras medidas o revisión), alimentacion (cuestionario de alimentación), cuestionario (cuestionario inicial) o zona (invitación a su app de entrenamiento). Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, tipo: { type: 'string', enum: ['medidas', 'alimentacion', 'cuestionario', 'zona'] } }, required: ['cliente_id', 'tipo'] } },
   { name: 'ver_rutina', description: 'La rutina de un cliente: sus días con los ejercicios (id, nombre, músculo, series, repeticiones y descanso). Úsala antes de quitar o cambiar un ejercicio.',

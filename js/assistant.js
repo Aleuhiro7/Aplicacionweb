@@ -349,6 +349,17 @@
       Store.update('clients', c.id, { nextDue: next, rate: amount });
       return { ok: true, proximoPago: next };
     },
+    escribir_whatsapp({ cliente_id, mensaje, motivo }) {
+      const c = client(cliente_id);
+      if (!c) return { error: 'No existe ese cliente' };
+      const text = String(mensaje || '').trim();
+      if (!text) return { error: 'Falta el mensaje' };
+      const wa = U.waLink(c.phone);
+      if (!wa) return { error: `${c.name} no tiene teléfono en su ficha: añádelo para poder escribirle por WhatsApp` };
+      window.open(`${wa}?text=${encodeURIComponent(text)}`, '_blank');
+      if (motivo === 'cumpleanos') A().markGreeted(c.id);
+      return { ok: true, nota: 'Se ha abierto WhatsApp con el mensaje escrito: David solo tiene que darle a enviar.' };
+    },
     enviar_enlace({ cliente_id, tipo }) {
       const c = client(cliente_id);
       if (!c) return { error: 'No existe ese cliente' };
@@ -379,6 +390,7 @@
       case 'crear_tarea': return `Tarea para ${who}: «${i.texto}»${i.fecha ? `, para el ${when(i.fecha)}` : ''}`;
       case 'completar_tarea': { const t = Store.get('tasks', i.tarea_id); return `Marcar como hecha la tarea «${t ? t.text : i.tarea_id}»`; }
       case 'registrar_pago': { const a = c ? payAmount(c, i.importe) : i.importe; return `Registrar el pago de ${who}: ${num(a)} ${Store.settings.currency === 'EUR' ? 'euros' : Store.settings.currency}${c ? ` (${Number(i.meses) || planMonths(c)} ${(Number(i.meses) || planMonths(c)) === 1 ? 'mes' : 'meses'})` : ''}${i.metodo ? ` por ${i.metodo}` : ''}`; }
+      case 'escribir_whatsapp': return `Escribir a ${who} por WhatsApp: «${String(i.mensaje || '').trim()}»`;
       case 'enviar_enlace': return `Enviar a ${who} el enlace de ${{ medidas: 'medidas y fotos', alimentacion: 'alimentación', cuestionario: 'cuestionario inicial', zona: 'su app de entrenamiento' }[i.tipo] || i.tipo} por WhatsApp`;
       case 'crear_dieta': {
         const food = (id) => { const f = Store.get('foods', id); return f ? f.name.replace(/\s*\(crud[oa]s?\)/i, '') : null; };
