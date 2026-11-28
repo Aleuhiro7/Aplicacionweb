@@ -344,7 +344,7 @@
       if (!c) return { error: 'No existe ese cliente' };
       const amount = payAmount(c, importe);
       if (!(amount >= 0)) return { error: 'Falta el importe' };
-      const next = Store.nextDueAfter(c, A().payBase(c), Math.max(1, Number(meses) || 1));
+      const next = Store.nextDueAfter(c, A().payBase(c), Math.max(1, Number(meses) || planMonths(c)));
       Store.add('payments', { clientId: c.id, date: today(), amount, concept: 'Pago', method: metodo || A().lastMethod(c.id), status: 'pagado', nextDue: next, notes: '' });
       Store.update('clients', c.id, { nextDue: next, rate: amount });
       return { ok: true, proximoPago: next };
@@ -364,7 +364,9 @@
     for (const day of r.days || []) { const ex = (day.exercises || []).find((e) => e.id === ejercicio_id); if (ex) return { r, day, ex }; }
     return { error: 'No encuentro ese ejercicio en su rutina' };
   }
-  const payAmount = (c, importe) => (Number(importe) >= 0 && importe !== null && importe !== undefined && importe !== '' ? Number(importe) : Number(c.rate) || Store.lastPaidAmount(c.id) || Number(Store.settings.defaultRate) || NaN);
+  /** Meses de su forma de pago (bimensual 2, cuatrimestral 4, semestral 6) o 1 si no tiene. */
+  const planMonths = (c) => { const k = A().clientPlan(c); const pl = A().PAY_PLANS.find((x) => x[0] === k); return pl && pl[2] ? pl[2] : 1; };
+  const payAmount = (c, importe) => (Number(importe) >= 0 && importe !== null && importe !== undefined && importe !== '' ? Number(importe) : Number(c.rate) || A().planAmount(A().clientPlan(c)) || Store.lastPaidAmount(c.id) || NaN);
 
   /** Lo que se va a hacer, en una frase (para la tarjeta de confirmación y para decirlo en voz alta). */
   function describe(b) {
@@ -376,7 +378,7 @@
       case 'apuntar_medida': return `Apuntar a ${who}: ${[i.peso ? `${num(i.peso)} kg` : '', i.cintura ? `${num(i.cintura)} cm de cintura` : ''].filter(Boolean).join(' y ')} (${when(i.fecha)})`;
       case 'crear_tarea': return `Tarea para ${who}: «${i.texto}»${i.fecha ? `, para el ${when(i.fecha)}` : ''}`;
       case 'completar_tarea': { const t = Store.get('tasks', i.tarea_id); return `Marcar como hecha la tarea «${t ? t.text : i.tarea_id}»`; }
-      case 'registrar_pago': { const a = c ? payAmount(c, i.importe) : i.importe; return `Registrar el pago de ${who}: ${num(a)} ${Store.settings.currency === 'EUR' ? 'euros' : Store.settings.currency}${(Number(i.meses) || 1) > 1 ? ` (${i.meses} meses)` : ''}${i.metodo ? ` por ${i.metodo}` : ''}`; }
+      case 'registrar_pago': { const a = c ? payAmount(c, i.importe) : i.importe; return `Registrar el pago de ${who}: ${num(a)} ${Store.settings.currency === 'EUR' ? 'euros' : Store.settings.currency}${c ? ` (${Number(i.meses) || planMonths(c)} ${(Number(i.meses) || planMonths(c)) === 1 ? 'mes' : 'meses'})` : ''}${i.metodo ? ` por ${i.metodo}` : ''}`; }
       case 'enviar_enlace': return `Enviar a ${who} el enlace de ${{ medidas: 'medidas y fotos', alimentacion: 'alimentación', cuestionario: 'cuestionario inicial', zona: 'su app de entrenamiento' }[i.tipo] || i.tipo} por WhatsApp`;
       case 'crear_dieta': {
         const food = (id) => { const f = Store.get('foods', id); return f ? f.name.replace(/\s*\(crud[oa]s?\)/i, '') : null; };

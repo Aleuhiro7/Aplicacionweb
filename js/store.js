@@ -21,7 +21,7 @@
       foods: [], // biblioteca de alimentos
       foodBlocks: [], // bloques de equivalencia de alimentos
       forms: [], // formularios enviados por enlace a personas que aún no son clientes
-      settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, theme: 'dark' },
+      settings: { trainerName: 'David Orihuela', currency: 'EUR', defaultRate: 60, monthlyRate: 30, theme: 'dark' },
     };
   }
 

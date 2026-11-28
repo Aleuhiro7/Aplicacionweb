@@ -102,8 +102,7 @@
       { type: 'section', label: 'Asesoría' },
       { name: 'startDate', label: 'Fecha de alta', type: 'date', default: today(), hint: 'A los 15 días toca el seguimiento y al mes la revisión mensual, cada mes.' },
       { name: 'status', label: 'Estado', type: 'select', options: Object.entries(CLIENT_STATUS).map(([value, s]) => ({ value, label: s.label })), default: 'activo' },
-      { name: 'free', label: 'Gratis (no se le cobra nada)', type: 'checkbox', full: true, hint: 'Para los clientes que llevas gratis: sin importe, sin avisos de pago y sin pagos pendientes.' },
-      { name: 'rate', label: `Importe habitual (${Store.settings.currency})`, type: 'number', step: '0.01', min: 0, default: Store.settings.defaultRate, hint: 'Se propone al registrar un pago.' },
+      { name: 'plan', label: 'Forma de pago', type: 'select', options: [{ value: '', label: '— Elige —' }].concat(PAY_PLANS.map(([value]) => ({ value, label: planLabel(value) }))), default: 'bimensual', hint: `A ${fmtMoney(monthlyFee())} al mes. Gratis: sin importe, sin avisos de pago y sin pagos pendientes.` },
       { name: 'nextDue', label: 'Próximo pago', type: 'date', hint: `Cae el mismo día del mes que la fecha de alta (se ajusta solo). Vacío en un cliente nuevo: queda pendiente de pago desde el alta hasta que marques su primer pago. Te avisaré ${Store.REMIND_DAYS} días antes.` },
       { type: 'section', label: 'Salud y notas' },
       { name: 'health', label: 'Lesiones, patologías, medicación o alergias', type: 'textarea', placeholder: 'Ej.: lesión de rodilla derecha, hipertensión controlada, alergia al marisco…', hint: 'Lo que escribas aquí te saldrá siempre en rojo arriba del perfil.' },
@@ -120,14 +119,16 @@
       submitLabel: existing ? 'Guardar cambios' : 'Crear cliente',
       onDelete: existing ? () => deleteClient(id) : null,
       onReady: () => {
-        // «Gratis»: se ocultan el importe y el próximo pago (no se le cobra nada).
-        const box = document.getElementById('f-free');
-        const sync = () => ['rate', 'nextDue'].forEach((n) => { const f = document.querySelector(`[data-field="${n}"]`); if (f) f.hidden = box.checked; });
-        box.addEventListener('change', sync);
+        // «Gratis»: se oculta el próximo pago (no se le cobra nada).
+        const sel = document.getElementById('f-plan');
+        if (existing && !existing.plan) sel.value = clientPlan(existing);
+        const sync = () => { const f = document.querySelector('[data-field="nextDue"]'); if (f) f.hidden = sel.value === 'gratis'; };
+        sel.addEventListener('change', sync);
         sync();
       },
       onSubmit: (v) => {
-        if (v.free) v.rate = '';
+        v.free = v.plan === 'gratis';
+        v.rate = v.plan ? (v.free ? '' : planAmount(v.plan)) : (existing ? existing.rate : '');
         // El próximo pago se alinea con el día del alta.
         if (!existing && !v.nextDue) v.nextDue = v.startDate && v.startDate > today() ? v.startDate : today(); // nuevo: pendiente de pago desde el alta
         else if (v.startDate) v.nextDue = v.nextDue ? Store.snapToStart(v.startDate, v.nextDue) : Store.startOnOrAfter(v.startDate, today());
@@ -218,6 +219,19 @@
     });
   }
 
+  /** Formas de pago: gratis o cada 2, 4 o 6 meses, a 30 € al mes (Ajustes → precio al mes). */
+  const PAY_PLANS = [['gratis', 'Gratis', 0], ['bimensual', 'Bimensual', 2], ['cuatrimestral', 'Cuatrimestral', 4], ['semestral', 'Semestral', 6]];
+  const monthlyFee = () => Number(Store.settings.monthlyRate) || 30;
+  const planAmount = (k) => { const pl = PAY_PLANS.find((x) => x[0] === k); return pl ? pl[2] * monthlyFee() : 0; };
+  const planLabel = (k) => { const pl = PAY_PLANS.find((x) => x[0] === k); return pl ? (pl[2] ? `${pl[1]} · ${fmtMoney(planAmount(k))}` : pl[1]) : ''; };
+  /** La forma de pago del cliente (las antiguas se deducen de «gratis» o del importe). */
+  function clientPlan(c) {
+    if (c.free) return 'gratis';
+    if (PAY_PLANS.some((x) => x[0] === c.plan)) return c.plan;
+    const m = Number(c.rate) / monthlyFee();
+    return (PAY_PLANS.find((x) => x[2] && x[2] === m) || [''])[0];
+  }
+
   /** Método de pago usado en el último pago del cliente (para no tener que elegirlo cada vez). */
   function lastMethod(clientId) {
     const last = Store.paymentsFor(clientId).find((p) => p.method);
@@ -231,17 +245,17 @@
 
   /** Desplegable para registrar un pago: cantidad y cuántos meses paga (el próximo pago cae el día del alta). */
   function payForm(c) {
-    const amount = Number(c.rate) || Store.lastPaidAmount(c.id) || Store.settings.defaultRate || '';
     const base = payBase(c);
-    const options = [1, 2, 3, 6].map((n) => ({ n, date: Store.nextDueAfter(c, base, n) }));
-    const first = options[0];
-    const quick = options.map((o) => `<button type="button" class="chip${o === first ? ' active' : ''}" data-action="pay-months" data-date="${o.date}" aria-pressed="${o === first}">${o.n === 1 ? '1 mes' : `${o.n} meses`}</button>`).join('');
+    const options = PAY_PLANS.map(([k, label, n]) => ({ k, label, n, amount: planAmount(k), date: n ? Store.nextDueAfter(c, base, n) : '' }));
+    const first = options.find((o) => o.k === clientPlan(c) && o.n) || options.find((o) => o.k === 'bimensual');
+    const amount = first.amount;
+    const quick = options.map((o) => `<button type="button" class="chip${o === first ? ' active' : ''}" data-action="pay-months" data-plan="${o.k}" data-amount="${o.amount}" data-date="${o.date}" aria-pressed="${o === first}">${esc(o.label)}${o.n ? ` · ${fmtMoney(o.amount)}` : ''}</button>`).join('');
     return `<form class="pay-form" data-client="${c.id}">
       <div class="pay-fields">
         <div class="field"><label for="pa-${c.id}">Cantidad (${esc(Store.settings.currency)})</label><input id="pa-${c.id}" name="amount" type="number" step="0.01" min="0" inputmode="decimal" required value="${esc(amount)}"></div>
-        <div class="field"><span class="field-label">Próximo pago</span><div class="pay-next" aria-live="polite">${esc(fmtDate(first.date))}</div><input type="hidden" name="nextDue" value="${first.date}"></div>
+        <div class="field"><span class="field-label">Próximo pago</span><div class="pay-next" aria-live="polite">${esc(fmtDate(first.date))}</div><input type="hidden" name="nextDue" value="${first.date}"><input type="hidden" name="plan" value="${first.k}"></div>
       </div>
-      <div class="pay-quick"><span class="muted">Paga:</span>${quick}</div>
+      <div class="pay-quick"><span class="muted">Forma de pago:</span>${quick}</div>
       <p class="hint">${c.startDate ? `Los pagos caen el día ${Number(c.startDate.slice(8))} de cada mes (fecha de alta: ${esc(fmtDate(c.startDate))}). ` : ''}Te avisaré ${Store.REMIND_DAYS} días antes.</p>
       <div class="pay-actions">
         <button type="button" class="btn sm" data-action="pay-close">Cancelar</button>
@@ -281,13 +295,21 @@
     const dateEl = form.elements.nextDue;
     const amount = Number(amountEl.value);
     if (amountEl.value === '' || !(amount >= 0)) { amountEl.focus(); UI.toast('Indica la cantidad'); return; }
-    if (!dateEl.value) { dateEl.focus(); UI.toast('Indica la fecha del próximo pago'); return; }
-    const prev = { nextDue: c.nextDue || '', rate: c.rate };
+    if (!dateEl.value && !(form.elements.plan && form.elements.plan.value === 'gratis')) { UI.toast('Elige la forma de pago'); return; }
+    const prev = { nextDue: c.nextDue || '', rate: c.rate, plan: c.plan || '', free: !!c.free };
+    const plan = form.elements.plan ? form.elements.plan.value : '';
+    if (plan === 'gratis') {
+      // Gratis: no se registra ningún pago; el cliente pasa a gratis y deja de tener avisos de pago.
+      Store.update('clients', c.id, { plan: 'gratis', free: true, rate: '' });
+      state.openPay = null; App.render();
+      UI.toast(`${c.name.split(' ')[0]} pasa a gratis: sin avisos de pago`, { label: 'Deshacer', onClick: () => { Store.update('clients', c.id, prev); App.render(); } });
+      return;
+    }
     const pay = Store.add('payments', {
       clientId: c.id, date: today(), amount, concept: 'Pago', method: lastMethod(c.id),
       status: 'pagado', nextDue: dateEl.value, notes: '',
     });
-    Store.update('clients', c.id, { nextDue: dateEl.value, rate: amount });
+    Store.update('clients', c.id, Object.assign({ nextDue: dateEl.value, rate: amount }, plan ? { plan } : {}));
     state.openPay = null;
     App.render();
     UI.toast(`Pago de ${c.name.split(' ')[0]} guardado · próximo el ${U.fmtDateShort(dateEl.value)}`, {
@@ -3620,7 +3642,7 @@
           <td><div class="name-cell">${avatar(c)}<div><div style="font-weight:600">${esc(c.name)}</div>${clientStatus(c) !== 'activo' ? statusBadge(c) : ''}${clientFlags(c).length && !c.healthAsked ? `<span class="badge danger hf-badge" title="${esc(flagsText(clientFlags(c)))}">${U.icon('alert')}Preguntar: ${esc(clientFlags(c).map((f) => f.label.split(' ')[0].toLowerCase()).join(', '))}</span>` : ''}</div></div></td>
           <td class="hide-sm">${c.email ? esc(c.email) : '—'}</td>
           <td class="hide-sm">${c.phone ? esc(c.phone) : '—'}</td>
-          <td class="num">${c.free ? badge('Gratis', 'success') : c.rate ? money(c.rate) : '<span class="muted">—</span>'}</td>
+          <td class="num">${c.free ? badge('Gratis', 'success') : c.rate ? `${money(c.rate)}${clientPlan(c) ? `<div class="muted" style="font-size:.78rem">${esc(PAY_PLANS.find((x) => x[0] === clientPlan(c))[1])}</div>` : ''}` : '<span class="muted">—</span>'}</td>
           <td>${di ? `${esc(U.fmtDateShort(di.date))} ${di.status !== 'al-dia' ? dueBadge(di) : ''}` : '<span class="muted">—</span>'}</td>
           <td class="hide-sm">${(() => { const ri = Store.reviewInfo(c); return ri ? `${esc(U.fmtDateShort(ri.date))} ${badge(ri.type === 'mensual' ? 'Mensual' : 'Seguimiento', REVIEW_STATUS[ri.status].badge)}` : '<span class="muted">—</span>'; })()}</td>
           <td class="hide-sm">${last ? esc(fmtDate(last.date)) : '<span class="muted">—</span>'}</td>
@@ -3929,7 +3951,7 @@
     const seg = (v, l) => `<button data-action="pay-filter" data-value="${v}" class="${state.payFilter === v ? 'active' : ''}">${l}</button>`;
     return `
       <div class="page-header">
-        <div><h1 class="display">Pagos</h1><p>Pulsa «Pago» cuando un cliente te pague y elige cuántos meses paga: el siguiente pago cae el mismo día del mes que su alta</p></div>
+        <div><h1 class="display">Pagos</h1><p>Pulsa «Pago» cuando un cliente te pague y elige su forma de pago (gratis, bimensual, cuatrimestral o semestral): el siguiente pago cae el mismo día del mes que su alta</p></div>
         <button class="btn pill" data-action="new-payment">${U.icon('plus')}Otro pago</button>
       </div>
       <section class="card" id="pendientes">
@@ -4917,11 +4939,11 @@
     const gender = /^hombre/i.test(sex) ? 'Hombre' : /^mujer/i.test(sex) ? 'Mujer' : '';
     const birthDate = parseBirth(ans(/nacimiento/i));
     const email = cleanEmail(ans(/correo|e-?mail/i));
-    const rate = Number(Store.settings.defaultRate) || 0;
+    const rate = planAmount('bimensual');
     // Altura y peso de la respuesta del cuestionario («Altura (cm) y peso actual (kg)»).
     const hw = (f.items || []).filter((x) => /altura|peso|mides|pesas/i.test(x.q)).reduce((o, x) => Object.assign(parseHeightWeight(x.a), o), {});
     const c = Store.add('clients', Object.assign({
-      name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate, nextDue: today(),
+      name: name || 'Nuevo cliente', phone, status: 'activo', startDate: today(), rate, plan: 'bimensual', nextDue: today(),
       questionnaire: { items: (f.items || []).filter((x) => !FORM_ID_QUESTIONS.includes(x.q)), answeredAt: f.answeredAt, reviewedAt: today(), sentAt: f.sentAt, via: 'enlace' },
     }, hw.height ? { height: hw.height } : {}, gender ? { gender } : {}, birthDate ? { birthDate } : {}, email ? { email } : {}, healthFlags(f.items).length ? { health: flagsText(healthFlags(f.items)) } : {}));
     if (hw.weight) Store.add('measurements', { clientId: c.id, date: f.answeredAt || today(), weight: hw.weight, notes: 'Del cuestionario inicial' });
@@ -5131,7 +5153,6 @@
       trainerName: (fd.get('trainerName') || '').trim(),
       currency: fd.get('currency'),
       theme: fd.get('theme'),
-      defaultRate: Number(fd.get('defaultRate')) || 0,
     });
     Store.save();
     App.applyTheme();
@@ -5324,8 +5345,10 @@
     'pay-close': () => { state.openPay = null; App.render(); },
     'pay-months': (d, el) => {
       const form = el.closest('.pay-form');
-      form.elements.nextDue.value = d.date;
-      form.querySelector('.pay-next').textContent = fmtDate(d.date);
+      form.elements.nextDue.value = d.date || '';
+      form.elements.plan.value = d.plan || '';
+      if (d.amount != null) form.elements.amount.value = d.amount;
+      form.querySelector('.pay-next').textContent = d.plan === 'gratis' ? 'No se le cobra' : fmtDate(d.date);
       form.querySelectorAll('.chip').forEach((b) => { b.classList.toggle('active', b === el); b.setAttribute('aria-pressed', String(b === el)); });
     },
     'mark-paid': (d) => markPaid(d.id),
@@ -5519,7 +5542,7 @@
     saveSettings, importFile, onClientSearch, computeAlerts, submitPayForm, submitTaskForm, uploadPhotos, notifyDue, greeting, greetingText,
     // Para el asistente por voz (assistant.js)
     assistant: {
-      clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod,
+      clientStatus, pendingRevision, unseenWorkouts, payBase, lastMethod, clientPlan, planAmount, PAY_PLANS,
       estimateMaintenance, dayTargets, mealTargets, solveMeal, saveDiet, foodMacros, SUPPLEMENTS,
       sendLink: (clientId, tipo) => (tipo === 'medidas' ? sendRevisionLink(clientId) : tipo === 'alimentacion' ? sendFoodQuiz(clientId) : tipo === 'cuestionario' ? sendQuestionnaireLink(clientId) : invitePortal(clientId)),
     },
