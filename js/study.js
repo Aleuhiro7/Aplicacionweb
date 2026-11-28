@@ -31,14 +31,18 @@
   const shortDate = (iso) => { const d = U.parseDate(iso); return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`; };
 
   /** Todo el estudio: números por semana, por día de la rutina y por ejercicio, y las conclusiones. */
-  function trainingStudy(c, all, W) {
+  function trainingStudy(c, all, period) {
     const t = today();
-    const from = U.addDays(mondayOf(t), -7 * (W - 1));
+    // Periodo: las últimas N semanas contando hacia atrás desde hoy (1 = los últimos 7 días), o 'all' = desde su primer entreno.
+    const oldest = (all || []).reduce((m, w) => (w.date && w.date < m ? w.date : m), t);
+    const isAll = period === 'all';
+    const W = isAll ? Math.max(1, Math.ceil((U.daysBetween(oldest, t) + 1) / 7)) : Math.max(1, Number(period) || 12);
+    const from = U.addDays(t, -(7 * W - 1));
     const list = (all || []).filter((w) => w.date && w.date >= from && w.date <= t).sort((a, b) => (a.date < b.date ? -1 : 1));
     const rDays = (c.routineDays || []).filter((d) => (d.exercises || []).length);
     const done = (e) => (e.sets || []).filter((x) => x.done);
     const vol = (e) => done(e).reduce((n, x) => n + (Number(x.kg) || 0) * (Number(x.reps) || 0), 0);
-    // Semanas (de lunes a domingo)
+    // Semanas de 7 días, la última termina hoy
     const weeks = Array.from({ length: W }, (_, i) => { const s = U.addDays(from, 7 * i); return { start: s, n: 0, vol: 0, sets: 0, planned: 0, min: 0 }; });
     for (const w of list) {
       const wk = weeks[Math.floor(U.daysBetween(from, w.date) / 7)];
@@ -47,10 +51,10 @@
       for (const e of w.exercises || []) { wk.vol += vol(e); wk.sets += done(e).length; wk.planned += (e.sets || []).length; }
     }
     // Semanas que cuentan: desde que empezó (alta o primer entreno), para no penalizar las anteriores.
-    const oldest = (all || []).reduce((m, w) => (w.date && w.date < m ? w.date : m), t);
     const startAt = [oldest, c.startDate].filter(Boolean).sort()[0];
     const activeWeeks = weeks.filter((wk) => U.addDays(wk.start, 6) >= startAt);
-    const effW = Math.max(1, activeWeeks.length - (U.daysBetween(mondayOf(t), t) < 3 ? 0.5 : 0));
+    // Semanas que cuentan para la media: los días del periodo desde que empezó.
+    const effW = Math.max(1, Math.min(W * 7, U.daysBetween(startAt > from ? startAt : from, t) + 1) / 7);
     const trainedDays = new Set(list.map((w) => w.date));
     // Por día de la rutina
     const porDia = rDays.map((d, i) => { const nm = normName(d.name || `Día ${i + 1}`); const ws = list.filter((w) => normName(w.dayName) === nm); return { dia: d.name || `Día ${i + 1}`, veces: ws.length, ultimo: ws.length ? ws[ws.length - 1].date : null }; });
@@ -94,7 +98,11 @@
     const volA = half ? activeWeeks.slice(0, half).reduce((n, wk) => n + wk.vol, 0) / half : 0;
     const volB = half ? activeWeeks.slice(half).reduce((n, wk) => n + wk.vol, 0) / (activeWeeks.length - half) : 0;
     const volTrend = volA ? Math.round(((volB - volA) / volA) * 100) : null;
-    const st = { c, W, from, list, weeks, activeWeeks, trainedDays, porDia, exercises, noHechos, totalSets, planned, totalReps, totalVol, gaps, lastW, perWeek, target, adherence, prs,
+    const sinceDays = U.daysBetween(oldest, t);
+    const span = sinceDays < 28 ? `hace ${sinceDays} ${sinceDays === 1 ? 'día' : 'días'}` : `hace ${W} semanas`;
+    const label = isAll ? 'todo lo que llevas entrenado' : W === 1 ? 'la última semana' : `las últimas ${W} semanas`;
+    const short = isAll ? 'desde que empezaste' : W === 1 ? 'en la última semana' : `en ${W} semanas`;
+    const st = { c, W, isAll, label, short, span, from, list, weeks, activeWeeks, trainedDays, porDia, exercises, noHechos, totalSets, planned, totalReps, totalVol, gaps, lastW, perWeek, target, adherence, prs,
       counts: { mejorando: count('mejorando'), estable: count('estable'), estancado: count('estancado'), bajando: count('bajando'), pocos: count('pocos') },
       durMin: list.length ? list.reduce((n, w) => n + (w.durationSec || 0), 0) / list.length / 60 : 0,
       setsPct: planned ? Math.round((totalSets / planned) * 100) : null, volTrend,
@@ -111,8 +119,8 @@
     const pw = fmtNum(Math.round(st.perWeek * 10) / 10);
     const veces = (n) => (n === 1 ? 'vez' : 'veces');
     if (st.target) {
-      out.constancia.push(`${first}, ${st.W === 1 ? 'esta semana' : `en estas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana. Tu rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumples prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumples la mayor parte, aunque se te escapa algún entreno' : st.adherence >= 40 ? 'haces más o menos la mitad de lo planificado' : 'estás entrenando bastante menos de lo planificado'} (${st.adherence} %).`);
-    } else out.constancia.push(`${first}, ${st.W === 1 ? 'esta semana' : `en estas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana.`);
+      out.constancia.push(`${first}, ${st.isAll ? `desde que empezaste (${st.span})` : st.W === 1 ? 'en la última semana' : `en las últimas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana. Tu rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumples prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumples la mayor parte, aunque se te escapa algún entreno' : st.adherence >= 40 ? 'haces más o menos la mitad de lo planificado' : 'estás entrenando bastante menos de lo planificado'} (${st.adherence} %).`);
+    } else out.constancia.push(`${first}, ${st.isAll ? `desde que empezaste (${st.span})` : st.W === 1 ? 'en la última semana' : `en las últimas ${st.W} semanas`} has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana.`);
     const maxGap = st.gaps.length ? Math.max(...st.gaps) : 0;
     if (maxGap >= 10) out.constancia.push(`Tu parón más largo ha sido de ${maxGap} días.`);
     const low = st.porDia.filter((d) => st.porDia.length > 1 && d.veces < Math.max(...st.porDia.map((x) => x.veces)) * 0.5);
@@ -148,7 +156,7 @@
     const raw = top0 / 3; const mag = 10 ** Math.floor(Math.log10(raw)); const nn = raw / mag;
     const stepV = Math.max(vals.every(Number.isInteger) ? 1 : 0, (nn <= 1 ? 1 : nn <= 2 ? 2 : nn <= 5 ? 5 : 10) * mag);
     const max = Math.max(top0 * 1.12, stepV * 3);
-    const step = (W - padL - 8) / n; const bw = Math.min(38, step - 6);
+    const step = (W - padL - 8) / n; const bw = Math.max(2, Math.min(38, step - (step > 12 ? 6 : 2)));
     const y = (v) => padT + (h - padT - padB) * (1 - v / max);
     const ticks = []; for (let v = 0; v <= max * 0.92; v += stepV) ticks.push(v);
     const peak = vals.indexOf(Math.max(...vals));
@@ -178,5 +186,18 @@
   }
 
 
-  window.TrainingStudy = { compute: trainingStudy, bars: stBars, spark: stSpark, STATUS: ST_STATUS, BLUE: ST_BLUE, setTxt, kgTxt, shortDate, mins, fmtNum, plural, esc };
+  /** Calendario de lunes a domingo del periodo (como mucho las últimas «max» semanas). */
+  function calendar(st, max = 12) {
+    const t = today();
+    let start = mondayOf(st.from);
+    const lim = U.addDays(mondayOf(t), -7 * (max - 1));
+    if (start < lim) start = lim;
+    const rows = [];
+    for (let s = start; s <= t; s = U.addDays(s, 7)) {
+      rows.push({ label: shortDate(s), days: Array.from({ length: 7 }, (_, k) => { const d = U.addDays(s, k); return { date: d, on: st.trainedDays.has(d), out: d < st.from, fut: d > t }; }) });
+    }
+    return { rows, cut: mondayOf(st.from) < lim };
+  }
+
+  window.TrainingStudy = { compute: trainingStudy, calendar, bars: stBars, spark: stSpark, STATUS: ST_STATUS, BLUE: ST_BLUE, setTxt, kgTxt, shortDate, mins, fmtNum, plural, esc };
 })();

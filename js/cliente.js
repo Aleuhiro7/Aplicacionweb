@@ -321,7 +321,7 @@ function render() {
   if (tab === 'diario') bindDiary();
   if (main && tab === 'rutina') requestAnimationFrame(fitDayCards);
   root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
-  root.querySelectorAll('[data-study-weeks]').forEach((b) => { b.onclick = () => { studyWeeks = Number(b.dataset.studyWeeks); if (!b.classList.contains('locked')) { try { localStorage.setItem('cz:studyWeeks', String(studyWeeks)); } catch (e) { /* nada */ } } render(); }; });
+  root.querySelectorAll('[data-study-weeks]').forEach((b) => { b.onclick = () => { studyWeeks = b.dataset.studyWeeks === 'all' ? 'all' : Number(b.dataset.studyWeeks); if (!b.classList.contains('locked')) { try { localStorage.setItem('cz:studyWeeks', String(studyWeeks)); } catch (e) { /* nada */ } } render(); }; });
   root.querySelectorAll('[data-open-w]').forEach((b) => { b.onclick = () => { location.hash = `#resumen/${b.dataset.openW}`; }; });
   if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
   const del = root.querySelector('[data-del]');
@@ -433,7 +433,7 @@ const APP_HELP = [
   ['📊 Estudio', [
     'Tu <b>estudio del entrenamiento</b>: tu constancia (cuántas veces entrenas a la semana frente a los días de tu rutina), los kilos que mueves, tus récords y cómo evoluciona tu fuerza en <b>cada ejercicio</b>, con gráficas.',
     'Cada ejercicio sale marcado como <b>mejorando</b>, <b>estable</b>, <b>estancado</b> o <b>bajando</b>, y al final tienes <b>mis recomendaciones</b> para seguir progresando.',
-    'Puedes verlo de la <b>última semana</b> o de las <b>últimas 4, 8 o 12 semanas</b>. Cada periodo se desbloquea cuando llevas ese tiempo entrenando con la app (🔒 te dice cuántos días faltan).',
+    'Puedes verlo de la <b>última semana</b>, de las <b>últimas 2, 4, 8 o 12 semanas</b> (siempre contando desde hoy) o de <b>Todo</b>: tu resumen general desde que empezaste. Cada periodo se desbloquea cuando llevas ese tiempo entrenando con la app (🔒 te dice cuántos días faltan).',
     'Todo sale de los pesos que apuntas: cuanto más constante seas apuntándolos, más completo será tu estudio.',
   ]],
   ['📈 Tus datos', [
@@ -738,7 +738,7 @@ const TOUR = [
   ['🏋️', 'Serie a serie', 'Te llevamos ejercicio a ejercicio. Antes de empezar cada uno, haz tus series de aproximación. Apunta el peso y las repeticiones de la serie y pulsa ▶.'],
   ['⏱️', 'El descanso', 'Al acabar la serie, pulsa ▶ para empezar la cuenta atrás del descanso. Puedes pausarla o reiniciarla. Cuando termine te avisamos y pasamos a la siguiente serie.'],
   ['📈', 'Tu progreso', 'Al terminar verás tu resumen con las mejoras. Los días entrenados se marcan en el calendario y tu entrenador lo ve todo para ajustar tu plan.'],
-  ['📊', 'Tu estudio', 'En «Estudio» verás cómo evolucionas: tu constancia, tu fuerza en cada ejercicio y mis recomendaciones. Se desbloquea a la semana de entrenar con la app, y luego a las 4, 8 y 12 semanas.'],
+  ['📊', 'Tu estudio', 'En «Estudio» verás cómo evolucionas: tu constancia, tu fuerza en cada ejercicio y mis recomendaciones. Se desbloquea a la semana de entrenar con la app, y luego a las 2, 4, 8 y 12 semanas.'],
 ];
 const tourKey = () => `cz:tour:${auth.currentUser ? auth.currentUser.uid : ''}`;
 function maybeTour() {
@@ -1309,31 +1309,37 @@ function statsView() {
  * Los mismos datos que el estudio que ve el entrenador (js/study.js), hablándote a ti. Se puede ver de las últimas 4, 8 o
  * 12 semanas, y cada periodo se desbloquea cuando llevas ese tiempo entrenando con la app. */
 let studyWeeks = 0;
-try { studyWeeks = Number(localStorage.getItem('cz:studyWeeks')) || 0; } catch (e) { studyWeeks = 0; }
+try { const v = localStorage.getItem('cz:studyWeeks'); studyWeeks = v === 'all' ? 'all' : Number(v) || 0; } catch (e) { studyWeeks = 0; }
 function studyView() {
   const TS = window.TrainingStudy;
   if (!TS) return '<p class="muted">No se ha podido cargar el estudio. Actualiza la app.</p>';
   const first = workouts.reduce((m, w) => (w.date && (!m || w.date < m) ? w.date : m), '');
   const days = first ? Math.round((Date.parse(`${ymd()}T12:00:00`) - Date.parse(`${first}T12:00:00`)) / 864e5) : 0;
-  const OPTS = [1, 4, 8, 12];
-  const open = OPTS.filter((n) => days >= n * 7);
-  // El elegido puede estar bloqueado: entonces se ve qué falta para desbloquearlo.
-  if (!OPTS.includes(studyWeeks)) studyWeeks = open.length ? open[open.length - 1] : 1;
+  // Periodos: las últimas 1, 2, 4, 8 o 12 semanas (contando desde hoy) y «Todo» (desde tu primer entreno).
+  // Cada uno se desbloquea cuando llevas ese tiempo con la app; «Todo», a la semana.
+  const OPTS = [1, 2, 4, 8, 12, 'all'];
+  const need = (n) => (n === 'all' ? 7 : n * 7);
+  const open = OPTS.filter((n) => days >= need(n));
+  if (!OPTS.includes(studyWeeks)) { const nums = open.filter((x) => x !== 'all'); studyWeeks = nums.includes(4) ? 4 : nums.length ? nums[nums.length - 1] : 1; }
+  const name = (n) => (n === 'all' ? 'tu resumen general' : `tu estudio de ${n} ${n === 1 ? 'semana' : 'semanas'}`);
   const filter = `<div class="cz-st-filter" role="group" aria-label="Periodo">${OPTS.map((n) => {
     const ok = open.includes(n);
-    return `<button type="button" class="${n === studyWeeks ? 'on' : ''}${ok ? '' : ' locked'}" data-study-weeks="${n}" aria-pressed="${n === studyWeeks}"><b>${ok ? '' : '<i aria-hidden="true">🔒</i>'}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`;
+    const lock = ok ? '' : '<i aria-hidden="true">🔒</i>';
+    return `<button type="button" class="${n === studyWeeks ? 'on' : ''}${ok ? '' : ' locked'}" data-study-weeks="${n}" aria-pressed="${n === studyWeeks}">${n === 'all' ? `<b>${lock}Todo</b><small>desde el inicio</small>` : `<b>${lock}${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`;
   }).join('')}</div>`;
   if (!open.includes(studyWeeks)) {
-    const n = studyWeeks; const need = n * 7;
-    const left = Math.max(1, need - days);
-    const pct = Math.min(100, Math.round((days / need) * 100));
-    const per = n === 1 ? 'tu primera semana' : `estas ${n} semanas`;
+    const n = studyWeeks; const nd = need(n);
+    const left = Math.max(1, nd - days);
+    const pct = Math.min(100, Math.round((days / nd) * 100));
+    const per = n === 'all' ? 'todo este tiempo' : n === 1 ? 'tu primera semana' : `estas ${n} semanas`;
+    const best = open.length ? open.filter((x) => x !== 'all').pop() || open[0] : null;
+    const Name = name(n).replace(/^t/, 'T');
     return `${filter}<section class="card cz-st-locked">
       <div class="cz-st-lock-ico">🔒</div>
-      <h2>Tu estudio de ${n} ${n === 1 ? 'semana' : 'semanas'} se desbloquea en ${left} ${left === 1 ? 'día' : 'días'}</h2>
-      <p class="muted">Sigue entrenando y <b>apunta tus pesos en cada entreno</b>. Cuando lleves ${n} ${n === 1 ? 'semana' : 'semanas'} con la app verás cómo has evolucionado en ${per}: tu constancia, cuánto ha subido tu fuerza en cada ejercicio, tus récords y mis recomendaciones para seguir progresando.</p>
-      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de ${need} días` : 'Empieza tu primer entreno desde el Diario'}</small>
-      ${open.length ? `<p class="cz-st-hint">Mientras tanto, mira tu estudio de <button type="button" class="link-btn" data-study-weeks="${open[open.length - 1]}">${open[open.length - 1]} ${open[open.length - 1] === 1 ? 'semana' : 'semanas'}</button>.</p>` : ''}
+      <h2>${Name} se desbloquea en ${left} ${left === 1 ? 'día' : 'días'}</h2>
+      <p class="muted">Sigue entrenando y <b>apunta tus pesos en cada entreno</b>. Cuando lleves ${n === 'all' ? '1 semana' : `${n} ${n === 1 ? 'semana' : 'semanas'}`} con la app verás cómo has evolucionado en ${per}: tu constancia, cuánto ha subido tu fuerza en cada ejercicio, tus récords y mis recomendaciones para seguir progresando.</p>
+      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de ${nd} días` : 'Empieza tu primer entreno desde el Diario'}</small>
+      ${best ? `<p class="cz-st-hint">Mientras tanto, mira <button type="button" class="link-btn" data-study-weeks="${best}">${name(best)}</button>.</p>` : ''}
     </section>`;
   }
   const r = routine();
@@ -1351,13 +1357,14 @@ function studyView() {
   const list = (arr) => `<ul class="cz-st-list">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
   const badge = (s) => `<span class="st-badge" style="--c:${S[s][0]}"><i></i>${S[s][1]}</span>`;
   const labels = st.weeks.map((w) => TS.shortDate(w.start));
-  if (!st.list.length) return `${filter}<section class="card"><p class="muted" style="margin:0">No has apuntado entrenos ${studyWeeks === 1 ? 'en la última semana' : `en las últimas ${studyWeeks} semanas`}.</p></section>`;
-  const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(TS.shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = new Date(`${wk.start}T12:00:00`); d.setDate(d.getDate() + k); const dd = ymd(d); return `<i class="${st.trainedDays.has(dd) ? 'on' : ''}${dd > ymd() ? ' fut' : ''}"></i>`; }).join('')}</div>`).join('');
+  if (!st.list.length) return `${filter}<section class="card"><p class="muted" style="margin:0">No has apuntado entrenos en ${st.label}.</p></section>`;
+  const calD = TS.calendar(st);
+  const cal = calD.rows.map((r) => `<div class="st-cal-w"><span>${esc(r.label)}</span>${r.days.map((x) => `<i class="${x.on ? 'on' : ''}${x.out ? ' out' : ''}${x.fut ? ' fut' : ''}"></i>`).join('')}</div>`).join('');
   const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
   return `${filter}
     <section class="card cz-st">
       <div class="cz-st-kpis">
-        ${kpi('Entrenos', st.list.length, studyWeeks === 1 ? 'esta semana' : `en ${studyWeeks} semanas`)}
+        ${kpi('Entrenos', st.list.length, st.short)}
         ${kpi('Por semana', f(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : '')}
         ${kpi('Duración', st.durMin ? TS.mins(st.durMin) : '—', 'media por entreno')}
@@ -1373,7 +1380,7 @@ function studyView() {
     <section class="card cz-st"><h3>Lo más importante</h3>${list([...st.notes.constancia, ...st.notes.progreso])}</section>
     <section class="card cz-st"><h3>Entrenos por semana</h3>${st.target ? `<small class="muted">La línea son los ${st.target} días de tu rutina</small>` : ''}
       ${TS.bars(st.weeks.map((w) => w.n), labels, { w: 360, h: 210, target: st.target, targetLabel: st.target ? `Objetivo: ${st.target}` : '' })}</section>
-    <section class="card cz-st"><h3>Días que entrenaste <small class="muted">L M X J V S D</small></h3><div class="st-cal">${cal}</div></section>
+    <section class="card cz-st"><h3>Días que entrenaste <small class="muted">L M X J V S D</small></h3>${calD.cut ? '<small class="muted">Las últimas 12 semanas</small>' : ''}<div class="st-cal">${cal}</div></section>
     ${st.porDia.length ? `<section class="card cz-st"><h3>Días de tu rutina</h3><div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div></section>` : ''}
     <section class="card cz-st"><h3>Kilos movidos por semana</h3><small class="muted">Kilos × repeticiones de todas tus series</small>
       ${TS.bars(st.weeks.map((w) => Math.round(w.vol)), labels, { w: 360, h: 210, fmt: (v) => (v >= 1000 ? `${f(Math.round(v / 100) / 10)} t` : f(Math.round(v))) })}</section>

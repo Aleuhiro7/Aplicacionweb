@@ -2223,13 +2223,13 @@
     // 1 · Portada
     out.push(`<section class="ds-page ds-cover"><div class="ds-cover-in">${DS_BRAND}
       <div class="ds-cover-main"><span class="ds-kicker">Estudio del entrenamiento</span><h1>${esc(c.name)}</h1><span class="ds-rule"></span>
-        <p>${esc(fmtDate(today()))} · ${st.W === 1 ? 'última semana' : `últimas ${st.W} semanas`} (desde el ${esc(fmtDate(st.from))})</p><p class="ds-tag">Lo que se mide, se mejora.</p></div>
+        <p>${esc(fmtDate(today()))} · ${st.isAll ? `todo lo entrenado, desde el ${esc(fmtDate(st.from))} (${st.span})` : `${st.W === 1 ? 'última semana' : `últimas ${st.W} semanas`} (desde el ${esc(fmtDate(st.from))})`}</p><p class="ds-tag">Lo que se mide, se mejora.</p></div>
       <ol class="ds-index">${['Resumen', 'Constancia', 'Carga de trabajo', ...exPages.map((_, i) => `Ejercicio a ejercicio${exPages.length > 1 ? ` (${i + 1})` : ''}`), 'Conclusiones y recomendaciones'].map((x, i) => `<li><span>${i + 2}</span>${esc(x)}</li>`).join('')}</ol>
       <p class="ds-cover-note"></p></div></section>`);
     // 2 · Resumen
     out.push(page(2, 'Visión general', 'Resumen', `
       <div class="st-kpis">
-        ${kpi('Entrenos', st.list.length, st.W === 1 ? 'en 1 semana' : `en ${st.W} semanas`)}
+        ${kpi('Entrenos', st.list.length, st.short)}
         ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : 'sin rutina')}
         ${kpi('Duración', st.durMin ? mins(st.durMin * 60) : '—', 'media por entreno')}
@@ -2243,13 +2243,14 @@
       <h3 class="st-h">Lo más importante</h3>
       ${bullets([...st.notes.constancia.slice(0, 2), ...st.notes.progreso.slice(0, 3)])}`));
     // 3 · Constancia
-    const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = U.addDays(wk.start, k); const on = st.trainedDays.has(d); return `<i class="${on ? 'on' : ''}${d > today() ? ' fut' : ''}" title="${esc(fmtDate(d))}${on ? ': entrenó' : ''}"></i>`; }).join('')}</div>`).join('');
+    const calD = window.TrainingStudy.calendar(st);
+    const cal = calD.rows.map((r) => `<div class="st-cal-w"><span>${esc(r.label)}</span>${r.days.map((x) => `<i class="${x.on ? 'on' : ''}${x.out ? ' out' : ''}${x.fut ? ' fut' : ''}" title="${esc(fmtDate(x.date))}${x.on ? ': entrenó' : ''}"></i>`).join('')}</div>`).join('');
     const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
     out.push(page(3, 'Cuánto entrenas', 'Constancia', `
       <h3 class="st-h">Entrenos por semana${st.target ? ` <small>· línea: los ${st.target} días de tu rutina</small>` : ''}</h3>
       ${stBars(st.weeks.map((wk) => wk.n), wkLabels, { h: 200, target: st.target, targetLabel: st.target ? `Objetivo: ${st.target} por semana` : '', fmt: (v) => fmtNum(Math.round(v * 10) / 10) })}
       <div class="st-two">
-        <div><h3 class="st-h">Días que entrenaste <small>· L M X J V S D</small></h3><div class="st-cal">${cal}</div></div>
+        <div><h3 class="st-h">Días que entrenaste <small>· L M X J V S D${calD.cut ? ' · últimas 12 semanas' : ''}</small></h3><div class="st-cal">${cal}</div></div>
         <div><h3 class="st-h">Días de tu rutina</h3>${st.porDia.length ? `<div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div>` : '<p class="st-muted">Sin rutina con ejercicios.</p>'}</div>
       </div>
       ${bullets(st.notes.constancia)}`));
@@ -2286,14 +2287,14 @@
     if (!c) return;
     const st0 = portalWk[c.portalToken];
     if (!st0 || !st0.list) { UI.toast('Cargando sus entrenos…'); loadClientWorkouts(c); return; }
-    const W = Number(weeks) || Number(state.studyWeeks) || 12;
+    const W = weeks === 'all' ? 'all' : Number(weeks) || state.studyWeeks || 12;
     state.studyWeeks = W;
     const st = trainingStudy(c, st0.list, W);
-    if (!st.list.length) { UI.toast(W === 1 ? 'No ha apuntado entrenos esta semana' : `No ha apuntado entrenos en las últimas ${W} semanas`); if (weeks && W !== 12) previewStudy(clientId, 12); return; }
+    if (!st.list.length) { UI.toast(st0.list.length ? `No ha apuntado entrenos en ${st.label.replace(/^todo.*/, 'este periodo')}` : 'Todavía no ha apuntado ningún entreno'); if (st0.list.length && W !== 'all') previewStudy(clientId, 'all'); return; }
     await showSheet({
       title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
-      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 4, 8, 12].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}"><b>${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`).join('')}</div>`,
-      onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (Number(b.dataset.weeks) === W) return; close(); previewStudy(clientId, b.dataset.weeks); }; }); },
+      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 2, 4, 8, 12, 'all'].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}">${n === 'all' ? '<b>Todo</b><small>desde el inicio</small>' : `<b>${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`).join('')}</div>`,
+      onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (String(b.dataset.weeks) === String(W)) return; close(); previewStudy(clientId, b.dataset.weeks); }; }); },
     });
   }
 

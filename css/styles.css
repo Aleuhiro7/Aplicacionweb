@@ -2781,3 +2781,7 @@ body.pp-open { overflow: hidden; }
 .pdf-preview-sheet { flex: none; } /* que no se encoja: así la vista previa se desliza */
 .pdf-preview-sub { padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .pdf-preview-sub .cz-st-filter { margin: 0 auto; max-width: 520px; }
+.st-cal-w i.out { opacity: .25; }
+/* 6 periodos: dos filas de tres (en pantallas anchas, una fila) */
+.cz-st-filter { grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 720px) { .pp-weeks.cz-st-filter { grid-template-columns: repeat(6, 1fr); max-width: 760px; } }
