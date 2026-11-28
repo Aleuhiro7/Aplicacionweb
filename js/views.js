@@ -2289,21 +2289,22 @@
     const W = Number(weeks) || Number(state.studyWeeks) || 12;
     state.studyWeeks = W;
     const st = trainingStudy(c, st0.list, W);
-    if (!st.list.length) { UI.toast(`No ha apuntado entrenos en las últimas ${W} semanas`); return; }
+    if (!st.list.length) { UI.toast(W === 1 ? 'No ha apuntado entrenos esta semana' : `No ha apuntado entrenos en las últimas ${W} semanas`); if (weeks && W !== 12) previewStudy(clientId, 12); return; }
     await showSheet({
       title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
-      extra: `<select id="pp-weeks" class="pp-select" aria-label="Periodo">${[1, 4, 8, 12, 26].map((n) => `<option value="${n}"${n === W ? ' selected' : ''}>${n} ${n === 1 ? 'semana' : 'semanas'}</option>`).join('')}</select>`,
-      onReady: (ov, close) => { ov.querySelector('#pp-weeks').onchange = (e) => { close(); previewStudy(clientId, e.target.value); }; },
+      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 4, 8, 12].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}"><b>${n}</b><small>${n === 1 ? 'semana' : 'semanas'}</small></button>`).join('')}</div>`,
+      onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (Number(b.dataset.weeks) === W) return; close(); previewStudy(clientId, b.dataset.weeks); }; }); },
     });
   }
 
   /** Vista previa a pantalla completa de un documento .ds, con botón para descargarlo en PDF. */
-  async function showSheet({ title, file, html, paginate, extra = '', onReady }) {
+  async function showSheet({ title, file, html, paginate, extra = '', sub = '', onReady }) {
     const ov = document.createElement('div');
     ov.className = 'pdf-preview';
     ov.innerHTML = `<header class="pdf-preview-bar"><strong>${esc(title)} · vista previa</strong>${extra}
         <button type="button" class="btn sm" id="pp-dl">${U.icon('download') || '⬇'}Descargar</button>
         <button type="button" class="icon-btn" id="pp-close" aria-label="Cerrar">${U.icon('close')}</button></header>
+      ${sub ? `<div class="pdf-preview-sub">${sub}</div>` : ''}
       <div class="pdf-preview-body"><p class="muted" style="text-align:center;margin:40px 0">Preparando el PDF…</p></div>`;
     document.body.appendChild(ov);
     document.body.classList.add('pp-open');
