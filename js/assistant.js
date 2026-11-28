@@ -28,7 +28,7 @@
   try { muted = localStorage.getItem('entrenapro:asis-mute') === '1'; } catch (e) { /* sin almacenamiento */ }
 
   /* ---------- Herramientas (se ejecutan aquí, con los datos de la app) ---------- */
-  const READ = ['buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'datos_dieta', 'buscar_alimento'];
+  const READ = ['buscar_clientes', 'ficha_cliente', 'resumen_panel', 'abrir', 'ver_rutina', 'buscar_ejercicio', 'biblioteca_rutina', 'datos_dieta', 'buscar_alimento'];
   const client = (id) => Store.get('clients', id);
 
   function clientBrief(c) {
@@ -106,6 +106,53 @@
       const q = norm(texto).split(/\s+/).filter(Boolean);
       const found = Store.library().filter((x) => q.every((w) => norm(`${x.name} ${x.group} ${x.equipment || ''}`).includes(w)));
       return { ejercicios: found.slice(0, 25).map((x) => ({ id: x.id, nombre: x.name, musculo: x.group })) };
+    },
+    biblioteca_rutina({ cliente_id, musculos }) {
+      // Tu biblioteca y tu método por músculo (estructura por patrones), y lo del cliente que importa para la rutina.
+      const ALIAS = { femoral: 'isquiotibiales', femorales: 'isquiotibiales', isquios: 'isquiotibiales', gluteo: 'gluteos', culo: 'gluteos', abdomen: 'core', abdominales: 'core', abs: 'core', gemelo: 'gemelos', pantorrilla: 'gemelos', hombro: 'hombros', espalda: 'espalda', dorsal: 'espalda', biceps: 'biceps', triceps: 'triceps', pierna: 'cuadriceps', cuadricep: 'cuadriceps', aductor: 'aductores', antebrazos: 'antebrazo' };
+      const want = (musculos || []).map((m) => { const k = norm(m); return ALIAS[k] || k; });
+      const groups = [...new Set(Store.library().map((x) => x.group).filter(Boolean))].filter((g) => !want.length || want.some((w) => norm(g).includes(w) || w.includes(norm(g))));
+      const G = window.LIBRARY_GUIDES || {};
+      const out = { musculos: groups.map((g) => {
+        const ex = Store.library().filter((x) => x.group === g);
+        const pats = [...new Set(ex.map((x) => x.pattern || 'Otros'))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+        const basics = ((G[g] || []).find((x) => /pautas/i.test(x.title)) || {}).items || [];
+        return { musculo: g, metodo: basics.filter((t) => /^(Estructura|Frecuencia)/.test(t)),
+          patrones: pats.map((pt) => ({ patron: pt, ejercicios: ex.filter((x) => (x.pattern || 'Otros') === pt).map((x) => ({ id: x.id, nombre: x.name, material: x.equipment || '' })) })) };
+      }) };
+      const c = cliente_id && client(cliente_id);
+      if (c) {
+        out.cliente = { nombre: c.name, sexo: c.gender || null, edad: U.age(c.birthDate) || null,
+          lesiones: Store.injuriesFor(c.id).filter((x) => !x.recoveredDate).map((x) => [x.name, x.notes].filter(Boolean).join(': ')),
+          salud: c.health || null,
+          cuestionario: ((c.questionnaire && c.questionnaire.items) || []).filter((x) => x.a).map((x) => `${x.q} → ${x.a}`).slice(0, 30),
+          rutinaActual: (() => { const r = Store.routineFor(c.id); return r && (r.days || []).some((d) => (d.exercises || []).length) ? r.days.map((d) => `${d.name}: ${(d.exercises || []).map((e) => e.name).join(', ')}`) : null; })() };
+      }
+      return out;
+    },
+    crear_rutina({ cliente_id, nombre, notas, dias }) {
+      const c = client(cliente_id);
+      if (!c) return { error: 'No existe ese cliente' };
+      if (!Array.isArray(dias) || !dias.length || dias.length > 7) return { error: 'Faltan los días de la rutina (de 1 a 7)' };
+      const missing = [];
+      const days = dias.map((d, i) => {
+        const exercises = (d.ejercicios || []).filter((id, k, a) => a.indexOf(id) === k).map((id) => {
+          const lib = Store.get('library', id);
+          if (!lib) { missing.push(id); return null; }
+          const notes = [lib.tempo ? `Tempo: ${lib.tempo}` : '', lib.description].filter(Boolean).join('\n');
+          return { id: U.uid(), libraryId: lib.id, group: lib.group, name: lib.name, sets: lib.sets || '', reps: lib.reps || '', load: '', rest: lib.rest || '', notes };
+        }).filter(Boolean);
+        const muscles = [...new Set(exercises.map((e) => e.group).filter(Boolean))];
+        return { id: U.uid(), name: String(d.nombre || '').trim() || `Día ${i + 1}`, muscles, exercises };
+      });
+      if (!days.some((d) => d.exercises.length)) return { error: 'Ningún ejercicio existe en la biblioteca: usa los ids de biblioteca_rutina' };
+      const old = Store.routineFor(c.id);
+      const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+      const name = String(nombre || '').trim() || `Rutina de ${MONTHS[new Date().getMonth()]}`;
+      if (old) Store.update('routines', old.id, { name, notes: notas != null ? String(notas) : (old.notes || ''), days });
+      else Store.add('routines', { clientId: c.id, name, notes: notas ? String(notas) : '', days });
+      if (c.noTraining) Store.update('clients', c.id, { noTraining: false });
+      return { ok: true, dias: days.map((d) => `${d.name}: ${d.exercises.map((e) => e.name).join(', ')}`), ...(missing.length ? { avisos: `No existen y no se han puesto: ${missing.join(', ')}` } : {}) };
     },
     quitar_ejercicio({ cliente_id, ejercicio_id }) {
       const f = findEx(cliente_id, ejercicio_id);
@@ -350,6 +397,15 @@
         return `En ${m ? m.name : `«${i.comida}»`} de ${who}: ${parts.join(' y ') || 'sin cambios'}`;
       }
       case 'ajustar_dieta': return `Ajustar la dieta de ${who}: ${[i.kcal ? `${i.kcal} kcal` : '', i.proteinas_pct != null ? `P ${i.proteinas_pct} %` : '', i.hidratos_pct != null ? `H ${i.hidratos_pct} %` : '', i.grasas_pct != null ? `G ${i.grasas_pct} %` : ''].filter(Boolean).join(' · ')}`;
+      case 'crear_rutina': {
+        const had = c && Store.routineFor(c.id) && (Store.routineFor(c.id).days || []).some((d) => (d.exercises || []).length);
+        const days = (i.dias || []).map((d, k) => {
+          const libs = (d.ejercicios || []).map((id) => Store.get('library', id)).filter(Boolean);
+          const groups = [...new Set(libs.map((x) => x.group))];
+          return `${d.nombre || `Día ${k + 1}`} (${groups.join(', ')}): ${libs.map((x) => x.name).join(', ')}`;
+        });
+        return `${had ? 'Sustituir la rutina' : 'Hacer la rutina'} de ${who}, ${(i.dias || []).length} días — ${days.join(' | ')}`;
+      }
       case 'quitar_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Quitar «${f.ex ? f.ex.name : '?'}» de la rutina de ${who}${f.day ? ` (${f.day.name})` : ''}`; }
       case 'anadir_ejercicio': { const l = Store.get('library', i.biblioteca_id); const f = i.sustituir_id ? findEx(i.cliente_id, i.sustituir_id) : {}; return `${f.ex ? `Cambiar «${f.ex.name}» por` : 'Añadir'} «${l ? l.name : '?'}» en el día ${i.dia} de la rutina de ${who}`; }
       case 'mover_ejercicio': { const f = findEx(i.cliente_id, i.ejercicio_id); return `Mover «${f.ex ? f.ex.name : '?'}» al puesto ${i.posicion}${i.dia ? ` del día ${i.dia}` : ''} en la rutina de ${who}`; }
@@ -404,7 +460,9 @@
         }
         if (toConfirm.length) {
           pending = { blocks: toConfirm, results };
-          const phrase = toConfirm.map(describe).join('. ');
+          // En voz alta, la rutina en corto (días y músculos); en pantalla sale entera.
+          const spoken = (x) => (x.name === 'crear_rutina' ? describe(x).replace(/\):[^|]*/g, ')').replace(/\s*\|\s*/g, '; ') : describe(x));
+          const phrase = toConfirm.map(spoken).join('. ');
           busy = false; render();
           // Lo dice y se queda escuchando: basta con decir «sí» o «no».
           speak(`${phrase}. ¿Lo confirmo?`, autoListen);

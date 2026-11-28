@@ -178,6 +178,15 @@ Cómo trabajar:
   cada comida esté equilibrada (proteína, hidrato y grasa, con variedad entre comidas). Respeta alergias e intolerancias.
   Busca los ids con buscar_alimento (en crudo cuando haya versión cruda). Pon 1–3 opciones por tipo en cada comida.
   Al confirmar, resume en una frase las kcal, los macros y las comidas.
+- Para hacer una rutina completa: primero biblioteca_rutina con el cliente y los músculos que vas a trabajar. Si David no dice
+  cuántos días, usa lo que respondió el cliente en el cuestionario; si tampoco está, pregúntaselo. Reparte los músculos con
+  sentido (p. ej. torso-pierna, empuje-tirón-pierna, o el reparto que pida David) y cada músculo 1–2 veces por semana.
+  Sigue el método de David de cada músculo: un ejercicio de cada patrón que indique su estructura, en ese orden (primero el
+  Patrón 1); músculos grandes primero y pequeños (bíceps, tríceps, gemelos, abdomen) al final del día. Unos 6–8 ejercicios por
+  día. Respeta las lesiones y lo que diga David («sin sentadilla», «tiene la rodilla mal»…): evita los ejercicios que carguen
+  esa zona y usa alternativas de la biblioteca (máquinas, apoyos). Usa solo ids de biblioteca_rutina. Las series, repeticiones
+  y descansos no los mandas: los pone la app. Después de crearla, di en una frase el reparto y qué evitaste por las lesiones.
+  Para retocar una rutina que ya existe (un ejercicio, el orden…), usa las herramientas de ejercicios, no la rehagas.
 - Para cambiar una sola comida (añadir fruta o un alimento con sus gramos, quitar uno, o poner la verdura) usa editar_comida,
   no rehagas la dieta. «Añade verdura», «marca la verdura» o «el check/tick de verdura» = verdura_libre: true. Si no dice en qué
   comida, pregúntalo. Busca la fruta con buscar_alimento («fruta» o su nombre).
@@ -220,6 +229,13 @@ const ASIS_TOOLS = [
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, ejercicio_id: { type: 'string' }, posicion: { type: 'integer', description: '1 = el primero del día' }, dia: { type: 'integer', description: 'Opcional: número del día al que moverlo' } }, required: ['cliente_id', 'ejercicio_id', 'posicion'] } },
   { name: 'cambiar_ejercicio', description: 'Cambia las series, las repeticiones o el descanso de un ejercicio de la rutina de un cliente. Cambia datos: David lo confirma.',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, ejercicio_id: { type: 'string' }, series: { type: 'string' }, repeticiones: { type: 'string' }, descanso: { type: 'string', description: 'Ej.: 2 min, 1:30 min' } }, required: ['cliente_id', 'ejercicio_id'] } },
+  { name: 'biblioteca_rutina', description: 'Para hacer una rutina: los ejercicios de la biblioteca de David por músculo y por patrón (id, nombre, material), su método de cada músculo (estructura por patrones y frecuencia) y, si das el cliente, sus lesiones, su salud, sus respuestas del cuestionario y su rutina actual. Pide solo los músculos que vayas a usar.',
+    input_schema: { type: 'object', properties: { cliente_id: { type: 'string' }, musculos: { type: 'array', items: { type: 'string' }, description: 'Pecho, Espalda, Hombros, Bíceps, Tríceps, Antebrazo, Cuádriceps, Isquiotibiales (femoral), Glúteos, Aductores, Gemelos, Core / Abdomen' } } } },
+  { name: 'crear_rutina', description: 'Crea (o sustituye entera) la rutina de un cliente: los días en orden, cada uno con su nombre y sus ejercicios de la biblioteca en el orden en que se hacen (ids de biblioteca_rutina). Las series, repeticiones y descansos los pone la app con el método de David. Cambia datos: David lo confirma.',
+    input_schema: { type: 'object', properties: {
+      cliente_id: { type: 'string' }, nombre: { type: 'string', description: 'Opcional. Por defecto «Rutina de <mes>»' }, notas: { type: 'string', description: 'Opcional: indicaciones generales' },
+      dias: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string', description: 'Ej.: Día 1 · Torso, Día 2 · Pierna' }, ejercicios: { type: 'array', items: { type: 'string', description: 'id del ejercicio de la biblioteca' } } }, required: ['ejercicios'] } },
+    }, required: ['cliente_id', 'dias'] } },
   { name: 'datos_dieta', description: 'Lo necesario para hacer o ajustar la dieta de un cliente: peso, altura, edad, sexo, actividad y mantenimiento estimado, objetivo, salud y alergias, su dieta actual, y lo que eligió en el cuestionario de alimentación (comidas al día, alimentos preferidos y suplementos).',
     input_schema: { type: 'object', properties: { cliente_id: { type: 'string' } }, required: ['cliente_id'] } },
   { name: 'buscar_alimento', description: 'Busca alimentos en la biblioteca (nombre, categoría o macro: «proteína», «hidratos», «grasa»). Devuelve id, nombre, categoría y macros por 100 g.',
