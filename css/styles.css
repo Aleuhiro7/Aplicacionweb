@@ -2787,3 +2787,4 @@ body.pp-open { overflow: hidden; }
 @media (min-width: 720px) { .pp-weeks.cz-st-filter { grid-template-columns: repeat(6, 1fr); max-width: 760px; } }
 .cz-st-filter button b { font-size: 1.15rem; }
 @media (max-width: 370px) { .cz-st-filter button b { font-size: 1rem; } }
+#toast { z-index: 200; } /* por encima de la vista previa del PDF */

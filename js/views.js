@@ -2287,14 +2287,27 @@
     if (!c) return;
     const st0 = portalWk[c.portalToken];
     if (!st0 || !st0.list) { UI.toast('Cargando sus entrenos…'); loadClientWorkouts(c); return; }
-    const W = weeks === 'all' ? 'all' : Number(weeks) || state.studyWeeks || 12;
+    // Igual que en su app: cada periodo se abre cuando lleva ese tiempo entrenando (desde su primer entreno); «Todo», a la semana.
+    const OPTS = [1, 2, 4, 8, 12, 'all'];
+    const need = (n) => (n === 'all' ? 7 : n * 7);
+    const firstDate = st0.list.reduce((m, w) => (w.date && (!m || w.date < m) ? w.date : m), '');
+    const days = firstDate ? U.daysBetween(firstDate, today()) : 0;
+    const open = OPTS.filter((n) => days >= need(n));
+    const who = c.name.split(' ')[0];
+    if (!open.length) { UI.toast(firstDate ? `${who} lleva ${days} ${days === 1 ? 'día' : 'días'} con la app: su estudio se abre a la semana (faltan ${7 - days})` : `${who} todavía no ha apuntado ningún entreno`); return; }
+    let W = weeks === 'all' ? 'all' : Number(weeks) || state.studyWeeks || 4;
+    if (!open.includes(W)) {
+      if (weeks) { UI.toast(`${who} lleva ${days} días con la app: ${W === 'all' ? 'el resumen general' : `el estudio de ${W} semanas`} se abre en ${need(W) - days} ${need(W) - days === 1 ? 'día' : 'días'}`); return; }
+      const nums = open.filter((x) => x !== 'all');
+      W = nums.includes(4) ? 4 : nums[nums.length - 1] || 'all';
+    }
     state.studyWeeks = W;
     const st = trainingStudy(c, st0.list, W);
     if (!st.list.length) { UI.toast(st0.list.length ? `No ha apuntado entrenos en ${st.label.replace(/^todo.*/, 'este periodo')}` : 'Todavía no ha apuntado ningún entreno'); if (st0.list.length && W !== 'all') previewStudy(clientId, 'all'); return; }
     await showSheet({
       title: `Estudio de ${c.name.split(' ')[0]}`, file: `Estudio del entrenamiento ${c.name}`, html: studySheet(st),
-      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${[1, 2, 4, 8, 12, 'all'].map((n) => `<button type="button" class="${n === W ? 'on' : ''}" data-weeks="${n}" aria-pressed="${n === W}">${n === 'all' ? '<b>Todo</b><small>desde el inicio</small>' : `<b>${n === 1 ? 'Última' : `Últimas ${n}`}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`).join('')}</div>`,
-      onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (String(b.dataset.weeks) === String(W)) return; close(); previewStudy(clientId, b.dataset.weeks); }; }); },
+      sub: `<div class="cz-st-filter pp-weeks" role="group" aria-label="Periodo">${OPTS.map((n) => { const lock = open.includes(n) ? '' : '<i aria-hidden="true">🔒</i>'; return `<button type="button" class="${n === W ? 'on' : ''}${lock ? ' locked' : ''}" data-weeks="${n}" aria-pressed="${n === W}">${n === 'all' ? `<b>${lock}Todo</b><small>desde el inicio</small>` : `<b>${lock}${n === 1 ? 'Última' : `Últimas ${n}`}</b><small>${n === 1 ? 'semana' : 'semanas'}</small>`}</button>`; }).join('')}</div>`,
+      onReady: (ov, close) => { ov.querySelectorAll('.pp-weeks [data-weeks]').forEach((b) => { b.onclick = () => { if (String(b.dataset.weeks) === String(W)) return; if (b.classList.contains('locked')) { const n = b.dataset.weeks === 'all' ? 'all' : Number(b.dataset.weeks); const left = need(n) - days; UI.toast(`${who} lleva ${days} días con la app: ${n === 'all' ? 'el resumen general' : `el estudio de ${n} semanas`} se abre en ${left} ${left === 1 ? 'día' : 'días'}`); return; } close(); previewStudy(clientId, b.dataset.weeks); }; }); },
     });
   }
 
