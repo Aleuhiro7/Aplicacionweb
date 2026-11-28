@@ -2723,3 +2723,4 @@ body.pp-open { overflow: hidden; }
 .st-ex-nums { display: flex; flex-wrap: wrap; gap: .8mm 3.5mm; font-size: 8.5pt; color: #94a3b8; }
 .st-ex-nums b { color: #fff; }
 .st-page .ds-rule { margin-left: 0; margin-right: auto; align-self: flex-start; }
+.st-kpis { grid-template-columns: repeat(4, 1fr); }

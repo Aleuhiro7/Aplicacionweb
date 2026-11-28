@@ -2379,8 +2379,7 @@
         ${kpi('Entrenos', st.list.length, `en ${st.W} semanas`)}
         ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} planificados` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : 'sin rutina')}
-        ${kpi('Último entreno', since == null ? '—' : since === 0 ? 'Hoy' : since === 1 ? 'Ayer' : `${since} días`, st.lastW ? esc(st.lastW.dayName || '') : '')}
-        ${kpi('Duración media', st.durMin ? mins(st.durMin * 60) : '—', 'por entreno')}
+        ${kpi('Duración', st.durMin ? mins(st.durMin * 60) : '—', 'media por entreno')}
         ${kpi('Series hechas', fmtNum(st.totalSets), st.setsPct != null ? `${st.setsPct} % de las programadas` : '')}
         ${kpi('Repeticiones', fmtNum(st.totalReps), 'en total')}
         ${kpi('Kilos movidos', `${fmtNum(Math.round(st.totalVol / 100) / 10)} t`, 'kilos × repeticiones')}
