@@ -391,7 +391,7 @@ function guideView() {
     </button>
     <button type="button" class="cz-guide-card app" data-guide="app">
       <span class="cz-guide-ico">📱</span>
-      <span class="grow"><strong>Cómo usar la app</strong><small>Diario, entreno paso a paso, descansos, tus datos y más</small></span><b>›</b>
+      <span class="grow"><strong>Cómo usar la app</strong><small>Diario, entreno paso a paso, descansos, estudio, tus datos y más</small></span><b>›</b>
     </button>`;
 }
 
@@ -411,6 +411,7 @@ const APP_HELP = [
     'Pulsa <b>Empezar descanso</b> y la app cuenta el tiempo de ese ejercicio (3 min en pierna; 1:30 en bíceps, tríceps y hombros; 2 min en el resto). Puedes pausarlo o reiniciarlo.',
     'Al terminar suena una <b>alarma</b> y vibra hasta que respondas si pasas a la siguiente serie o repites el descanso.',
     'Deja la app abierta mientras descansas: si la cierras o bloqueas el móvil, puede que no suene. Durante el entreno la pantalla no se apaga sola.',
+    'Mientras descansas ves <b>tu siguiente serie</b> y el peso y las repeticiones que hiciste en ella <b>el entreno anterior</b>, para que sepas a qué apuntar.',
     'En la última serie de un ejercicio te avisa de cuál es el siguiente, para que lo vayas preparando.',
   ]],
   ['⏭ ¿Máquina ocupada?', [
@@ -427,6 +428,13 @@ const APP_HELP = [
   ['💪 Rutina y 🍎 Dieta', [
     '<b>Rutina:</b> todos los días de tu plan con sus ejercicios, fotos, series y descansos.',
     '<b>Dieta:</b> tu plan de alimentación completo, tal cual te lo ha preparado tu entrenador.',
+    'Con el botón <b>⬇ PDF</b>, al lado del título, te descargas tu rutina o tu dieta en PDF para tenerla guardada o imprimirla.',
+  ]],
+  ['📊 Estudio', [
+    'Tu <b>estudio del entrenamiento</b>: tu constancia (cuántas veces entrenas a la semana frente a los días de tu rutina), los kilos que mueves, tus récords y cómo evoluciona tu fuerza en <b>cada ejercicio</b>, con gráficas.',
+    'Cada ejercicio sale marcado como <b>mejorando</b>, <b>estable</b>, <b>estancado</b> o <b>bajando</b>, y al final tienes <b>mis recomendaciones</b> para seguir progresando.',
+    'Puedes verlo de la <b>última semana</b> o de las <b>últimas 4, 8 o 12 semanas</b>. Cada periodo se desbloquea cuando llevas ese tiempo entrenando con la app (🔒 te dice cuántos días faltan).',
+    'Todo sale de los pesos que apuntas: cuanto más constante seas apuntándolos, más completo será tu estudio.',
   ]],
   ['📈 Tus datos', [
     'Tu peso y tu cintura con su evolución, tus calorías y macros pautados, tu mantenimiento y una estimación de cuánto peso perderás o ganarás por semana.',
@@ -730,6 +738,7 @@ const TOUR = [
   ['🏋️', 'Serie a serie', 'Te llevamos ejercicio a ejercicio. Antes de empezar cada uno, haz tus series de aproximación. Apunta el peso y las repeticiones de la serie y pulsa ▶.'],
   ['⏱️', 'El descanso', 'Al acabar la serie, pulsa ▶ para empezar la cuenta atrás del descanso. Puedes pausarla o reiniciarla. Cuando termine te avisamos y pasamos a la siguiente serie.'],
   ['📈', 'Tu progreso', 'Al terminar verás tu resumen con las mejoras. Los días entrenados se marcan en el calendario y tu entrenador lo ve todo para ajustar tu plan.'],
+  ['📊', 'Tu estudio', 'En «Estudio» verás cómo evolucionas: tu constancia, tu fuerza en cada ejercicio y mis recomendaciones. Se desbloquea a la semana de entrenar con la app, y luego a las 4, 8 y 12 semanas.'],
 ];
 const tourKey = () => `cz:tour:${auth.currentUser ? auth.currentUser.uid : ''}`;
 function maybeTour() {
