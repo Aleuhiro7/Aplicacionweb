@@ -185,6 +185,7 @@ const NAV_ICONS = {
   dieta: '<svg viewBox="0 0 24 24"><path d="M12 6.5c-1.5-1.5-5-1.5-6.5 1S4 15 7 19c1.5 2 3 2 5 1 2 1 3.5 1 5-1 3-4 3-9 1.5-11.5S13.5 5 12 6.5Z"/><path d="M12 6.5C12 4 13 3 15 2.5"/></svg>',
   guia: '<svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>',
   datos: '<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>',
+  estudio: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
 };
 
 const logoutBtn = () => '<div class="cz-links"><button type="button" class="link-btn" id="cz-logout">Cerrar sesión</button></div>';
@@ -269,12 +270,13 @@ function render() {
   if (h === 'entreno' && wk) { renderWorkout(); return; }
   stopTicker();
   const diaryRoute = h === 'diario' || h.startsWith('diario/') || h.startsWith('resumen/') || h === 'empezar';
-  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia', 'datos'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'diario'));
+  const tab = h.startsWith('dia-') ? 'rutina' : diaryRoute && !portal.noRoutine ? 'diario' : (['rutina', 'dieta', 'guia', 'estudio', 'datos'].includes(h) ? h : (portal.noRoutine ? 'dieta' : 'diario'));
   const tabs = [
     portal.noRoutine ? null : ['diario', 'Diario'],
     portal.noRoutine ? null : ['rutina', 'Rutina'],
     portal.noDiet ? null : ['dieta', 'Dieta'],
     portal.noRoutine ? null : ['guia', 'Guía'],
+    portal.noRoutine ? null : ['estudio', 'Estudio'],
     ['datos', 'Tus datos'],
   ].filter(Boolean);
   let body;
@@ -283,6 +285,7 @@ function render() {
   else if (tab === 'dieta') body = dietView();
   else if (tab === 'guia') body = guideView();
   else if (tab === 'datos') body = statsView();
+  else if (tab === 'estudio') body = studyView();
   else body = daysView(r);
   const initials = String(portal.clientName || '').trim().split(/\s+/).slice(0, 2).map((x) => x[0] || '').join('').toUpperCase();
   const todayTxt = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -293,7 +296,7 @@ function render() {
         <span class="cz-hero-actions">${installBar()}<button type="button" class="cz-refresh" id="cz-refresh" title="Actualizar" aria-label="Actualizar">↻</button><button type="button" class="cz-avatar" id="cz-logout" title="Salir">${esc(initials || '·')}</button></span>
       </div>
       <small class="cz-hero-date">${esc(todayTxt)}</small>
-      <div class="cz-title-row"><h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos' }[tab] || '')}</h1>
+      <div class="cz-title-row"><h1>${tab === 'diario' ? `Hola, ${esc(firstName(portal.clientName))} 👋` : esc({ rutina: 'Tu rutina', dieta: 'Tu dieta', guia: 'Tu guía', datos: 'Tus datos', estudio: 'Tu estudio' }[tab] || '')}</h1>
         ${tab === 'rutina' && portal.routineHtml ? '<button type="button" class="cz-dl" id="cz-dl" aria-label="Descargar tu rutina en PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>PDF</span></button>' : ''}
         ${tab === 'dieta' && portal.dietHtml ? '<button type="button" class="cz-dl" id="cz-dl" aria-label="Descargar tu dieta en PDF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>PDF</span></button>' : ''}</div>
     </header>
@@ -301,7 +304,7 @@ function render() {
     ${tabs.length > 1 ? `<nav class="cz-nav">${tabs.map(([k, l]) => `<a href="#${k}" class="${tab === k ? 'active' : ''}">${NAV_ICONS[k]}<span>${l}</span></a>`).join('')}</nav>` : ''}`;
   // Pestañas principales (no la dieta ni las subpáginas): ocupan justo la pantalla y no se desliza.
   // En móviles muy pequeños (menos de 340 de ancho o 540 de alto) no cabe todo: ahí sí se puede deslizar.
-  const main = (h === '' || h === tab) && tab !== 'dieta' && window.innerWidth >= 340 && window.innerHeight >= 540;
+  const main = (h === '' || h === tab) && tab !== 'dieta' && tab !== 'estudio' && window.innerWidth >= 340 && window.innerHeight >= 540;
   document.body.classList.toggle('cz-lock', main);
   document.body.dataset.tab = main ? tab : '';
   // Botón discreto para descargar la rutina o la dieta en PDF (se crea en el propio móvil).
@@ -318,6 +321,7 @@ function render() {
   if (tab === 'diario') bindDiary();
   if (main && tab === 'rutina') requestAnimationFrame(fitDayCards);
   root.querySelectorAll('[data-guide]').forEach((b) => { b.onclick = () => openPanel(guideFull(b.dataset.guide)); });
+  root.querySelectorAll('[data-study-weeks]').forEach((b) => { b.onclick = () => { if (b.disabled) return; studyWeeks = Number(b.dataset.studyWeeks); try { localStorage.setItem('cz:studyWeeks', String(studyWeeks)); } catch (e) { /* nada */ } render(); }; });
   root.querySelectorAll('[data-open-w]').forEach((b) => { b.onclick = () => { location.hash = `#resumen/${b.dataset.openW}`; }; });
   if (tab === 'diario' && h === '' || h === 'diario') maybeTour();
   const del = root.querySelector('[data-del]');
@@ -1290,6 +1294,83 @@ function statsView() {
       </div>
     </section>
     ${last ? `<button type="button" class="cz-last-w card" data-open-w="${esc(last.id)}"><span class="cz-metric-l">Último entreno</span><span class="grow"><strong>${esc(last.dayName)}</strong><small class="muted">${esc(fmtDay(last.date))} · ${fmtDuration(last.durationSec || 0)}</small></span><b>›</b></button>` : ''}`;
+}
+
+/* ---------- Estudio del entrenamiento ----------
+ * Los mismos datos que el estudio que ve el entrenador (js/study.js), hablándote a ti. Se puede ver de las últimas 4, 8 o
+ * 12 semanas, y cada periodo se desbloquea cuando llevas ese tiempo entrenando con la app. */
+let studyWeeks = 0;
+try { studyWeeks = Number(localStorage.getItem('cz:studyWeeks')) || 0; } catch (e) { studyWeeks = 0; }
+function studyView() {
+  const TS = window.TrainingStudy;
+  if (!TS) return '<p class="muted">No se ha podido cargar el estudio. Actualiza la app.</p>';
+  const first = workouts.reduce((m, w) => (w.date && (!m || w.date < m) ? w.date : m), '');
+  const days = first ? Math.round((Date.parse(`${ymd()}T12:00:00`) - Date.parse(`${first}T12:00:00`)) / 864e5) : 0;
+  const OPTS = [4, 8, 12];
+  const open = OPTS.filter((n) => days >= n * 7);
+  if (open.length && !open.includes(studyWeeks)) studyWeeks = open[open.length - 1];
+  const filter = `<div class="cz-st-filter" role="group" aria-label="Periodo">${OPTS.map((n) => {
+    const ok = open.includes(n);
+    return `<button type="button" class="${ok && n === studyWeeks ? 'on' : ''}" data-study-weeks="${n}" ${ok ? '' : 'disabled'} aria-pressed="${ok && n === studyWeeks}">${ok ? '' : '🔒 '}${n} semanas</button>`;
+  }).join('')}</div>`;
+  if (!open.length) {
+    const left = Math.max(0, 28 - days);
+    const pct = Math.min(100, Math.round((days / 28) * 100));
+    return `${filter}<section class="card cz-st-locked">
+      <div class="cz-st-lock-ico">📊</div>
+      <h2>Tu estudio estará listo en ${left} ${left === 1 ? 'día' : 'días'}</h2>
+      <p class="muted">${first ? 'Cuando lleves 4 semanas apuntando tus entrenos en la app' : 'Cuando lleves 4 semanas apuntando tus entrenos'} verás aquí tu constancia, cómo evoluciona tu fuerza en cada ejercicio y mis recomendaciones. Cada entreno que apuntes cuenta.</p>
+      <div class="cz-st-progress"><i style="width:${pct}%"></i></div><small class="muted">${first ? `${days} de 28 días` : 'Empieza tu primer entreno desde el Diario'}</small>
+    </section>`;
+  }
+  const r = routine();
+  let stats = {};
+  try { stats = JSON.parse(portal.statsJson || '{}'); } catch (e) { stats = {}; }
+  const up = upMarks();
+  const st = TS.compute({
+    name: portal.clientName || '', startDate: stats.startDate || '',
+    routineDays: (r.days || []).map((d, i) => ({ name: d.name || `Día ${i + 1}`, exercises: (d.groups || []).flatMap((g) => g.exs || []).map((e) => ({ name: e.name })) })),
+    subir: up ? up.list.filter((x) => !workouts.some((w) => (w.endedAt || 0) > (Date.parse(up.at) || 0) && (w.exercises || []).some((e) => normName(e.name) === normName(x.ex) && e.sets[x.serie - 1] && e.sets[x.serie - 1].done))) : [],
+  }, workouts, studyWeeks);
+  const S = TS.STATUS;
+  const f = TS.fmtNum;
+  const kpi = (l, v, sub) => `<div class="cz-st-kpi"><span>${l}</span><b>${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  const list = (arr) => `<ul class="cz-st-list">${arr.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+  const badge = (s) => `<span class="st-badge" style="--c:${S[s][0]}"><i></i>${S[s][1]}</span>`;
+  const labels = st.weeks.map((w) => TS.shortDate(w.start));
+  if (!st.list.length) return `${filter}<section class="card"><p class="muted" style="margin:0">No has apuntado entrenos en las últimas ${studyWeeks} semanas.</p></section>`;
+  const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(TS.shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = new Date(`${wk.start}T12:00:00`); d.setDate(d.getDate() + k); const dd = ymd(d); return `<i class="${st.trainedDays.has(dd) ? 'on' : ''}${dd > ymd() ? ' fut' : ''}"></i>`; }).join('')}</div>`).join('');
+  const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
+  return `${filter}
+    <section class="card cz-st">
+      <div class="cz-st-kpis">
+        ${kpi('Entrenos', st.list.length, `en ${studyWeeks} semanas`)}
+        ${kpi('Por semana', f(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
+        ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : '')}
+        ${kpi('Duración', st.durMin ? TS.mins(st.durMin) : '—', 'media por entreno')}
+        ${kpi('Series hechas', f(st.totalSets), st.setsPct != null ? `${st.setsPct} % de las programadas` : '')}
+        ${kpi('Repeticiones', f(st.totalReps), 'en total')}
+        ${kpi('Kilos movidos', `${f(Math.round(st.totalVol / 100) / 10)} t`, 'kilos × repeticiones')}
+        ${kpi('Récords', st.prs, 'veces que has batido tu marca')}
+      </div>
+    </section>
+    <section class="card cz-st"><h3>Estado de tus ejercicios</h3>
+      <div class="cz-st-states">${['mejorando', 'estable', 'estancado', 'bajando'].map((k) => `<div style="--c:${S[k][0]}"><b>${st.counts[k]}</b>${badge(k)}</div>`).join('')}</div>
+    </section>
+    <section class="card cz-st"><h3>Lo más importante</h3>${list([...st.notes.constancia, ...st.notes.progreso])}</section>
+    <section class="card cz-st"><h3>Entrenos por semana</h3>${st.target ? `<small class="muted">La línea son los ${st.target} días de tu rutina</small>` : ''}
+      ${TS.bars(st.weeks.map((w) => w.n), labels, { w: 360, h: 210, target: st.target, targetLabel: st.target ? `Objetivo: ${st.target}` : '' })}</section>
+    <section class="card cz-st"><h3>Días que entrenaste <small class="muted">L M X J V S D</small></h3><div class="st-cal">${cal}</div></section>
+    ${st.porDia.length ? `<section class="card cz-st"><h3>Días de tu rutina</h3><div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div></section>` : ''}
+    <section class="card cz-st"><h3>Kilos movidos por semana</h3><small class="muted">Kilos × repeticiones de todas tus series</small>
+      ${TS.bars(st.weeks.map((w) => Math.round(w.vol)), labels, { w: 360, h: 210, fmt: (v) => (v >= 1000 ? `${f(Math.round(v / 100) / 10)} t` : f(Math.round(v))) })}</section>
+    <section class="card cz-st"><h3>Ejercicio a ejercicio</h3><small class="muted">La línea es tu fuerza estimada con tu mejor serie de cada sesión.</small>
+      <div class="cz-st-exs">${st.exercises.map((e) => `<div class="st-ex" style="--c:${S[e.status][0]}">
+        <div class="st-ex-head"><b>${esc(e.name)}</b>${badge(e.status)}</div>
+        ${TS.spark(e.ses, S[e.status][0])}
+        <div class="st-ex-nums"><span>${e.ses.length} ${e.ses.length === 1 ? 'sesión' : 'sesiones'}</span><span>Primera: ${esc(TS.setTxt(e.first.best))}</span><span>Última: <b>${esc(TS.setTxt(e.last.best))}</b></span>${e.peak ? `<span>Mejor: ${esc(TS.setTxt(e.peak.best))}</span>` : ''}${e.pct != null && e.ses.length > 1 ? `<span>Fuerza: <b>${e.pct > 0 ? '+' : ''}${e.pct} %</b></span>` : ''}</div>
+      </div>`).join('')}</div></section>
+    <section class="card cz-st"><h3>Mis recomendaciones</h3><ol class="cz-st-list cz-st-reco">${st.notes.recomendaciones.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></section>`;
 }
 
 /** Mejoras de un entreno respecto a la vez anterior en cada ejercicio (más peso, o mismo peso con más reps). */

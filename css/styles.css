@@ -2724,3 +2724,45 @@ body.pp-open { overflow: hidden; }
 .st-ex-nums b { color: #fff; }
 .st-page .ds-rule { margin-left: 0; margin-right: auto; align-self: flex-start; }
 .st-kpis { grid-template-columns: repeat(4, 1fr); }
+
+/* ===== App del cliente: «Estudio» del entrenamiento ===== */
+.cz-st-filter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 14px; }
+.cz-st-filter button { padding: 10px 6px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .04); color: #e2e8f0; font: 600 .9rem/1.1 inherit; font-family: inherit; cursor: pointer; }
+.cz-st-filter button.on { background: #6e8bff; border-color: #6e8bff; color: #0b1020; }
+.cz-st-filter button:disabled { opacity: .45; cursor: not-allowed; }
+.cz-st { margin-bottom: 14px; }
+.cz-st h3 { font: 700 1.15rem/1.15 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: .02em; margin: 0 0 6px; color: #fff; }
+.cz-st h3 small { font: 500 .78rem/1 inherit; font-family: inherit; text-transform: none; letter-spacing: .2em; margin-left: 6px; }
+.cz-st > small.muted { display: block; margin: -2px 0 8px; font-size: .8rem; }
+.cz-st-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cz-st-kpi { padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cz-st-kpi span { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: #94a3b8; }
+.cz-st-kpi b { font: 700 1.7rem/1 'Barlow Condensed', sans-serif; color: #fff; }
+.cz-st-kpi small { font-size: .74rem; color: #94a3b8; line-height: 1.25; }
+.cz-st-states { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cz-st-states > div { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.cz-st-states b { font: 700 1.6rem/1 'Barlow Condensed', sans-serif; color: #fff; }
+.cz-st .st-badge { font-size: .8rem; gap: 6px; }
+.cz-st .st-badge i { width: 8px; height: 8px; }
+.cz-st-list { margin: 4px 0 0; padding-left: 18px; font-size: .92rem; line-height: 1.5; color: #e2e8f0; }
+.cz-st-list li { margin-bottom: 6px; }
+.cz-st-list li::marker { color: #6e8bff; font-weight: 700; }
+.cz-st .st-cal-w { grid-template-columns: 46px repeat(7, 1fr); gap: 4px; }
+.cz-st .st-cal { gap: 4px; }
+.cz-st .st-cal-w span { font-size: .72rem; }
+.cz-st .st-cal-w i { height: 14px; }
+.cz-st .st-hbars { gap: 10px; }
+.cz-st .st-hbar { grid-template-columns: 70px 1fr 26px; gap: 10px; font-size: .88rem; }
+.cz-st .st-hbar div { height: 14px; }
+.cz-st-exs { display: grid; gap: 10px; margin-top: 6px; }
+.cz-st .st-ex { padding: 12px; gap: 8px; }
+.cz-st .st-ex-head b { font-size: .95rem; }
+.cz-st .st-spark { height: 56px; }
+.cz-st .st-spark-empty { height: 56px; font-size: .8rem; }
+.cz-st .st-ex-nums { font-size: .78rem; gap: 2px 12px; }
+.cz-st-locked { text-align: center; padding: 26px 18px; }
+.cz-st-lock-ico { font-size: 2.6rem; margin-bottom: 6px; }
+.cz-st-locked h2 { font: 700 1.5rem/1.15 'Barlow Condensed', sans-serif; margin: 0 0 8px; }
+.cz-st-progress { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, .08); overflow: hidden; margin: 14px 0 6px; }
+.cz-st-progress i { display: block; height: 100%; background: linear-gradient(90deg, #6e8bff, #22d3ee, #3ee6a0); border-radius: 6px; }
+@media (max-width: 370px) { .cz-st-filter button { font-size: .78rem; padding: 10px 2px; white-space: nowrap; } }
