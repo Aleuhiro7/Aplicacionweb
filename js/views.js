@@ -2279,39 +2279,41 @@
     return st;
   }
 
-  /** Conclusiones y recomendaciones, por escrito (reglas de entrenador, sin IA). */
+  /** Conclusiones y recomendaciones, por escrito y hablándole al cliente (de tú), como si se lo dijera David. Sin IA. */
   function studyNotes(st) {
     const first = st.c.name.split(' ')[0];
     const out = { constancia: [], progreso: [], recomendaciones: [] };
     const since = st.lastW ? U.daysBetween(st.lastW.date, today()) : null;
+    const pw = fmtNum(Math.round(st.perWeek * 10) / 10);
+    const veces = (n) => (n === 1 ? 'vez' : 'veces');
     if (st.target) {
-      out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} ${st.perWeek === 1 ? 'vez' : 'veces'} por semana y su rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumple prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumple la mayor parte, aunque se deja algún entreno' : st.adherence >= 40 ? 'hace aproximadamente la mitad de lo planificado' : 'entrena bastante menos de lo planificado'} (${st.adherence} %).`);
-    } else out.constancia.push(`${first} entrena una media de ${fmtNum(Math.round(st.perWeek * 10) / 10)} veces por semana.`);
+      out.constancia.push(`${first}, en estas ${st.W} semanas has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana. Tu rutina tiene ${plural(st.target, 'día', 'días')}: ${st.adherence >= 90 ? 'cumples prácticamente todo lo planificado' : st.adherence >= 70 ? 'cumples la mayor parte, aunque se te escapa algún entreno' : st.adherence >= 40 ? 'haces más o menos la mitad de lo planificado' : 'estás entrenando bastante menos de lo planificado'} (${st.adherence} %).`);
+    } else out.constancia.push(`${first}, en estas ${st.W} semanas has entrenado ${st.list.length} ${veces(st.list.length)}, una media de ${pw} por semana.`);
     const maxGap = st.gaps.length ? Math.max(...st.gaps) : 0;
-    if (maxGap >= 10) out.constancia.push(`Su parón más largo en este periodo ha sido de ${maxGap} días.`);
+    if (maxGap >= 10) out.constancia.push(`Tu parón más largo ha sido de ${maxGap} días.`);
     const low = st.porDia.filter((d) => st.porDia.length > 1 && d.veces < Math.max(...st.porDia.map((x) => x.veces)) * 0.5);
-    if (low.length) out.constancia.push(`Hace mucho menos ${low.map((d) => `«${d.dia}» (${plural(d.veces, 'vez', 'veces')})`).join(' y ')} que el resto de días de la rutina.`);
-    if (st.setsPct != null) out.constancia.push(st.setsPct >= 95 ? `Completa el ${st.setsPct} % de las series: no se deja trabajo a medias.` : `Completa el ${st.setsPct} % de las series que tiene programadas.`);
+    if (low.length) out.constancia.push(`Haces mucho menos ${low.map((d) => `«${d.dia}» (${plural(d.veces, 'vez', 'veces')})`).join(' y ')} que el resto de días de tu rutina.`);
+    if (st.setsPct != null) out.constancia.push(st.setsPct >= 95 ? `Completas el ${st.setsPct} % de tus series: no dejas trabajo a medias.` : `Completas el ${st.setsPct} % de las series que tienes programadas.`);
     const ups = st.exercises.filter((e) => e.status === 'mejorando').sort((a, b) => (b.pct || 0) - (a.pct || 0));
     const stuck = st.exercises.filter((e) => e.status === 'estancado');
     const down = st.exercises.filter((e) => e.status === 'bajando');
-    if (ups.length) out.progreso.push(`Mejora en ${plural(ups.length, 'ejercicio', 'ejercicios')}. Lo más destacado: ${ups.slice(0, 3).map((e) => `${e.name} (de ${setTxt(e.first.best)} a ${setTxt(e.last.best)}, +${e.pct} %)`).join('; ')}.`);
-    if (st.prs) out.progreso.push(`Ha batido su mejor marca ${plural(st.prs, 'vez', 'veces')} en este periodo.`);
-    if (stuck.length) out.progreso.push(`Estancado (3 sesiones o más sin superar su mejor marca) en: ${stuck.map((e) => e.name).join(', ')}.`);
-    if (down.length) out.progreso.push(`Pierde fuerza en: ${down.map((e) => `${e.name} (${e.pct} %)`).join(', ')}.`);
-    if (st.volTrend != null && Math.abs(st.volTrend) >= 5) out.progreso.push(`El volumen de trabajo (kilos × repeticiones) ${st.volTrend > 0 ? 'ha subido' : 'ha bajado'} un ${Math.abs(st.volTrend)} % en la segunda mitad del periodo.`);
-    if (!out.progreso.length) out.progreso.push('Todavía no hay suficientes sesiones repetidas para ver una tendencia clara.');
-    // Recomendaciones
-    if (st.target && st.adherence < 70) out.recomendaciones.push(`Hablar con ${first} sobre la constancia: valorar si su rutina de ${st.target} días encaja con su semana o si conviene pasar a ${Math.max(2, Math.round(st.perWeek))} días.`);
-    if (since != null && since > 7) out.recomendaciones.push(`Escribirle: lleva ${since} días sin entrenar.`);
-    for (const d of low) out.recomendaciones.push(`Revisar por qué se salta «${d.dia}» (¿horario, material, le cuesta ese día?).`);
-    for (const e of stuck.slice(0, 4)) out.recomendaciones.push(`${e.name}: estancado desde ${shortDate(e.peak.date)} con ${setTxt(e.peak.best)}. Probar a subir repeticiones antes que peso o cambiarlo por otro del mismo patrón.`);
-    if (down.length >= 2) out.recomendaciones.push('Varios ejercicios bajan a la vez: revisar descanso, sueño y si la dieta está muy por debajo de su mantenimiento.');
-    else for (const e of down) out.recomendaciones.push(`${e.name}: baja su fuerza. Comprobar técnica, molestias o si lo hace con más cansancio (orden del día).`);
-    for (const x of st.subir.slice(0, 4)) out.recomendaciones.push(`${x.ex}: toca subir peso en la serie ${x.serie}${x.motivo ? ` (${x.motivo})` : ''}.`);
-    if (st.noHechos.length) out.recomendaciones.push(`No ha apuntado nunca: ${st.noHechos.slice(0, 6).join(', ')}${st.noHechos.length > 6 ? '…' : ''}. Confirmar si los hace o sustituirlos.`);
-    if (ups.length && !stuck.length && !down.length && (!st.target || st.adherence >= 80)) out.recomendaciones.push('Va muy bien: mantener la rutina y seguir con la progresión de cargas.');
-    if (!out.recomendaciones.length) out.recomendaciones.push('Seguir como hasta ahora y volver a mirar el estudio en unas semanas.');
+    if (ups.length) out.progreso.push(`Estás mejorando en ${plural(ups.length, 'ejercicio', 'ejercicios')}. Lo más destacado: ${ups.slice(0, 3).map((e) => `${e.name} (de ${setTxt(e.first.best)} a ${setTxt(e.last.best)}, +${e.pct} %)`).join('; ')}.`);
+    if (st.prs) out.progreso.push(`Has batido tu mejor marca ${plural(st.prs, 'vez', 'veces')} en este tiempo.`);
+    if (stuck.length) out.progreso.push(`Te has estancado (3 sesiones o más sin superar tu mejor marca) en: ${stuck.map((e) => e.name).join(', ')}.`);
+    if (down.length) out.progreso.push(`Estás perdiendo algo de fuerza en: ${down.map((e) => `${e.name} (${e.pct} %)`).join(', ')}.`);
+    if (st.volTrend != null && Math.abs(st.volTrend) >= 5) out.progreso.push(`Tu volumen de trabajo (kilos × repeticiones) ${st.volTrend > 0 ? 'ha subido' : 'ha bajado'} un ${Math.abs(st.volTrend)} % en la segunda mitad de este periodo.`);
+    if (!out.progreso.length) out.progreso.push('Todavía no hay suficientes sesiones repetidas para ver una tendencia clara. Sigue apuntando tus pesos.');
+    // Recomendaciones, para el cliente
+    if (st.target && st.adherence < 70) out.recomendaciones.push(`Intenta llegar a tus ${st.target} días por semana. Si no te encajan, dímelo y ajustamos la rutina a ${Math.max(2, Math.round(st.perWeek))} días.`);
+    if (since != null && since > 7) out.recomendaciones.push(`Llevas ${since} días sin entrenar: retómalo esta semana, aunque sea con un entreno más corto.`);
+    for (const d of low) out.recomendaciones.push(`Te estás saltando «${d.dia}». Si ese día te cuesta (horario, material…), cuéntamelo y lo cambiamos.`);
+    for (const e of stuck.slice(0, 4)) out.recomendaciones.push(`${e.name}: llevas varias sesiones sin superar ${setTxt(e.peak.best)}. Intenta sumar una repetición antes de subir el peso.`);
+    if (down.length >= 2) out.recomendaciones.push('Varios ejercicios están bajando a la vez: cuida el descanso y el sueño, y avísame si te notas más cansado de lo normal.');
+    else for (const e of down) out.recomendaciones.push(`${e.name}: estás perdiendo algo de fuerza. Cuida la técnica y dime si notas alguna molestia.`);
+    for (const x of st.subir.slice(0, 4)) out.recomendaciones.push(`${x.ex}: toca subir el peso en la serie ${x.serie}.`);
+    if (st.noHechos.length) out.recomendaciones.push(`No has apuntado nunca: ${st.noHechos.slice(0, 6).join(', ')}${st.noHechos.length > 6 ? '…' : ''}. Apúntalos en la app o dime si no los haces para cambiarlos.`);
+    if (ups.length && !stuck.length && !down.length && (!st.target || st.adherence >= 80)) out.recomendaciones.push('Vas muy bien: sigue así, con la misma constancia y subiendo cargas poco a poco.');
+    if (!out.recomendaciones.length) out.recomendaciones.push('Sigue así y en unas semanas volvemos a revisar tu progreso.');
     return out;
   }
 
@@ -2376,42 +2378,42 @@
     out.push(page(2, 'Visión general', 'Resumen', `
       <div class="st-kpis">
         ${kpi('Entrenos', st.list.length, `en ${st.W} semanas`)}
-        ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} planificados` : '')}
+        ${kpi('Por semana', fmtNum(Math.round(st.perWeek * 10) / 10), st.target ? `de ${st.target} en tu rutina` : '')}
         ${kpi('Constancia', st.adherence != null ? `${st.adherence} %` : '—', st.target ? 'de lo planificado' : 'sin rutina')}
         ${kpi('Duración', st.durMin ? mins(st.durMin * 60) : '—', 'media por entreno')}
         ${kpi('Series hechas', fmtNum(st.totalSets), st.setsPct != null ? `${st.setsPct} % de las programadas` : '')}
         ${kpi('Repeticiones', fmtNum(st.totalReps), 'en total')}
         ${kpi('Kilos movidos', `${fmtNum(Math.round(st.totalVol / 100) / 10)} t`, 'kilos × repeticiones')}
-        ${kpi('Récords', st.prs, 'mejores marcas batidas')}
+        ${kpi('Récords', st.prs, 'veces que has batido tu marca')}
       </div>
-      <h3 class="st-h">Estado de sus ejercicios</h3>
+      <h3 class="st-h">Estado de tus ejercicios</h3>
       <div class="st-states">${['mejorando', 'estable', 'estancado', 'bajando'].map((s) => `<div class="st-state" style="--c:${ST_STATUS[s][0]}"><b>${st.counts[s]}</b>${status(s)}</div>`).join('')}</div>
       <h3 class="st-h">Lo más importante</h3>
       ${bullets([...st.notes.constancia.slice(0, 2), ...st.notes.progreso.slice(0, 3)])}`));
     // 3 · Constancia
     const cal = st.weeks.map((wk) => `<div class="st-cal-w"><span>${esc(shortDate(wk.start))}</span>${Array.from({ length: 7 }, (_, k) => { const d = U.addDays(wk.start, k); const on = st.trainedDays.has(d); return `<i class="${on ? 'on' : ''}${d > today() ? ' fut' : ''}" title="${esc(fmtDate(d))}${on ? ': entrenó' : ''}"></i>`; }).join('')}</div>`).join('');
     const maxDia = Math.max(1, ...st.porDia.map((d) => d.veces));
-    out.push(page(3, 'Cuánto entrena', 'Constancia', `
-      <h3 class="st-h">Entrenos por semana${st.target ? ` <small>· línea: los ${st.target} días de su rutina</small>` : ''}</h3>
+    out.push(page(3, 'Cuánto entrenas', 'Constancia', `
+      <h3 class="st-h">Entrenos por semana${st.target ? ` <small>· línea: los ${st.target} días de tu rutina</small>` : ''}</h3>
       ${stBars(st.weeks.map((wk) => wk.n), wkLabels, { h: 200, target: st.target, targetLabel: st.target ? `Objetivo: ${st.target} por semana` : '', fmt: (v) => fmtNum(Math.round(v * 10) / 10) })}
       <div class="st-two">
-        <div><h3 class="st-h">Días que entrenó <small>· L M X J V S D</small></h3><div class="st-cal">${cal}</div></div>
-        <div><h3 class="st-h">Días de su rutina</h3>${st.porDia.length ? `<div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div>` : '<p class="st-muted">Sin rutina con ejercicios.</p>'}</div>
+        <div><h3 class="st-h">Días que entrenaste <small>· L M X J V S D</small></h3><div class="st-cal">${cal}</div></div>
+        <div><h3 class="st-h">Días de tu rutina</h3>${st.porDia.length ? `<div class="st-hbars">${st.porDia.map((d) => `<div class="st-hbar"><span>${esc(d.dia)}</span><div><i style="width:${(d.veces / maxDia) * 100}%"></i></div><b>${d.veces}</b></div>`).join('')}</div>` : '<p class="st-muted">Sin rutina con ejercicios.</p>'}</div>
       </div>
       ${bullets(st.notes.constancia)}`));
     // 4 · Carga de trabajo
-    out.push(page(4, 'Cuánto trabaja', 'Carga de trabajo', `
-      <h3 class="st-h">Kilos movidos por semana <small>· kilos × repeticiones de todas sus series</small></h3>
+    out.push(page(4, 'Cuánto trabajas', 'Carga de trabajo', `
+      <h3 class="st-h">Kilos movidos por semana <small>· kilos × repeticiones de todas tus series</small></h3>
       ${stBars(st.weeks.map((wk) => Math.round(wk.vol)), wkLabels, { h: 190, fmt: (v) => (v >= 1000 ? `${fmtNum(Math.round(v / 100) / 10)} t` : fmtNum(Math.round(v))) })}
       <h3 class="st-h">Series hechas por semana</h3>
       ${stBars(st.weeks.map((wk) => wk.sets), wkLabels, { h: 170, fmt: (v) => fmtNum(Math.round(v)) })}
       <h3 class="st-h">Minutos entrenados por semana</h3>
       ${stBars(st.weeks.map((wk) => Math.round(wk.min)), wkLabels, { h: 170, fmt: (v) => `${fmtNum(Math.round(v))}′` })}
-      ${bullets([st.volTrend != null ? `Volumen ${st.volTrend >= 0 ? 'al alza' : 'a la baja'}: ${st.volTrend >= 0 ? '+' : ''}${st.volTrend} % entre la primera y la segunda mitad del periodo.` : 'Aún no hay semanas suficientes para comparar el volumen.', `Media de ${fmtNum(Math.round(st.totalSets / Math.max(1, st.list.length)))} series y ${st.durMin ? mins(st.durMin * 60) : '—'} por entreno.`])}`));
+      ${bullets([st.volTrend != null ? `Tu volumen va ${st.volTrend >= 0 ? 'al alza' : 'a la baja'}: ${st.volTrend >= 0 ? '+' : ''}${st.volTrend} % entre la primera y la segunda mitad del periodo.` : 'Aún no hay semanas suficientes para comparar tu volumen.', `Haces una media de ${fmtNum(Math.round(st.totalSets / Math.max(1, st.list.length)))} series y ${st.durMin ? mins(st.durMin * 60) : '—'} por entreno.`])}`));
     // 5… · Ejercicio a ejercicio
     exPages.forEach((exs, pi) => {
-      out.push(page(5 + pi, 'Cómo evoluciona', `Ejercicio a ejercicio${exPages.length > 1 ? ` (${pi + 1}/${exPages.length})` : ''}`, `
-        <p class="st-muted st-legend">La línea es su fuerza estimada (1RM) con la mejor serie de cada sesión. Puntos grandes: la última sesión y su mejor marca.</p>
+      out.push(page(5 + pi, 'Cómo evolucionas', `Ejercicio a ejercicio${exPages.length > 1 ? ` (${pi + 1}/${exPages.length})` : ''}`, `
+        <p class="st-muted st-legend">La línea es tu fuerza estimada (1RM) con tu mejor serie de cada sesión. Puntos grandes: tu última sesión y tu mejor marca.</p>
         <div class="st-exs">${exs.map((e) => `<div class="st-ex" style="--c:${ST_STATUS[e.status][0]}">
           <div class="st-ex-head"><b>${esc(e.name)}</b>${status(e.status)}</div>
           ${stSpark(e.ses, ST_STATUS[e.status][0])}
